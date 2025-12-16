@@ -11,6 +11,28 @@ def get_db():
     finally:
         db.close()
 
+def create_user(name, password, weight_kg, height_cm):
+    db = SessionLocal()
+    try:
+        existing_user = db.query(models.User).filter(models.User.name == name).first()
+        if existing_user:
+            print(f"User '{name}' already exists.")
+            return
+
+        hashed_password = auth.get_password_hash(password)
+        new_user = models.User(
+            name=name,
+            weight_kg=weight_kg,
+            height_cm=height_cm,
+            password_hash=hashed_password
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        print(f"User '{name}' created successfully with ID: {new_user.user_id}")
+    finally:
+        db.close()
+
 def reset_password(user_id, new_password):
     db = SessionLocal()
     try:
@@ -68,6 +90,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Health App Admin CLI")
     subparsers = parser.add_subparsers(dest="command")
 
+    # Create User
+    parser_user = subparsers.add_parser("create-user")
+    parser_user.add_argument("--name", type=str, required=True)
+    parser_user.add_argument("--password", type=str, required=True)
+    parser_user.add_argument("--weight", type=float, required=True, help="Weight in kg")
+    parser_user.add_argument("--height", type=float, required=True, help="Height in cm")
+
     # Reset Password
     parser_reset = subparsers.add_parser("reset-password")
     parser_reset.add_argument("--user-id", type=int, required=True)
@@ -84,7 +113,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.command == "reset-password":
+    if args.command == "create-user":
+        create_user(args.name, args.password, args.weight, args.height)
+    elif args.command == "reset-password":
         reset_password(args.user_id, args.password)
     elif args.command == "create-apikey":
         create_api_key(args.user_id, args.name)
