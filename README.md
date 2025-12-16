@@ -110,6 +110,32 @@ Use the included CLI tool to manage users and API keys.
     ./venv/bin/python -m app.cli revoke-apikey --key-id 1
     ```
 
+## Updating the Application
+
+To update the application to the latest version:
+
+1.  **Pull the latest changes:**
+    ```bash
+    cd hahealth
+    git pull
+    ```
+
+2.  **Update dependencies:**
+    ```bash
+    ./venv/bin/pip install -r requirements.txt
+    ```
+
+3.  **Run Database Migrations:**
+    If new features (like Imperial units) were added, run the migration script:
+    ```bash
+    python3 scripts/migrate_db.py
+    ```
+
+4.  **Restart the service:**
+    ```bash
+    sudo systemctl restart hahealth
+    ```
+
 ## Home Assistant Integration
 
 To send data from Home Assistant to this application, use the `rest_command` integration or automation webhooks.
