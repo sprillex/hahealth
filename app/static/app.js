@@ -127,6 +127,7 @@ async function loadSummary() {
         const p = summaryData.macros.protein;
         const f = summaryData.macros.fat;
         const c = summaryData.macros.carbs;
+        const fib = summaryData.macros.fiber;
         const total = p + f + c || 1; // avoid div by zero
 
         document.getElementById('macro-p').style.width = `${(p/total)*100}%`;
@@ -136,6 +137,7 @@ async function loadSummary() {
         document.getElementById('val-p').innerText = Math.round(p);
         document.getElementById('val-f').innerText = Math.round(f);
         document.getElementById('val-c').innerText = Math.round(c);
+        document.getElementById('val-fiber').innerText = Math.round(fib);
 
         updateRecommendations();
     } catch (err) {
@@ -184,10 +186,14 @@ function updateRecommendations() {
     const cMin = Math.round((targetCals * 0.45) / 4);
     const cMax = Math.round((targetCals * 0.65) / 4);
 
+    // Fiber: 14g per 1000 kcal
+    const fiberMin = Math.round((targetCals / 1000) * 14);
+
     let html = `<strong>Daily Target:</strong> ${targetCals} kcal<br>`;
     html += `<strong>Protein:</strong> ${pMin}-${pMax}g<br>`;
     html += `<strong>Fat:</strong> ${fMin}-${fMax}g<br>`;
-    html += `<strong>Carbs:</strong> ${cMin}-${cMax}g`;
+    html += `<strong>Carbs:</strong> ${cMin}-${cMax}g<br>`;
+    html += `<strong>Fiber:</strong> > ${fiberMin}g`;
 
     document.getElementById('recommendation-text').innerHTML = html;
 }
@@ -358,7 +364,7 @@ async function handleLogExercise(e) {
             const resp = await res.json();
             alert(`Exercise Logged. Calories: ${resp.calories_burned.toFixed(1)}`);
             e.target.reset();
-            loadExerciseHistory();
+            loadExerciseHistory(); // Refresh history
         } else {
             alert('Error logging exercise');
         }
@@ -400,10 +406,12 @@ async function handleLogWeight(e) {
     e.preventDefault();
     let weightInput = parseFloat(document.getElementById('weight-input').value);
 
+    // Convert if Imperial
     if (user.unit_system === 'IMPERIAL') {
         weightInput = weightInput * 0.453592;
     }
 
+    // We update the profile with the new weight
     const data = {
         weight_kg: weightInput
     };
@@ -418,7 +426,7 @@ async function handleLogWeight(e) {
             body: JSON.stringify(data)
         });
         if (res.ok) {
-            user = await res.json();
+            user = await res.json(); // Update local user state
             alert('Weight updated successfully');
             e.target.reset();
         } else {

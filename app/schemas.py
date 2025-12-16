@@ -146,6 +146,7 @@ class NutritionCacheResponse(BaseModel):
     protein: float
     fat: float
     carbs: float
+    fiber: float
     source: str
     class Config:
         from_attributes = True

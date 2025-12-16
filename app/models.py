@@ -113,6 +113,7 @@ class NutritionCache(Base):
     protein = Column(Float)
     fat = Column(Float, default=0.0)
     carbs = Column(Float, default=0.0)
+    fiber = Column(Float, default=0.0)
     source = Column(String) # OFF/MANUAL
 
     food_item_logs = relationship("FoodItemLog", back_populates="nutrition_info")

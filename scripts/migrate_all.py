@@ -50,7 +50,8 @@ def migrate_all():
 
     nut_cols = [
         ("fat", "FLOAT DEFAULT 0"),
-        ("carbs", "FLOAT DEFAULT 0")
+        ("carbs", "FLOAT DEFAULT 0"),
+        ("fiber", "FLOAT DEFAULT 0")
     ]
     for col, type_ in nut_cols:
         try:

@@ -27,6 +27,7 @@ class OpenFoodFactsService:
                 protein = nutriments.get("proteins_100g", 0)
                 fat = nutriments.get("fat_100g", 0)
                 carbs = nutriments.get("carbohydrates_100g", 0)
+                fiber = nutriments.get("fiber_100g", 0)
 
                 # Write to Cache
                 new_cache = models.NutritionCache(
@@ -36,6 +37,7 @@ class OpenFoodFactsService:
                     protein=float(protein) if protein else 0.0,
                     fat=float(fat) if fat else 0.0,
                     carbs=float(carbs) if carbs else 0.0,
+                    fiber=float(fiber) if fiber else 0.0,
                     source="OFF"
                 )
                 db.add(new_cache)
@@ -174,6 +176,7 @@ class HealthLogService:
                     protein=0,
                     fat=0,
                     carbs=0,
+                    fiber=0,
                     source="MANUAL"
                  )
                  db.add(food_item)

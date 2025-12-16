@@ -63,20 +63,21 @@ def get_daily_summary(
 
     bp_str = f"{bp.systolic}/{bp.diastolic}" if bp else "Not Logged"
 
-    # 3. Macro Calculation (Protein/Fat/Carbs)
+    # 3. Macro Calculation (Protein/Fat/Carbs/Fiber)
     start_of_day = datetime.combine(today, datetime.min.time())
     food_logs = db.query(models.FoodItemLog).join(models.NutritionCache).filter(
         models.FoodItemLog.user_id == current_user.user_id,
         models.FoodItemLog.timestamp >= start_of_day
     ).all()
 
-    macros = {"protein": 0, "fat": 0, "carbs": 0}
+    macros = {"protein": 0, "fat": 0, "carbs": 0, "fiber": 0}
     for log in food_logs:
         multiplier = log.serving_size * log.quantity
-        # Assuming values in cache are numeric
+        # Assuming values in cache are numeric and defaults are 0
         macros["protein"] += (log.nutrition_info.protein or 0) * multiplier
         macros["fat"] += (log.nutrition_info.fat or 0) * multiplier
         macros["carbs"] += (log.nutrition_info.carbs or 0) * multiplier
+        macros["fiber"] += (log.nutrition_info.fiber or 0) * multiplier
 
     return {
         "blood_pressure": bp_str,
