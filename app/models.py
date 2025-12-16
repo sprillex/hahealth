@@ -14,6 +14,7 @@ class User(Base):
     height_cm = Column(Float)
     password_hash = Column(String)
     unit_system = Column(String, default="METRIC")
+    is_admin = Column(Boolean, default=False)
 
     # New fields
     birth_year = Column(Integer)
@@ -34,6 +35,11 @@ class User(Base):
     food_item_logs = relationship("FoodItemLog", back_populates="user")
     api_keys = relationship("APIKey", back_populates="user")
     exercise_logs = relationship("ExerciseLog", back_populates="user")
+
+class SystemConfig(Base):
+    __tablename__ = "system_config"
+    key = Column(String, primary_key=True)
+    value = Column(String)
 
 class DailyLog(Base):
     __tablename__ = "daily_logs"

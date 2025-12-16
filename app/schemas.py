@@ -40,6 +40,7 @@ class PasswordUpdate(BaseModel):
 class UserResponse(UserBase):
     user_id: int
     unit_system: str
+    is_admin: bool
     window_morning_start: Optional[time] = None
     window_afternoon_start: Optional[time] = None
     window_evening_start: Optional[time] = None

@@ -60,9 +60,54 @@ def migrate_all():
         except sqlite3.OperationalError:
             pass
 
+    # 4. Admin & System Config
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0")
+        print(" - Added is_admin to users.")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS system_config (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        """)
+        print(" - Checked system_config table.")
+    except sqlite3.OperationalError:
+        pass
+
+    # 5. Time Windows & Schedules
+    window_cols = [
+        ("window_morning_start", "TIME DEFAULT '06:00:00'"),
+        ("window_afternoon_start", "TIME DEFAULT '12:00:00'"),
+        ("window_evening_start", "TIME DEFAULT '17:00:00'"),
+        ("window_bedtime_start", "TIME DEFAULT '21:00:00'")
+    ]
+    for col, type_ in window_cols:
+        try:
+            cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {type_}")
+            print(f" - Added {col} to users.")
+        except sqlite3.OperationalError:
+            pass
+
+    med_cols = [
+        ("schedule_morning", "BOOLEAN DEFAULT 0"),
+        ("schedule_afternoon", "BOOLEAN DEFAULT 0"),
+        ("schedule_evening", "BOOLEAN DEFAULT 0"),
+        ("schedule_bedtime", "BOOLEAN DEFAULT 0")
+    ]
+    for col, type_ in med_cols:
+        try:
+            cursor.execute(f"ALTER TABLE medications ADD COLUMN {col} {type_}")
+            print(f" - Added {col} to medications.")
+        except sqlite3.OperationalError:
+            pass
+
     conn.commit()
     conn.close()
-    print("Migrations complete.")
+    print("All migrations complete.")
 
 if __name__ == "__main__":
     migrate_all()

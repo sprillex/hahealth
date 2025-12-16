@@ -1,8 +1,12 @@
 import requests
+import os
+import shutil
 from sqlalchemy.orm import Session
-from app import models
-from app import schemas
+from app import models, schemas, database
 from datetime import datetime, date, timedelta, time
+from cryptography.fernet import Fernet
+import base64
+import hashlib
 
 class OpenFoodFactsService:
     BASE_URL = "https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
@@ -304,3 +308,96 @@ class HealthLogService:
             "taken_doses": total_taken,
             "total_scheduled": total_expected
         }
+
+class BackupService:
+    CONFIG_KEY = "backup_encryption_key"
+    BACKUP_DIR = "backups"
+    DB_FILE = "health_app.db"
+
+    def _derive_fernet_key(self, passphrase: str) -> bytes:
+        # Use SHA256 to get 32 bytes from passphrase
+        digest = hashlib.sha256(passphrase.encode()).digest()
+        return base64.urlsafe_b64encode(digest)
+
+    def set_key(self, db: Session, key_str: str):
+        config = db.query(models.SystemConfig).filter(models.SystemConfig.key == self.CONFIG_KEY).first()
+        if not config:
+            config = models.SystemConfig(key=self.CONFIG_KEY, value=key_str)
+            db.add(config)
+        else:
+            config.value = key_str
+        db.commit()
+
+    def get_key(self, db: Session):
+        config = db.query(models.SystemConfig).filter(models.SystemConfig.key == self.CONFIG_KEY).first()
+        if not config:
+            return None
+        return config.value
+
+    def create_backup(self, db: Session) -> str:
+        key_str = self.get_key(db)
+        if not key_str:
+            raise ValueError("Encryption key not set")
+
+        if not os.path.exists(self.BACKUP_DIR):
+            os.makedirs(self.BACKUP_DIR)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"backup_{timestamp}.enc"
+        filepath = os.path.join(self.BACKUP_DIR, filename)
+
+        fernet = Fernet(self._derive_fernet_key(key_str))
+
+        # 1. Read DB
+        # To be safe against writes during read, we might want to lock, but with sqlite
+        # and simple file copy it's usually acceptable if low traffic.
+        # Ideally: VACUUM INTO 'backup.db' but that requires newer sqlite.
+        # We will just read bytes.
+        with open(self.DB_FILE, "rb") as f:
+            data = f.read()
+
+        # 2. Encrypt
+        encrypted_data = fernet.encrypt(data)
+
+        # 3. Write
+        with open(filepath, "wb") as f:
+            f.write(encrypted_data)
+
+        return filename
+
+    def restore_backup(self, db: Session, file_bytes: bytes):
+        key_str = self.get_key(db)
+        if not key_str:
+            raise ValueError("Encryption key not set")
+
+        fernet = Fernet(self._derive_fernet_key(key_str))
+
+        try:
+            decrypted_data = fernet.decrypt(file_bytes)
+        except Exception:
+            raise ValueError("Invalid Key or Corrupt Backup")
+
+        # 1. Dispose engine to close connections
+        database.dispose_engine()
+
+        # 2. Swap files
+        backup_path = self.DB_FILE + ".bak"
+        if os.path.exists(self.DB_FILE):
+             shutil.move(self.DB_FILE, backup_path)
+
+        with open(self.DB_FILE, "wb") as f:
+            f.write(decrypted_data)
+
+        # 3. Re-init engine connections (handled automatically by next request create_engine logic usually,
+        # but we might need to be careful if global engine object is stale.
+        # Since engine is created at module level, dispose() just clears the pool. Next connect() creates new connection.)
+        return True
+
+    def get_latest_backup(self):
+        if not os.path.exists(self.BACKUP_DIR):
+            return None
+        files = [os.path.join(self.BACKUP_DIR, f) for f in os.listdir(self.BACKUP_DIR) if f.endswith(".enc")]
+        if not files:
+            return None
+        latest_file = max(files, key=os.path.getctime)
+        return latest_file

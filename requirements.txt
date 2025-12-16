@@ -9,3 +9,4 @@ pytest
 bcrypt==3.2.0
 httpx
 playwright
+cryptography

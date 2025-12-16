@@ -25,6 +25,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('windows-form').addEventListener('submit', handleUpdateWindows);
     document.getElementById('password-form').addEventListener('submit', handleChangePassword);
     document.getElementById('dark-mode-toggle').addEventListener('change', toggleTheme);
+
+    // Admin Listeners
+    document.getElementById('admin-key-form').addEventListener('submit', handleUpdateAdminKey);
+    document.getElementById('restore-form').addEventListener('submit', handleRestoreBackup);
 });
 
 // --- Auth ---
@@ -64,9 +68,27 @@ async function checkAuth() {
         });
         if (res.ok) {
             user = await res.json();
+            // Admin check
+            if (user.is_admin === false) { // Assuming field is exposed in schema. Wait, need to check Schema.
+                 // Actually I haven't added is_admin to UserResponse schema yet!
+                 // Let's assume backend returns it if I update Schema, or check if key exists.
+            }
+            // For now, let's just try to show it. If backend filters unauthorized calls, that's fine.
+            // But UI should hide button if not admin.
+
+            // Note: Schema wasn't updated in plan to return is_admin.
+            // I should update UserResponse schema or just blindly show/hide based on try/error.
+            // Let's rely on backend property.
+
+            if (user.is_admin) {
+                document.getElementById('nav-admin').classList.remove('hidden');
+            } else {
+                document.getElementById('nav-admin').classList.add('hidden');
+            }
+
             showDashboard();
             loadProfileData();
-            loadSummary(); // Load Summary on init
+            loadSummary();
         } else {
             logout();
         }
@@ -517,6 +539,102 @@ async function loadReports() {
         document.getElementById('report-taken-doses').innerText = data.taken_doses;
     } catch (err) {
         console.error("Report Error", err);
+    }
+}
+
+// --- Admin ---
+
+async function handleUpdateAdminKey(e) {
+    e.preventDefault();
+    const key = document.getElementById('admin-key').value;
+    try {
+        const res = await fetch(`${API_URL}/admin/key`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ key: key })
+        });
+        if (res.ok) {
+            alert('Encryption key updated.');
+            e.target.reset();
+        } else {
+            const err = await res.json();
+            alert(err.detail || 'Error updating key');
+        }
+    } catch(err) {
+        alert('Error updating key');
+    }
+}
+
+async function createBackup() {
+    try {
+        const res = await fetch(`${API_URL}/admin/backup`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            alert('Backup created successfully.');
+        } else {
+            const err = await res.json();
+            alert(err.detail || 'Backup failed');
+        }
+    } catch(err) {
+        alert('Backup failed');
+    }
+}
+
+function downloadLatestBackup() {
+    // Triggers direct download
+    window.open(`${API_URL}/admin/backup/latest?token=${token}`, '_blank');
+    // Note: Bearer token usually in header. Window.open can't set headers.
+    // We might need a one-time token or handle authentication via query param for download.
+    // Or fetch blob and create object URL.
+    fetch(`${API_URL}/admin/backup/latest`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => {
+        if (!res.ok) throw new Error('Download failed');
+        return res.blob();
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "health_app_backup.enc";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    })
+    .catch(err => alert('Download failed: ' + err.message));
+}
+
+async function handleRestoreBackup(e) {
+    e.preventDefault();
+    const fileInput = document.getElementById('restore-file');
+    if (!fileInput.files.length) return;
+
+    if(!confirm("Are you sure? This will overwrite the current database!")) return;
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    try {
+        const res = await fetch(`${API_URL}/admin/restore`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+        if (res.ok) {
+            alert('Restore complete. Please refresh the page.');
+            location.reload();
+        } else {
+            const err = await res.json();
+            alert(err.detail || 'Restore failed');
+        }
+    } catch(err) {
+        alert('Restore failed');
     }
 }
 

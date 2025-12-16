@@ -98,6 +98,21 @@ def revoke_api_key(key_id):
     finally:
         db.close()
 
+def make_admin(user_id, revoke=False):
+    db = SessionLocal()
+    try:
+        user = db.query(models.User).filter(models.User.user_id == user_id).first()
+        if not user:
+            print(f"User ID {user_id} not found.")
+            return
+
+        user.is_admin = not revoke
+        db.commit()
+        status = "revoked from" if revoke else "granted to"
+        print(f"Admin privileges {status} user {user.name} (ID: {user_id}).")
+    finally:
+        db.close()
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Health App Admin CLI")
     subparsers = parser.add_subparsers(dest="command")
@@ -124,6 +139,11 @@ if __name__ == "__main__":
     parser_revoke = subparsers.add_parser("revoke-apikey")
     parser_revoke.add_argument("--key-id", type=int, required=True)
 
+    # Make Admin
+    parser_admin = subparsers.add_parser("make-admin")
+    parser_admin.add_argument("--user-id", type=int, required=True)
+    parser_admin.add_argument("--revoke", action="store_true", help="Revoke admin access instead of granting")
+
     args = parser.parse_args()
 
     if args.command == "create-user":
@@ -134,5 +154,7 @@ if __name__ == "__main__":
         create_api_key(args.user_id, args.name)
     elif args.command == "revoke-apikey":
         revoke_api_key(args.key_id)
+    elif args.command == "make-admin":
+        make_admin(args.user_id, args.revoke)
     else:
         parser.print_help()
