@@ -26,7 +26,7 @@ A robust, multi-user health tracking backend built with FastAPI, designed to int
 
 2.  **Create and activate a virtual environment (recommended):**
     ```bash
-    python -m venv venv
+    python3 -m venv venv
     # Linux/Mac
     source venv/bin/activate
     # Windows
