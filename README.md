@@ -90,24 +90,24 @@ Use the included CLI tool to manage users and API keys.
 
 1.  **Create the first user:**
     ```bash
-    python3 -m app.cli create-user --name "johndoe" --password "securepass" --weight 75.0 --height 180.0
+    ./venv/bin/python -m app.cli create-user --name "johndoe" --password "securepass" --weight 75.0 --height 180.0
     ```
     *Note the `ID` returned in the output.*
 
 2.  **Create an API Key for Home Assistant:**
     ```bash
-    python3 -m app.cli create-apikey --user-id 1 --name "HomeAssistant"
+    ./venv/bin/python -m app.cli create-apikey --user-id 1 --name "HomeAssistant"
     ```
     **IMPORTANT:** Copy the `SECRET KEY` displayed. You will not be able to see it again.
 
 3.  **Reset a Password (if needed):**
     ```bash
-    python3 -m app.cli reset-password --user-id 1 --password "newpassword"
+    ./venv/bin/python -m app.cli reset-password --user-id 1 --password "newpassword"
     ```
 
 4.  **Revoke an API Key:**
     ```bash
-    python3 -m app.cli revoke-apikey --key-id 1
+    ./venv/bin/python -m app.cli revoke-apikey --key-id 1
     ```
 
 ## Home Assistant Integration
