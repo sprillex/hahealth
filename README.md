@@ -20,8 +20,8 @@ A robust, multi-user health tracking backend built with FastAPI, designed to int
 
 1.  **Clone the repository:**
     ```bash
-    git clone <repository_url>
-    cd <repository_folder>
+    git clone https://github.com/sprillex/hahealth
+    cd hahealth
     ```
 
 2.  **Create and activate a virtual environment (recommended):**
