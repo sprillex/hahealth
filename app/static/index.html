@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Tracker</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Auth View -->
+        <div id="auth-view" class="container">
+            <h1>Health Tracker Login</h1>
+            <form id="login-form">
+                <input type="text" id="username" placeholder="Username" required>
+                <input type="password" id="password" placeholder="Password" required>
+                <button type="submit">Login</button>
+            </form>
+            <div id="login-error" class="error"></div>
+        </div>
+
+        <!-- Dashboard View (Hidden by default) -->
+        <div id="dashboard-view" class="hidden">
+            <nav class="navbar">
+                <div class="nav-brand">Health Tracker</div>
+                <div class="nav-links">
+                    <button onclick="showTab('medications')">Medications</button>
+                    <button onclick="showTab('health-logs')">Health Logs</button>
+                    <button onclick="showTab('settings')">Settings</button>
+                    <button onclick="logout()">Logout</button>
+                </div>
+            </nav>
+
+            <div class="container main-content">
+                <!-- Medications Tab -->
+                <div id="tab-medications" class="tab-content">
+                    <div class="header-actions">
+                        <h2>Medications</h2>
+                        <button class="btn-primary" onclick="openMedModal()">+ Add Medication</button>
+                    </div>
+                    <div id="med-list" class="grid-list">
+                        <!-- Med cards go here -->
+                    </div>
+                </div>
+
+                <!-- Health Logs Tab -->
+                <div id="tab-health-logs" class="tab-content hidden">
+                    <h2>Log Health Data</h2>
+
+                    <div class="log-forms">
+                        <div class="card">
+                            <h3>Blood Pressure</h3>
+                            <form id="bp-form">
+                                <div class="form-group">
+                                    <label>Systolic (Top)</label>
+                                    <input type="number" name="systolic" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Diastolic (Bottom)</label>
+                                    <input type="number" name="diastolic" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Pulse</label>
+                                    <input type="number" name="pulse" required>
+                                </div>
+                                <button type="submit" class="btn-primary">Log BP</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div id="tab-settings" class="tab-content hidden">
+                    <h2>Settings</h2>
+                    <div class="card">
+                        <div class="form-group checkbox-group">
+                            <label for="dark-mode-toggle">Dark Mode</label>
+                            <input type="checkbox" id="dark-mode-toggle">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="med-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeMedModal()">&times;</span>
+            <h2 id="med-modal-title">Add Medication</h2>
+            <form id="med-form">
+                <input type="hidden" name="med_id" id="med_id">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" name="name" id="med_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Frequency</label>
+                    <input type="text" name="frequency" id="med_frequency" placeholder="e.g. Daily" required>
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select name="type" id="med_type">
+                        <option value="PRESCRIPTION">Prescription</option>
+                        <option value="OTC">OTC</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Current Inventory</label>
+                    <input type="number" name="current_inventory" id="med_inventory" required>
+                </div>
+                <div class="form-group">
+                    <label>Refills Remaining</label>
+                    <input type="number" name="refills_remaining" id="med_refills" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="closeMedModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

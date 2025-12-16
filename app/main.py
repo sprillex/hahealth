@@ -1,14 +1,17 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from app import database, models
 from app.routers import auth, users, medication, health, webhook, prescribers
+import os
 
 # Create DB tables
 models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(
     title="Comprehensive Health Tracker",
-    docs_url=None # Disable default docs to override it
+    docs_url=None
 )
 
 app.include_router(auth.router)
@@ -17,6 +20,9 @@ app.include_router(medication.router)
 app.include_router(prescribers.router)
 app.include_router(health.router)
 app.include_router(webhook.router)
+
+# Mount Static Files
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
@@ -28,5 +34,5 @@ async def custom_swagger_ui_html():
     )
 
 @app.get("/")
-def read_root():
-    return {"message": "Welcome to the Health Tracker API"}
+async def read_index():
+    return FileResponse('app/static/index.html')
