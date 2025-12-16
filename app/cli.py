@@ -11,7 +11,7 @@ def get_db():
     finally:
         db.close()
 
-def create_user(name, password, weight_kg, height_cm):
+def create_user(name, password, weight, height, unit_system):
     db = SessionLocal()
     try:
         existing_user = db.query(models.User).filter(models.User.name == name).first()
@@ -19,17 +19,29 @@ def create_user(name, password, weight_kg, height_cm):
             print(f"User '{name}' already exists.")
             return
 
+        weight_kg = weight
+        height_cm = height
+
+        if unit_system.upper() == "IMPERIAL":
+            # Convert lbs to kg
+            weight_kg = weight * 0.453592
+            # Convert inches to cm
+            height_cm = height * 2.54
+
         hashed_password = auth.get_password_hash(password)
         new_user = models.User(
             name=name,
             weight_kg=weight_kg,
             height_cm=height_cm,
-            password_hash=hashed_password
+            password_hash=hashed_password,
+            unit_system=unit_system.upper()
         )
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
         print(f"User '{name}' created successfully with ID: {new_user.user_id}")
+        if unit_system.upper() == "IMPERIAL":
+             print(f"Stored as Metric: {weight_kg:.2f} kg, {height_cm:.2f} cm")
     finally:
         db.close()
 
@@ -94,8 +106,9 @@ if __name__ == "__main__":
     parser_user = subparsers.add_parser("create-user")
     parser_user.add_argument("--name", type=str, required=True)
     parser_user.add_argument("--password", type=str, required=True)
-    parser_user.add_argument("--weight", type=float, required=True, help="Weight in kg")
-    parser_user.add_argument("--height", type=float, required=True, help="Height in cm")
+    parser_user.add_argument("--weight", type=float, required=True, help="Weight (kg or lbs)")
+    parser_user.add_argument("--height", type=float, required=True, help="Height (cm or in)")
+    parser_user.add_argument("--unit-system", type=str, choices=["metric", "imperial"], default="metric", help="Unit system (metric/imperial)")
 
     # Reset Password
     parser_reset = subparsers.add_parser("reset-password")
@@ -114,7 +127,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.command == "create-user":
-        create_user(args.name, args.password, args.weight, args.height)
+        create_user(args.name, args.password, args.weight, args.height, args.unit_system)
     elif args.command == "reset-password":
         reset_password(args.user_id, args.password)
     elif args.command == "create-apikey":

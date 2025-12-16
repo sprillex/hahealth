@@ -11,9 +11,11 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    unit_system: str = "METRIC"
 
 class UserResponse(UserBase):
     user_id: int
+    unit_system: str
     class Config:
         from_attributes = True
 

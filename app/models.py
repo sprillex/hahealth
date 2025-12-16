@@ -13,6 +13,7 @@ class User(Base):
     weight_kg = Column(Float)
     height_cm = Column(Float)
     password_hash = Column(String)
+    unit_system = Column(String, default="METRIC")
 
     daily_logs = relationship("DailyLog", back_populates="user")
     prescribers = relationship("Prescriber", back_populates="user")
