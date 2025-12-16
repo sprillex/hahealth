@@ -28,6 +28,10 @@
         .macro-segment.f { background-color: #f1c40f; } /* Fat */
         .macro-segment.c { background-color: #2ecc71; } /* Carbs */
         .macro-legend { display: flex; justify-content: center; gap: 15px; font-size: 0.8em; margin-top: 5px; }
+        .checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .stat-card { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
+        .stat-val { font-size: 2em; font-weight: bold; color: var(--primary-color); }
+        .stat-label { color: #666; }
     </style>
 </head>
 <body>
@@ -193,8 +197,21 @@
                 <div id="tab-reports" class="tab-content hidden">
                     <h2>Reports</h2>
                     <div class="card">
-                        <h3>Medication Adherence</h3>
-                        <p>Total Doses Logged: <strong id="report-adherence-count">Loading...</strong></p>
+                        <h3>Medication Compliance (Last 30 Days)</h3>
+                        <div class="summary-grid">
+                             <div class="stat-card">
+                                 <div class="stat-val" id="report-compliance-pct">--%</div>
+                                 <div class="stat-label">Compliance</div>
+                             </div>
+                             <div class="stat-card">
+                                 <div class="stat-val" id="report-missed-doses">0</div>
+                                 <div class="stat-label">Missed Doses</div>
+                             </div>
+                             <div class="stat-card">
+                                 <div class="stat-val" id="report-taken-doses">0</div>
+                                 <div class="stat-label">Taken Doses</div>
+                             </div>
+                        </div>
                     </div>
                 </div>
 
@@ -251,6 +268,31 @@
                             </form>
                         </div>
 
+                        <!-- Time Windows -->
+                        <div class="card">
+                            <h3>Medication Schedule Windows</h3>
+                            <form id="windows-form">
+                                <div class="form-group">
+                                    <label>Morning Start</label>
+                                    <input type="time" id="win-morning">
+                                </div>
+                                <div class="form-group">
+                                    <label>Afternoon Start</label>
+                                    <input type="time" id="win-afternoon">
+                                </div>
+                                <div class="form-group">
+                                    <label>Evening Start</label>
+                                    <input type="time" id="win-evening">
+                                </div>
+                                <div class="form-group">
+                                    <label>Bedtime Start</label>
+                                    <input type="time" id="win-bedtime">
+                                    <small>If log time < Morning Start, it counts as Bedtime (Yesterday).</small>
+                                </div>
+                                <button type="submit" class="btn-primary">Update Schedule</button>
+                            </form>
+                        </div>
+
                         <!-- Password Change -->
                         <div class="card">
                             <h3>Change Password</h3>
@@ -297,9 +339,20 @@
                     <input type="text" name="name" id="med_name" required>
                 </div>
                 <div class="form-group">
-                    <label>Frequency</label>
+                    <label>Frequency (Text)</label>
                     <input type="text" name="frequency" id="med_frequency" placeholder="e.g. Daily" required>
                 </div>
+
+                <div class="form-group">
+                    <label>Scheduled Windows</label>
+                    <div class="checkbox-grid">
+                        <label><input type="checkbox" id="sched_morning"> Morning</label>
+                        <label><input type="checkbox" id="sched_afternoon"> Afternoon</label>
+                        <label><input type="checkbox" id="sched_evening"> Evening</label>
+                        <label><input type="checkbox" id="sched_bedtime"> Bedtime</label>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label>Type</label>
                     <select name="type" id="med_type">

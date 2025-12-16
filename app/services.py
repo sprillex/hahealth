@@ -2,7 +2,7 @@ import requests
 from sqlalchemy.orm import Session
 from app import models
 from app import schemas
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, time
 
 class OpenFoodFactsService:
     BASE_URL = "https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
@@ -207,3 +207,100 @@ class HealthLogService:
 
         db.commit()
         return item_log, None
+
+    def calculate_compliance_report(self, db: Session, user: models.User):
+        # Time range: Last 30 days excluding today
+        today = date.today()
+        start_date = today - timedelta(days=30)
+        end_date = today - timedelta(days=1)
+
+        # Get active medications
+        meds = db.query(models.Medication).filter(models.Medication.user_id == user.user_id).all()
+        if not meds:
+            return {"compliance_percentage": 0, "missed_doses": 0, "taken_doses": 0, "total_scheduled": 0}
+
+        # Get all logs for this period
+        logs = db.query(models.MedDoseLog).filter(
+            models.MedDoseLog.user_id == user.user_id,
+            models.MedDoseLog.timestamp_taken >= datetime.combine(start_date, time.min),
+            models.MedDoseLog.timestamp_taken <= datetime.combine(end_date, time.max)
+        ).all()
+
+        # Helper to map timestamp to (Window, LogicalDate)
+        # Windows: Morning(M), Afternoon(A), Evening(E), Bedtime(B)
+        # B can span to next day.
+        # Logic: Find the latest window start time that is <= timestamp.time()
+        # If timestamp < M_start (and M is earliest), it wraps to previous day's LAST window (Bedtime).
+
+        # Sort windows by time
+        windows = [
+            ("morning", user.window_morning_start or time(6, 0)),
+            ("afternoon", user.window_afternoon_start or time(12, 0)),
+            ("evening", user.window_evening_start or time(17, 0)),
+            ("bedtime", user.window_bedtime_start or time(21, 0))
+        ]
+        # Sort based on time object
+        windows.sort(key=lambda x: x[1])
+
+        def get_window_and_date(ts: datetime):
+            t = ts.time()
+            d = ts.date()
+
+            # Find the slot
+            matched_window = None
+
+            # Check normal order
+            # If t is 08:00 and windows are 06, 12, 17, 21. 08 >= 06. Matched=Morning.
+            # If t is 23:00. 23 >= 21. Matched=Bedtime.
+            # If t is 01:00. < 06. Loop finishes. Matched=None?
+
+            for w_name, w_start in windows:
+                if t >= w_start:
+                    matched_window = w_name
+                else:
+                    break
+
+            if matched_window:
+                return matched_window, d
+            else:
+                # If earlier than the first window, it belongs to the LAST window of the PREVIOUS day.
+                # Assuming the last window in sorted list is the one that wraps (usually Bedtime).
+                return windows[-1][0], d - timedelta(days=1)
+
+        # Build a set of (med_id, window, date) for taken doses
+        taken_set = set()
+        for log in logs:
+            w_name, w_date = get_window_and_date(log.timestamp_taken)
+            if start_date <= w_date <= end_date:
+                taken_set.add((log.med_id, w_name, w_date))
+
+        # Calculate Expected Doses
+        total_expected = 0
+        total_taken = 0
+
+        current_d = start_date
+        while current_d <= end_date:
+            for med in meds:
+                # Check scheduled windows
+                schedule = []
+                if med.schedule_morning: schedule.append("morning")
+                if med.schedule_afternoon: schedule.append("afternoon")
+                if med.schedule_evening: schedule.append("evening")
+                if med.schedule_bedtime: schedule.append("bedtime")
+
+                for w in schedule:
+                    total_expected += 1
+                    if (med.med_id, w, current_d) in taken_set:
+                        total_taken += 1
+
+            current_d += timedelta(days=1)
+
+        percentage = (total_taken / total_expected * 100) if total_expected > 0 else 0.0
+        missed = total_expected - total_taken
+
+        return {
+            "compliance_percentage": round(percentage, 1),
+            "missed_doses": missed,
+            "taken_doses": total_taken,
+            "total_scheduled": total_expected
+        }

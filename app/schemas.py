@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import date, datetime
+from datetime import date, datetime, time
 from enum import Enum
 
 # User
@@ -26,6 +26,12 @@ class UserUpdate(BaseModel):
     goal_weight_kg: Optional[float] = None
     calorie_goal: Optional[int] = None
 
+    # Time Windows
+    window_morning_start: Optional[time] = None
+    window_afternoon_start: Optional[time] = None
+    window_evening_start: Optional[time] = None
+    window_bedtime_start: Optional[time] = None
+
 class PasswordUpdate(BaseModel):
     current_password: str
     new_password: str
@@ -34,6 +40,10 @@ class PasswordUpdate(BaseModel):
 class UserResponse(UserBase):
     user_id: int
     unit_system: str
+    window_morning_start: Optional[time] = None
+    window_afternoon_start: Optional[time] = None
+    window_evening_start: Optional[time] = None
+    window_bedtime_start: Optional[time] = None
     class Config:
         from_attributes = True
 
@@ -68,6 +78,12 @@ class MedicationBase(BaseModel):
     refills_remaining: int
     daily_doses: int = 1
     prescriber_id: Optional[int] = None
+
+    # Schedule Flags
+    schedule_morning: bool = False
+    schedule_afternoon: bool = False
+    schedule_evening: bool = False
+    schedule_bedtime: bool = False
 
 class MedicationCreate(MedicationBase):
     pass

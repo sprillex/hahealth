@@ -43,7 +43,7 @@ def update_user_profile(
     if user_update.unit_system is not None:
         current_user.unit_system = user_update.unit_system.upper()
 
-    # New Fields
+    # Profile Fields
     if user_update.birth_year is not None:
         current_user.birth_year = user_update.birth_year
     if user_update.gender is not None:
@@ -52,6 +52,16 @@ def update_user_profile(
         current_user.goal_weight_kg = user_update.goal_weight_kg
     if user_update.calorie_goal is not None:
         current_user.calorie_goal = user_update.calorie_goal
+
+    # Time Windows
+    if user_update.window_morning_start is not None:
+        current_user.window_morning_start = user_update.window_morning_start
+    if user_update.window_afternoon_start is not None:
+        current_user.window_afternoon_start = user_update.window_afternoon_start
+    if user_update.window_evening_start is not None:
+        current_user.window_evening_start = user_update.window_evening_start
+    if user_update.window_bedtime_start is not None:
+        current_user.window_bedtime_start = user_update.window_bedtime_start
 
     db.commit()
     db.refresh(current_user)

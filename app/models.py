@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, DateTime, Boolean, Enum
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, DateTime, Boolean, Enum, Time
 from sqlalchemy.orm import relationship, declarative_base
 import datetime
 import enum
@@ -20,6 +20,12 @@ class User(Base):
     gender = Column(String) # 'M', 'F', 'O'
     goal_weight_kg = Column(Float)
     calorie_goal = Column(Integer)
+
+    # Time Windows (Defaults)
+    window_morning_start = Column(Time, default=datetime.time(6, 0))
+    window_afternoon_start = Column(Time, default=datetime.time(12, 0))
+    window_evening_start = Column(Time, default=datetime.time(17, 0))
+    window_bedtime_start = Column(Time, default=datetime.time(21, 0))
 
     daily_logs = relationship("DailyLog", back_populates="user")
     prescribers = relationship("Prescriber", back_populates="user")
@@ -68,6 +74,12 @@ class Medication(Base):
     current_inventory = Column(Integer)
     refills_remaining = Column(Integer)
     daily_doses = Column(Integer, default=1)
+
+    # Schedule Flags
+    schedule_morning = Column(Boolean, default=False)
+    schedule_afternoon = Column(Boolean, default=False)
+    schedule_evening = Column(Boolean, default=False)
+    schedule_bedtime = Column(Boolean, default=False)
 
     user = relationship("User", back_populates="medications")
     prescriber = relationship("Prescriber", back_populates="medications")

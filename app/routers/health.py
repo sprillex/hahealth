@@ -86,11 +86,22 @@ def get_daily_summary(
         "macros": macros
     }
 
+@router.get("/reports/compliance")
+def get_compliance(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    service = services.HealthLogService()
+    report = service.calculate_compliance_report(db, current_user)
+    return report
+
 @router.get("/reports/adherence")
 def get_adherence(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    # Deprecated/Simple version kept for backward compatibility if needed,
+    # but compliance report is better.
     logs = db.query(models.MedDoseLog).filter(models.MedDoseLog.user_id == current_user.user_id).all()
     total_doses = len(logs)
     return {"total_doses_logged": total_doses}

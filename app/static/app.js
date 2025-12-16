@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('weight-form').addEventListener('submit', handleLogWeight);
     document.getElementById('exercise-form').addEventListener('submit', handleLogExercise);
     document.getElementById('profile-form').addEventListener('submit', handleUpdateProfile);
+    document.getElementById('windows-form').addEventListener('submit', handleUpdateWindows);
     document.getElementById('password-form').addEventListener('submit', handleChangePassword);
     document.getElementById('dark-mode-toggle').addEventListener('change', toggleTheme);
 });
@@ -213,37 +214,13 @@ function renderGauges(data, targets) {
 }
 
 function createGaugeHTML(label, value, max, colorClass, unit) {
-    // Semi-circle gauge logic
-    // Circumference = PI * radius. Radius 40 -> C approx 126
-    // Arc is half circle -> 126
     const radius = 40;
     const circumference = Math.PI * radius; // full circle
-    // We want semi-circle. stroke-dasharray: [fillLength, gapLength]
-    // Max value maps to PI * radius (approx 125.6)
 
     let percentage = value / max;
     if (percentage > 1) percentage = 1;
 
     const fillLength = percentage * circumference;
-
-    // We need to rotate it to start from left (-180deg to 0) or standard gauge look.
-    // Standard Gauge:
-    // SVG path 'A' command is better but dasharray is simpler for vanilla.
-    // Circle with stroke-dasharray can do a full circle. We hide the bottom half?
-    // Let's use standard stroke-dashoffset trick.
-
-    // For semi-circle:
-    // DashArray: [fillLength, circumference]
-    // But we only show half.
-    // Actually, simpler: Use 2/3 circle or just semi circle path.
-
-    // Let's stick to a simple semi-circle path using `path` d attribute.
-    // M 10 90 A 40 40 0 0 1 90 90  (Start (10,90), radius 40, to (90,90))
-    // Center is 50, 90.
-
-    // Better: use stroke-dasharray on a circle but rotate it.
-    // Circle r=40, cx=50, cy=50. C = 251.
-    // We want half circle. C_half = 126.
 
     return `
     <div class="gauge-container">
@@ -252,8 +229,6 @@ function createGaugeHTML(label, value, max, colorClass, unit) {
             <path d="M 10 50 A 40 40 0 0 1 90 50" class="gauge-bg" />
 
             <!-- Fill Arc -->
-            <!-- We need to calculate the path for the fill dynamically or use stroke-dasharray -->
-            <!-- stroke-dasharray on path works relative to path length. Path length is PI*r = 125.6 -->
             <path d="M 10 50 A 40 40 0 0 1 90 50" class="gauge-fill ${colorClass}"
                   stroke-dasharray="${fillLength}, 200" />
 
@@ -280,9 +255,17 @@ async function loadMedications() {
         meds.forEach(med => {
             const card = document.createElement('div');
             card.className = 'med-card';
+            // Show Schedule
+            let sched = [];
+            if(med.schedule_morning) sched.push('M');
+            if(med.schedule_afternoon) sched.push('A');
+            if(med.schedule_evening) sched.push('E');
+            if(med.schedule_bedtime) sched.push('B');
+
             card.innerHTML = `
                 <h3>${med.name}</h3>
                 <p><strong>Freq:</strong> ${med.frequency}</p>
+                <p><strong>Schedule:</strong> ${sched.length ? sched.join(', ') : 'None'}</p>
                 <p><strong>Type:</strong> ${med.type}</p>
                 <p><strong>Stock:</strong> ${med.current_inventory} (Refills: ${med.refills_remaining})</p>
                 <div class="form-actions">
@@ -309,6 +292,11 @@ function openMedModal(med = null) {
         document.getElementById('med_type').value = med.type;
         document.getElementById('med_inventory').value = med.current_inventory;
         document.getElementById('med_refills').value = med.refills_remaining;
+
+        document.getElementById('sched_morning').checked = med.schedule_morning;
+        document.getElementById('sched_afternoon').checked = med.schedule_afternoon;
+        document.getElementById('sched_evening').checked = med.schedule_evening;
+        document.getElementById('sched_bedtime').checked = med.schedule_bedtime;
     } else {
         document.getElementById('med-modal-title').innerText = 'Add Medication';
         document.getElementById('med-form').reset();
@@ -329,7 +317,11 @@ async function handleSaveMed(e) {
         type: document.getElementById('med_type').value,
         current_inventory: parseInt(document.getElementById('med_inventory').value),
         refills_remaining: parseInt(document.getElementById('med_refills').value),
-        daily_doses: 1
+        daily_doses: 1,
+        schedule_morning: document.getElementById('sched_morning').checked,
+        schedule_afternoon: document.getElementById('sched_afternoon').checked,
+        schedule_evening: document.getElementById('sched_evening').checked,
+        schedule_bedtime: document.getElementById('sched_bedtime').checked
     };
 
     if (!id) {
@@ -515,15 +507,16 @@ function updateWeightUnitDisplay() {
 // --- Reports ---
 
 async function loadReports() {
-    const el = document.getElementById('report-adherence-count');
     try {
-        const res = await fetch(`${API_URL}/log/reports/adherence`, {
+        const res = await fetch(`${API_URL}/log/reports/compliance`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
-        el.innerText = data.total_doses_logged;
+        document.getElementById('report-compliance-pct').innerText = data.compliance_percentage + '%';
+        document.getElementById('report-missed-doses').innerText = data.missed_doses;
+        document.getElementById('report-taken-doses').innerText = data.taken_doses;
     } catch (err) {
-        el.innerText = 'Error';
+        console.error("Report Error", err);
     }
 }
 
@@ -551,6 +544,12 @@ function loadProfileData() {
     document.getElementById('profile-birthyear').value = user.birth_year || '';
     document.getElementById('profile-gender').value = user.gender || '';
     document.getElementById('profile-cal-goal').value = user.calorie_goal || '';
+
+    // Windows
+    if(user.window_morning_start) document.getElementById('win-morning').value = user.window_morning_start.substring(0, 5);
+    if(user.window_afternoon_start) document.getElementById('win-afternoon').value = user.window_afternoon_start.substring(0, 5);
+    if(user.window_evening_start) document.getElementById('win-evening').value = user.window_evening_start.substring(0, 5);
+    if(user.window_bedtime_start) document.getElementById('win-bedtime').value = user.window_bedtime_start.substring(0, 5);
 }
 
 async function handleUpdateProfile(e) {
@@ -599,6 +598,41 @@ async function handleUpdateProfile(e) {
         alert('Error updating profile');
     }
 }
+
+async function handleUpdateWindows(e) {
+    e.preventDefault();
+    const data = {
+        window_morning_start: document.getElementById('win-morning').value || null,
+        window_afternoon_start: document.getElementById('win-afternoon').value || null,
+        window_evening_start: document.getElementById('win-evening').value || null,
+        window_bedtime_start: document.getElementById('win-bedtime').value || null
+    };
+
+    // Append seconds if missing
+    for(let k in data) {
+        if(data[k] && data[k].length === 5) data[k] += ':00';
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/users/me`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            user = await res.json();
+            alert('Schedule windows updated');
+        } else {
+            alert('Error updating windows');
+        }
+    } catch (err) {
+        alert('Error updating windows');
+    }
+}
+
 
 async function handleChangePassword(e) {
     e.preventDefault();
