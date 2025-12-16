@@ -15,9 +15,19 @@ def log_blood_pressure(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     service = services.HealthLogService()
-    # Need to convert Create to Payload or just pass data
     payload = schemas.BPPayload(**bp.dict())
     return service.log_bp(db, current_user.user_id, payload)
+
+@router.post("/exercise")
+def log_exercise(
+    exercise: schemas.ExercisePayload,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    service = services.HealthLogService()
+    # reuse the logic from webhook
+    log = service.log_exercise(db, current_user, exercise)
+    return {"message": "Exercise logged", "calories_burned": log.total_calories_burned}
 
 @router.get("/reports/adherence")
 def get_adherence(
@@ -27,5 +37,4 @@ def get_adherence(
     # Simplified adherence report
     logs = db.query(models.MedDoseLog).filter(models.MedDoseLog.user_id == current_user.user_id).all()
     total_doses = len(logs)
-    # This is a very basic placeholder. Real adherence needs schedule vs actual.
     return {"total_doses_logged": total_doses}

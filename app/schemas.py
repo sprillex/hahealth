@@ -13,6 +13,15 @@ class UserCreate(UserBase):
     password: str
     unit_system: str = "METRIC"
 
+class UserUpdate(BaseModel):
+    weight_kg: Optional[float] = None
+    height_cm: Optional[float] = None
+    unit_system: Optional[str] = None
+
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str
+
 class UserResponse(UserBase):
     user_id: int
     unit_system: str

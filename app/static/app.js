@@ -18,6 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('login-form').addEventListener('submit', handleLogin);
     document.getElementById('med-form').addEventListener('submit', handleSaveMed);
     document.getElementById('bp-form').addEventListener('submit', handleLogBP);
+    document.getElementById('weight-form').addEventListener('submit', handleLogWeight);
+    document.getElementById('exercise-form').addEventListener('submit', handleLogExercise);
+    document.getElementById('profile-form').addEventListener('submit', handleUpdateProfile);
+    document.getElementById('password-form').addEventListener('submit', handleChangePassword);
     document.getElementById('dark-mode-toggle').addEventListener('change', toggleTheme);
 });
 
@@ -52,7 +56,6 @@ async function handleLogin(e) {
 }
 
 async function checkAuth() {
-    // Verify token by fetching user
     try {
         const res = await fetch(`${API_URL}/users/me`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -60,6 +63,7 @@ async function checkAuth() {
         if (res.ok) {
             user = await res.json();
             showDashboard();
+            loadProfileData(); // Pre-load profile data
         } else {
             logout();
         }
@@ -85,7 +89,7 @@ function showLogin() {
 function showDashboard() {
     document.getElementById('auth-view').classList.add('hidden');
     document.getElementById('dashboard-view').classList.remove('hidden');
-    showTab('medications'); // Default tab
+    showTab('medications');
 }
 
 function showTab(tabName) {
@@ -93,6 +97,9 @@ function showTab(tabName) {
     document.getElementById(`tab-${tabName}`).classList.remove('hidden');
 
     if (tabName === 'medications') loadMedications();
+    if (tabName === 'reports') loadReports();
+    if (tabName === 'settings') loadProfileData();
+    if (tabName === 'health-logs') updateWeightUnitDisplay();
 }
 
 // --- Medications ---
@@ -160,15 +167,9 @@ async function handleSaveMed(e) {
         type: document.getElementById('med_type').value,
         current_inventory: parseInt(document.getElementById('med_inventory').value),
         refills_remaining: parseInt(document.getElementById('med_refills').value),
-        daily_doses: 1 // Default for now
+        daily_doses: 1
     };
 
-    // Note: The backend currently only has POST (Create) and Refill.
-    // It does not seem to have a PUT (Update) endpoint in the routers/medication.py based on previous context.
-    // I will assume for "Edit" we might need to implement PUT, but for now I'll use POST for Create.
-    // If ID exists, we can't really update unless we add that endpoint.
-
-    // Check if we are creating
     if (!id) {
         try {
             const res = await fetch(`${API_URL}/medications/`, {
@@ -201,7 +202,7 @@ async function refillMed(id) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ quantity: 30 }) // Default refill amount
+            body: JSON.stringify({ quantity: 30 })
         });
         if (res.ok) {
             loadMedications();
@@ -236,13 +237,189 @@ async function handleLogBP(e) {
         if (res.ok) {
             alert('BP Logged');
             e.target.reset();
+        } else {
+            alert('Error logging BP');
         }
     } catch (err) {
         alert('Error logging BP');
     }
 }
 
-// --- Settings / Theme ---
+async function handleLogExercise(e) {
+    e.preventDefault();
+    const data = {
+        activity_type: document.getElementById('activity_type').value,
+        duration_minutes: parseFloat(document.querySelector('[name="duration"]').value),
+    };
+
+    const cals = document.querySelector('[name="calories"]').value;
+    if (cals) data.calories_burned = parseFloat(cals);
+
+    try {
+        const res = await fetch(`${API_URL}/log/exercise`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            const resp = await res.json();
+            alert(`Exercise Logged. Calories: ${resp.calories_burned.toFixed(1)}`);
+            e.target.reset();
+        } else {
+            alert('Error logging exercise');
+        }
+    } catch (err) {
+        alert('Error logging exercise');
+    }
+}
+
+async function handleLogWeight(e) {
+    e.preventDefault();
+    let weightInput = parseFloat(document.getElementById('weight-input').value);
+
+    // Convert if Imperial
+    if (user.unit_system === 'IMPERIAL') {
+        weightInput = weightInput * 0.453592;
+    }
+
+    // We update the profile with the new weight
+    const data = {
+        weight_kg: weightInput
+    };
+
+    try {
+        const res = await fetch(`${API_URL}/users/me`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            user = await res.json(); // Update local user state
+            alert('Weight updated successfully');
+            e.target.reset();
+        } else {
+            alert('Error updating weight');
+        }
+    } catch (err) {
+        alert('Error updating weight');
+    }
+}
+
+function updateWeightUnitDisplay() {
+    const span = document.getElementById('weight-unit-display');
+    if (user && user.unit_system === 'IMPERIAL') {
+        span.innerText = '(lbs)';
+    } else {
+        span.innerText = '(kg)';
+    }
+}
+
+// --- Reports ---
+
+async function loadReports() {
+    const el = document.getElementById('report-adherence-count');
+    try {
+        const res = await fetch(`${API_URL}/log/reports/adherence`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        el.innerText = data.total_doses_logged;
+    } catch (err) {
+        el.innerText = 'Error';
+    }
+}
+
+// --- Settings / Profile ---
+
+function loadProfileData() {
+    if (!user) return;
+    document.getElementById('profile-name').value = user.name;
+    document.getElementById('profile-units').value = user.unit_system || 'METRIC';
+
+    let height = user.height_cm;
+    let weight = user.weight_kg;
+
+    // Convert for display if Imperial
+    if (user.unit_system === 'IMPERIAL') {
+        height = height / 2.54;
+        weight = weight / 0.453592;
+    }
+
+    document.getElementById('profile-height').value = height ? height.toFixed(1) : '';
+    document.getElementById('profile-weight').value = weight ? weight.toFixed(1) : '';
+}
+
+async function handleUpdateProfile(e) {
+    e.preventDefault();
+    const unitSystem = document.getElementById('profile-units').value;
+    let height = parseFloat(document.getElementById('profile-height').value);
+    let weight = parseFloat(document.getElementById('profile-weight').value);
+
+    // Convert back to Metric for storage if Imperial
+    if (unitSystem === 'IMPERIAL') {
+        height = height * 2.54;
+        weight = weight * 0.453592;
+    }
+
+    const data = {
+        unit_system: unitSystem,
+        height_cm: height,
+        weight_kg: weight
+    };
+
+    try {
+        const res = await fetch(`${API_URL}/users/me`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            user = await res.json();
+            alert('Profile updated');
+            loadProfileData(); // Refresh display
+        } else {
+            alert('Error updating profile');
+        }
+    } catch (err) {
+        alert('Error updating profile');
+    }
+}
+
+async function handleChangePassword(e) {
+    e.preventDefault();
+    const currentPass = document.getElementById('current-password').value;
+    const newPass = document.getElementById('new-password').value;
+
+    try {
+        const res = await fetch(`${API_URL}/users/me/password`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ current_password: currentPass, new_password: newPass })
+        });
+        if (res.ok) {
+            alert('Password changed');
+            e.target.reset();
+        } else {
+            alert('Error changing password');
+        }
+    } catch (err) {
+        alert('Error changing password');
+    }
+}
+
+// --- Theme ---
 
 function initTheme() {
     const isDark = localStorage.getItem('theme') === 'dark';
