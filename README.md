@@ -49,6 +49,39 @@ A robust, multi-user health tracking backend built with FastAPI, designed to int
 2.  **Access API Documentation:**
     Open your browser and navigate to `http://localhost:8000/docs` to see the interactive Swagger UI.
 
+## Automatic Startup (Linux/systemd)
+
+To ensure the application starts automatically on boot, you can create a systemd service.
+
+1.  **Create a service file:**
+    ```bash
+    sudo nano /etc/systemd/system/hahealth.service
+    ```
+
+2.  **Paste the following configuration** (update paths and user as needed):
+    ```ini
+    [Unit]
+    Description=Health Tracker API
+    After=network.target
+
+    [Service]
+    User=<your_user>
+    Group=<your_group>
+    WorkingDirectory=/path/to/hahealth
+    ExecStart=/path/to/hahealth/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+    Restart=always
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+
+3.  **Enable and start the service:**
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable hahealth
+    sudo systemctl start hahealth
+    ```
+
 ## Initial Setup & Administration (CLI)
 
 Use the included CLI tool to manage users and API keys.
