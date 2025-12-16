@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Health Tracker</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/gauge.css">
     <style>
         .summary-card {
             background: linear-gradient(135deg, var(--primary-color), #2980b9);
@@ -80,21 +81,11 @@
                                 <div class="value" id="summary-net">0</div>
                             </div>
                         </div>
+                    </div>
 
-                        <div style="margin-top: 20px;">
-                            <h4 style="text-align: center; margin-bottom: 5px;">Macros (P / F / C) + Fiber</h4>
-                            <div class="macro-bar">
-                                <div id="macro-p" class="macro-segment p" style="width: 0%"></div>
-                                <div id="macro-f" class="macro-segment f" style="width: 0%"></div>
-                                <div id="macro-c" class="macro-segment c" style="width: 0%"></div>
-                            </div>
-                            <div class="macro-legend">
-                                <span style="color: #e74c3c">Protein: <span id="val-p">0</span>g</span>
-                                <span style="color: #f1c40f">Fat: <span id="val-f">0</span>g</span>
-                                <span style="color: #2ecc71">Carbs: <span id="val-c">0</span>g</span>
-                                <span style="color: #ffffff; font-weight: bold; margin-left: 10px;">Fiber: <span id="val-fiber">0</span>g</span>
-                            </div>
-                        </div>
+                    <!-- Gauges Section -->
+                    <div id="gauges-container" class="grid-list" style="margin-bottom: 20px;">
+                        <!-- Gauges will be injected here -->
                     </div>
 
                     <div class="card">

@@ -108,7 +108,7 @@ function showTab(tabName) {
     }
 }
 
-// --- Dashboard Summary ---
+// --- Dashboard Summary & Gauges ---
 
 async function loadSummary() {
     try {
@@ -123,33 +123,17 @@ async function loadSummary() {
         document.getElementById('summary-cals-out').innerText = Math.round(summaryData.calories_burned);
         document.getElementById('summary-net').innerText = Math.round(summaryData.calories_consumed - summaryData.calories_burned);
 
-        // Macros
-        const p = summaryData.macros.protein;
-        const f = summaryData.macros.fat;
-        const c = summaryData.macros.carbs;
-        const fib = summaryData.macros.fiber;
-        const total = p + f + c || 1; // avoid div by zero
+        const targets = calculateTargets();
+        updateRecommendations(targets);
+        renderGauges(summaryData, targets);
 
-        document.getElementById('macro-p').style.width = `${(p/total)*100}%`;
-        document.getElementById('macro-f').style.width = `${(f/total)*100}%`;
-        document.getElementById('macro-c').style.width = `${(c/total)*100}%`;
-
-        document.getElementById('val-p').innerText = Math.round(p);
-        document.getElementById('val-f').innerText = Math.round(f);
-        document.getElementById('val-c').innerText = Math.round(c);
-        document.getElementById('val-fiber').innerText = Math.round(fib);
-
-        updateRecommendations();
     } catch (err) {
         console.error("Summary load error", err);
     }
 }
 
-function updateRecommendations() {
-    if (!user || !user.birth_year || !user.gender) {
-        document.getElementById('recommendation-text').innerText = "Please complete your profile (Birth Year, Gender, Weight, Goal) in Settings to see recommendations.";
-        return;
-    }
+function calculateTargets() {
+    if (!user || !user.birth_year || !user.gender) return null;
 
     // Simple BMR/TDEE logic (Mifflin-St Jeor)
     const age = new Date().getFullYear() - user.birth_year;
@@ -163,39 +147,121 @@ function updateRecommendations() {
         bmr = (10 * w) + (6.25 * h) - (5 * age) - 161;
     }
 
-    // TDEE estimate (Sedentary + Exercise logged)
-    // Ideally we use activity factor, but we have exercise logs. Let's assume Sedentary base (1.2) + active calories logged.
-    // Or just give ranges based on goal.
-
     let targetCals = Math.round(bmr * 1.2);
     if (user.calorie_goal && user.calorie_goal > 0) {
         targetCals = user.calorie_goal;
     }
 
-    // Macro Ranges (Standard Balanced)
-    // Protein: 10-35% (1g = 4kcal)
-    // Fat: 20-35% (1g = 9kcal)
-    // Carbs: 45-65% (1g = 4kcal)
+    return {
+        calories: targetCals,
+        protein: { min: Math.round((targetCals * 0.15) / 4), max: Math.round((targetCals * 0.25) / 4) },
+        fat: { min: Math.round((targetCals * 0.20) / 9), max: Math.round((targetCals * 0.35) / 9) },
+        carbs: { min: Math.round((targetCals * 0.45) / 4), max: Math.round((targetCals * 0.65) / 4) },
+        fiber: { min: Math.round((targetCals / 1000) * 14) } // Just min
+    };
+}
 
-    const pMin = Math.round((targetCals * 0.15) / 4);
-    const pMax = Math.round((targetCals * 0.25) / 4); // Leaning towards higher protein
+function updateRecommendations(targets) {
+    if (!targets) {
+        document.getElementById('recommendation-text').innerText = "Please complete your profile (Birth Year, Gender, Weight, Goal) in Settings to see recommendations.";
+        return;
+    }
 
-    const fMin = Math.round((targetCals * 0.20) / 9);
-    const fMax = Math.round((targetCals * 0.35) / 9);
-
-    const cMin = Math.round((targetCals * 0.45) / 4);
-    const cMax = Math.round((targetCals * 0.65) / 4);
-
-    // Fiber: 14g per 1000 kcal
-    const fiberMin = Math.round((targetCals / 1000) * 14);
-
-    let html = `<strong>Daily Target:</strong> ${targetCals} kcal<br>`;
-    html += `<strong>Protein:</strong> ${pMin}-${pMax}g<br>`;
-    html += `<strong>Fat:</strong> ${fMin}-${fMax}g<br>`;
-    html += `<strong>Carbs:</strong> ${cMin}-${cMax}g<br>`;
-    html += `<strong>Fiber:</strong> > ${fiberMin}g`;
+    let html = `<strong>Daily Target:</strong> ${targets.calories} kcal<br>`;
+    html += `<strong>Protein:</strong> ${targets.protein.min}-${targets.protein.max}g<br>`;
+    html += `<strong>Fat:</strong> ${targets.fat.min}-${targets.fat.max}g<br>`;
+    html += `<strong>Carbs:</strong> ${targets.carbs.min}-${targets.carbs.max}g<br>`;
+    html += `<strong>Fiber:</strong> > ${targets.fiber.min}g`;
 
     document.getElementById('recommendation-text').innerHTML = html;
+}
+
+function renderGauges(data, targets) {
+    const container = document.getElementById('gauges-container');
+    container.innerHTML = '';
+
+    if (!targets) return;
+
+    // 1. Calories (Goal)
+    const calVal = Math.round(data.calories_consumed);
+    const calMax = targets.calories;
+    let calColor = 'color-yellow';
+    if (calVal > calMax) calColor = 'color-red';
+    else if (calVal >= calMax * 0.75) calColor = 'color-green';
+
+    container.innerHTML += createGaugeHTML('Calories', calVal, calMax, calColor, 'kcal');
+
+    // 2. Macros
+    const macros = [
+        { key: 'protein', label: 'Protein', val: Math.round(data.macros.protein), unit: 'g' },
+        { key: 'fat', label: 'Fat', val: Math.round(data.macros.fat), unit: 'g' },
+        { key: 'carbs', label: 'Carbs', val: Math.round(data.macros.carbs), unit: 'g' },
+        { key: 'fiber', label: 'Fiber', val: Math.round(data.macros.fiber), unit: 'g' }
+    ];
+
+    macros.forEach(m => {
+        const t = targets[m.key];
+        let color = 'color-yellow';
+        let maxDisplay = t.max || (t.min * 2); // Fallback for fiber which only has min
+
+        if (m.val < t.min) color = 'color-yellow';
+        else if (t.max && m.val > t.max) color = 'color-red';
+        else color = 'color-green'; // Between min/max or > min for fiber
+
+        container.innerHTML += createGaugeHTML(m.label, m.val, maxDisplay, color, m.unit);
+    });
+}
+
+function createGaugeHTML(label, value, max, colorClass, unit) {
+    // Semi-circle gauge logic
+    // Circumference = PI * radius. Radius 40 -> C approx 126
+    // Arc is half circle -> 126
+    const radius = 40;
+    const circumference = Math.PI * radius; // full circle
+    // We want semi-circle. stroke-dasharray: [fillLength, gapLength]
+    // Max value maps to PI * radius (approx 125.6)
+
+    let percentage = value / max;
+    if (percentage > 1) percentage = 1;
+
+    const fillLength = percentage * circumference;
+
+    // We need to rotate it to start from left (-180deg to 0) or standard gauge look.
+    // Standard Gauge:
+    // SVG path 'A' command is better but dasharray is simpler for vanilla.
+    // Circle with stroke-dasharray can do a full circle. We hide the bottom half?
+    // Let's use standard stroke-dashoffset trick.
+
+    // For semi-circle:
+    // DashArray: [fillLength, circumference]
+    // But we only show half.
+    // Actually, simpler: Use 2/3 circle or just semi circle path.
+
+    // Let's stick to a simple semi-circle path using `path` d attribute.
+    // M 10 90 A 40 40 0 0 1 90 90  (Start (10,90), radius 40, to (90,90))
+    // Center is 50, 90.
+
+    // Better: use stroke-dasharray on a circle but rotate it.
+    // Circle r=40, cx=50, cy=50. C = 251.
+    // We want half circle. C_half = 126.
+
+    return `
+    <div class="gauge-container">
+        <svg class="gauge-svg" viewBox="0 0 100 60">
+            <!-- Background Arc (Semi-circle) -->
+            <path d="M 10 50 A 40 40 0 0 1 90 50" class="gauge-bg" />
+
+            <!-- Fill Arc -->
+            <!-- We need to calculate the path for the fill dynamically or use stroke-dasharray -->
+            <!-- stroke-dasharray on path works relative to path length. Path length is PI*r = 125.6 -->
+            <path d="M 10 50 A 40 40 0 0 1 90 50" class="gauge-fill ${colorClass}"
+                  stroke-dasharray="${fillLength}, 200" />
+
+            <text x="50" y="45" class="gauge-text" font-size="12">${value} ${unit}</text>
+            <text x="50" y="58" class="gauge-label">${label}</text>
+        </svg>
+    </div>
+    `;
 }
 
 // --- Medications ---
