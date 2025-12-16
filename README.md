@@ -42,9 +42,9 @@ A robust, multi-user health tracking backend built with FastAPI, designed to int
 
 1.  **Start the server:**
     ```bash
-    uvicorn app.main:app --reload
+    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ```
-    The API will be available at `http://localhost:8000`.
+    The API will be available at `http://localhost:8000` (or `http://<your-ip>:8000` from other devices).
 
 2.  **Access API Documentation:**
     Open your browser and navigate to `http://localhost:8000/docs` to see the interactive Swagger UI.
