@@ -25,6 +25,8 @@ class OpenFoodFactsService:
                 food_name = product.get("product_name", "Unknown")
                 calories = nutriments.get("energy-kcal_100g", 0)
                 protein = nutriments.get("proteins_100g", 0)
+                fat = nutriments.get("fat_100g", 0)
+                carbs = nutriments.get("carbohydrates_100g", 0)
 
                 # Write to Cache
                 new_cache = models.NutritionCache(
@@ -32,6 +34,8 @@ class OpenFoodFactsService:
                     food_name=food_name,
                     calories=float(calories) if calories else 0.0,
                     protein=float(protein) if protein else 0.0,
+                    fat=float(fat) if fat else 0.0,
+                    carbs=float(carbs) if carbs else 0.0,
                     source="OFF"
                 )
                 db.add(new_cache)
@@ -168,6 +172,8 @@ class HealthLogService:
                     food_name=data.food_name,
                     calories=0, # Unknown
                     protein=0,
+                    fat=0,
+                    carbs=0,
                     source="MANUAL"
                  )
                  db.add(food_item)

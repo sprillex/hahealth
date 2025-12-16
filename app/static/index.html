@@ -5,6 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Health Tracker</title>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .summary-card {
+            background: linear-gradient(135deg, var(--primary-color), #2980b9);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            text-align: center;
+        }
+        .summary-item h4 { margin: 0; font-weight: normal; opacity: 0.9; }
+        .summary-item .value { font-size: 1.5em; font-weight: bold; margin-top: 5px; }
+        .macro-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 10px; background: rgba(255,255,255,0.2); }
+        .macro-segment { height: 100%; }
+        .macro-segment.p { background-color: #e74c3c; } /* Protein */
+        .macro-segment.f { background-color: #f1c40f; } /* Fat */
+        .macro-segment.c { background-color: #2ecc71; } /* Carbs */
+        .macro-legend { display: flex; justify-content: center; gap: 15px; font-size: 0.8em; margin-top: 5px; }
+    </style>
 </head>
 <body>
     <div id="app">
@@ -24,6 +47,7 @@
             <nav class="navbar">
                 <div class="nav-brand">Health Tracker</div>
                 <div class="nav-links">
+                    <button onclick="showTab('dashboard')">Dashboard</button>
                     <button onclick="showTab('medications')">Medications</button>
                     <button onclick="showTab('health-logs')">Health Logs</button>
                     <button onclick="showTab('reports')">Reports</button>
@@ -33,8 +57,53 @@
             </nav>
 
             <div class="container main-content">
+
+                <!-- Daily Summary Section (Always visible on dashboard tab) -->
+                <div id="tab-dashboard" class="tab-content">
+                    <h2>Today's Summary</h2>
+                    <div class="summary-card">
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <h4>Blood Pressure</h4>
+                                <div class="value" id="summary-bp">--/--</div>
+                            </div>
+                            <div class="summary-item">
+                                <h4>Calories In</h4>
+                                <div class="value" id="summary-cals-in">0</div>
+                            </div>
+                            <div class="summary-item">
+                                <h4>Calories Out</h4>
+                                <div class="value" id="summary-cals-out">0</div>
+                            </div>
+                            <div class="summary-item">
+                                <h4>Net</h4>
+                                <div class="value" id="summary-net">0</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <h4 style="text-align: center; margin-bottom: 5px;">Macros (P / F / C)</h4>
+                            <div class="macro-bar">
+                                <div id="macro-p" class="macro-segment p" style="width: 0%"></div>
+                                <div id="macro-f" class="macro-segment f" style="width: 0%"></div>
+                                <div id="macro-c" class="macro-segment c" style="width: 0%"></div>
+                            </div>
+                            <div class="macro-legend">
+                                <span style="color: #e74c3c">Protein: <span id="val-p">0</span>g</span>
+                                <span style="color: #f1c40f">Fat: <span id="val-f">0</span>g</span>
+                                <span style="color: #2ecc71">Carbs: <span id="val-c">0</span>g</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Recommendations</h3>
+                        <p id="recommendation-text">Please complete your profile (Birth Year, Gender, Weight, Goal) in Settings to see recommendations.</p>
+                    </div>
+                </div>
+
                 <!-- Medications Tab -->
-                <div id="tab-medications" class="tab-content">
+                <div id="tab-medications" class="tab-content hidden">
                     <div class="header-actions">
                         <h2>Medications</h2>
                         <button class="btn-primary" onclick="openMedModal()">+ Add Medication</button>
@@ -93,6 +162,7 @@
                                         <option value="cycling">Cycling</option>
                                         <option value="swimming">Swimming</option>
                                         <option value="yoga">Yoga</option>
+                                        <option value="strength">Strength Training</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -157,12 +227,33 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
+                                    <label>Birth Year</label>
+                                    <input type="number" id="profile-birthyear" placeholder="YYYY">
+                                </div>
+                                <div class="form-group">
+                                    <label>Gender</label>
+                                    <select id="profile-gender">
+                                        <option value="">Select...</option>
+                                        <option value="M">Male</option>
+                                        <option value="F">Female</option>
+                                        <option value="O">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
                                     <label>Height</label>
                                     <input type="number" step="0.1" id="profile-height">
                                 </div>
                                 <div class="form-group">
-                                    <label>Weight</label>
+                                    <label>Current Weight</label>
                                     <input type="number" step="0.1" id="profile-weight">
+                                </div>
+                                <div class="form-group">
+                                    <label>Goal Weight</label>
+                                    <input type="number" step="0.1" id="profile-goal-weight">
+                                </div>
+                                <div class="form-group">
+                                    <label>Daily Calorie Goal</label>
+                                    <input type="number" id="profile-cal-goal">
                                 </div>
                                 <button type="submit" class="btn-primary">Update Profile</button>
                             </form>
@@ -179,6 +270,10 @@
                                 <div class="form-group">
                                     <label>New Password</label>
                                     <input type="password" id="new-password" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Confirm New Password</label>
+                                    <input type="password" id="confirm-password" required>
                                 </div>
                                 <button type="submit" class="btn-warning">Change Password</button>
                             </form>

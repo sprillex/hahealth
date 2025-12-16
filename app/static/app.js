@@ -4,6 +4,7 @@ const AUTH_URL = '/auth/token';
 // State
 let token = localStorage.getItem('access_token');
 let user = null;
+let summaryData = null;
 
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
@@ -63,7 +64,8 @@ async function checkAuth() {
         if (res.ok) {
             user = await res.json();
             showDashboard();
-            loadProfileData(); // Pre-load profile data
+            loadProfileData();
+            loadSummary(); // Load Summary on init
         } else {
             logout();
         }
@@ -89,13 +91,14 @@ function showLogin() {
 function showDashboard() {
     document.getElementById('auth-view').classList.add('hidden');
     document.getElementById('dashboard-view').classList.remove('hidden');
-    showTab('medications');
+    showTab('dashboard'); // Default to dashboard summary
 }
 
 function showTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
     document.getElementById(`tab-${tabName}`).classList.remove('hidden');
 
+    if (tabName === 'dashboard') loadSummary();
     if (tabName === 'medications') loadMedications();
     if (tabName === 'reports') loadReports();
     if (tabName === 'settings') loadProfileData();
@@ -103,6 +106,90 @@ function showTab(tabName) {
         updateWeightUnitDisplay();
         loadExerciseHistory();
     }
+}
+
+// --- Dashboard Summary ---
+
+async function loadSummary() {
+    try {
+        const res = await fetch(`${API_URL}/log/summary`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        summaryData = await res.json();
+
+        // Update UI
+        document.getElementById('summary-bp').innerText = summaryData.blood_pressure;
+        document.getElementById('summary-cals-in').innerText = Math.round(summaryData.calories_consumed);
+        document.getElementById('summary-cals-out').innerText = Math.round(summaryData.calories_burned);
+        document.getElementById('summary-net').innerText = Math.round(summaryData.calories_consumed - summaryData.calories_burned);
+
+        // Macros
+        const p = summaryData.macros.protein;
+        const f = summaryData.macros.fat;
+        const c = summaryData.macros.carbs;
+        const total = p + f + c || 1; // avoid div by zero
+
+        document.getElementById('macro-p').style.width = `${(p/total)*100}%`;
+        document.getElementById('macro-f').style.width = `${(f/total)*100}%`;
+        document.getElementById('macro-c').style.width = `${(c/total)*100}%`;
+
+        document.getElementById('val-p').innerText = Math.round(p);
+        document.getElementById('val-f').innerText = Math.round(f);
+        document.getElementById('val-c').innerText = Math.round(c);
+
+        updateRecommendations();
+    } catch (err) {
+        console.error("Summary load error", err);
+    }
+}
+
+function updateRecommendations() {
+    if (!user || !user.birth_year || !user.gender) {
+        document.getElementById('recommendation-text').innerText = "Please complete your profile (Birth Year, Gender, Weight, Goal) in Settings to see recommendations.";
+        return;
+    }
+
+    // Simple BMR/TDEE logic (Mifflin-St Jeor)
+    const age = new Date().getFullYear() - user.birth_year;
+    const w = user.weight_kg;
+    const h = user.height_cm;
+    let bmr = 0;
+
+    if (user.gender === 'M') {
+        bmr = (10 * w) + (6.25 * h) - (5 * age) + 5;
+    } else {
+        bmr = (10 * w) + (6.25 * h) - (5 * age) - 161;
+    }
+
+    // TDEE estimate (Sedentary + Exercise logged)
+    // Ideally we use activity factor, but we have exercise logs. Let's assume Sedentary base (1.2) + active calories logged.
+    // Or just give ranges based on goal.
+
+    let targetCals = Math.round(bmr * 1.2);
+    if (user.calorie_goal && user.calorie_goal > 0) {
+        targetCals = user.calorie_goal;
+    }
+
+    // Macro Ranges (Standard Balanced)
+    // Protein: 10-35% (1g = 4kcal)
+    // Fat: 20-35% (1g = 9kcal)
+    // Carbs: 45-65% (1g = 4kcal)
+
+    const pMin = Math.round((targetCals * 0.15) / 4);
+    const pMax = Math.round((targetCals * 0.25) / 4); // Leaning towards higher protein
+
+    const fMin = Math.round((targetCals * 0.20) / 9);
+    const fMax = Math.round((targetCals * 0.35) / 9);
+
+    const cMin = Math.round((targetCals * 0.45) / 4);
+    const cMax = Math.round((targetCals * 0.65) / 4);
+
+    let html = `<strong>Daily Target:</strong> ${targetCals} kcal<br>`;
+    html += `<strong>Protein:</strong> ${pMin}-${pMax}g<br>`;
+    html += `<strong>Fat:</strong> ${fMin}-${fMax}g<br>`;
+    html += `<strong>Carbs:</strong> ${cMin}-${cMax}g`;
+
+    document.getElementById('recommendation-text').innerHTML = html;
 }
 
 // --- Medications ---
@@ -271,7 +358,7 @@ async function handleLogExercise(e) {
             const resp = await res.json();
             alert(`Exercise Logged. Calories: ${resp.calories_burned.toFixed(1)}`);
             e.target.reset();
-            loadExerciseHistory(); // Refresh history
+            loadExerciseHistory();
         } else {
             alert('Error logging exercise');
         }
@@ -313,12 +400,10 @@ async function handleLogWeight(e) {
     e.preventDefault();
     let weightInput = parseFloat(document.getElementById('weight-input').value);
 
-    // Convert if Imperial
     if (user.unit_system === 'IMPERIAL') {
         weightInput = weightInput * 0.453592;
     }
 
-    // We update the profile with the new weight
     const data = {
         weight_kg: weightInput
     };
@@ -333,7 +418,7 @@ async function handleLogWeight(e) {
             body: JSON.stringify(data)
         });
         if (res.ok) {
-            user = await res.json(); // Update local user state
+            user = await res.json();
             alert('Weight updated successfully');
             e.target.reset();
         } else {
@@ -377,15 +462,21 @@ function loadProfileData() {
 
     let height = user.height_cm;
     let weight = user.weight_kg;
+    let goalWeight = user.goal_weight_kg;
 
     // Convert for display if Imperial
     if (user.unit_system === 'IMPERIAL') {
-        height = height / 2.54;
-        weight = weight / 0.453592;
+        if (height) height = height / 2.54;
+        if (weight) weight = weight / 0.453592;
+        if (goalWeight) goalWeight = goalWeight / 0.453592;
     }
 
     document.getElementById('profile-height').value = height ? height.toFixed(1) : '';
     document.getElementById('profile-weight').value = weight ? weight.toFixed(1) : '';
+    document.getElementById('profile-goal-weight').value = goalWeight ? goalWeight.toFixed(1) : '';
+    document.getElementById('profile-birthyear').value = user.birth_year || '';
+    document.getElementById('profile-gender').value = user.gender || '';
+    document.getElementById('profile-cal-goal').value = user.calorie_goal || '';
 }
 
 async function handleUpdateProfile(e) {
@@ -393,17 +484,23 @@ async function handleUpdateProfile(e) {
     const unitSystem = document.getElementById('profile-units').value;
     let height = parseFloat(document.getElementById('profile-height').value);
     let weight = parseFloat(document.getElementById('profile-weight').value);
+    let goalWeight = parseFloat(document.getElementById('profile-goal-weight').value);
 
     // Convert back to Metric for storage if Imperial
     if (unitSystem === 'IMPERIAL') {
-        height = height * 2.54;
-        weight = weight * 0.453592;
+        if (height) height = height * 2.54;
+        if (weight) weight = weight * 0.453592;
+        if (goalWeight) goalWeight = goalWeight * 0.453592;
     }
 
     const data = {
         unit_system: unitSystem,
-        height_cm: height,
-        weight_kg: weight
+        height_cm: height || null,
+        weight_kg: weight || null,
+        goal_weight_kg: goalWeight || null,
+        birth_year: parseInt(document.getElementById('profile-birthyear').value) || null,
+        gender: document.getElementById('profile-gender').value || null,
+        calorie_goal: parseInt(document.getElementById('profile-cal-goal').value) || null
     };
 
     try {
@@ -418,7 +515,9 @@ async function handleUpdateProfile(e) {
         if (res.ok) {
             user = await res.json();
             alert('Profile updated');
-            loadProfileData(); // Refresh display
+            loadProfileData();
+            // Also refresh recommendations if on dashboard
+            updateRecommendations();
         } else {
             alert('Error updating profile');
         }
@@ -431,6 +530,12 @@ async function handleChangePassword(e) {
     e.preventDefault();
     const currentPass = document.getElementById('current-password').value;
     const newPass = document.getElementById('new-password').value;
+    const confirmPass = document.getElementById('confirm-password').value;
+
+    if (newPass !== confirmPass) {
+        alert("New passwords do not match!");
+        return;
+    }
 
     try {
         const res = await fetch(`${API_URL}/users/me/password`, {
@@ -439,13 +544,19 @@ async function handleChangePassword(e) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ current_password: currentPass, new_password: newPass })
+            body: JSON.stringify({
+                current_password: currentPass,
+                new_password: newPass,
+                confirm_password: confirmPass
+            })
         });
+
         if (res.ok) {
             alert('Password changed');
             e.target.reset();
         } else {
-            alert('Error changing password');
+            const err = await res.json();
+            alert(err.detail || 'Error changing password');
         }
     } catch (err) {
         alert('Error changing password');

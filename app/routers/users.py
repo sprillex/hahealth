@@ -36,17 +36,22 @@ def update_user_profile(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    # Need to re-fetch to ensure attached to session? Depends on get_current_user impl.
-    # get_current_user returns a detached or attached object depending on session scope.
-    # Usually better to query again by ID to lock for update or just modify if session is same.
-    # get_current_user uses a fresh session via dependency injection, so it is attached.
-
     if user_update.weight_kg is not None:
         current_user.weight_kg = user_update.weight_kg
     if user_update.height_cm is not None:
         current_user.height_cm = user_update.height_cm
     if user_update.unit_system is not None:
         current_user.unit_system = user_update.unit_system.upper()
+
+    # New Fields
+    if user_update.birth_year is not None:
+        current_user.birth_year = user_update.birth_year
+    if user_update.gender is not None:
+        current_user.gender = user_update.gender
+    if user_update.goal_weight_kg is not None:
+        current_user.goal_weight_kg = user_update.goal_weight_kg
+    if user_update.calorie_goal is not None:
+        current_user.calorie_goal = user_update.calorie_goal
 
     db.commit()
     db.refresh(current_user)
@@ -58,6 +63,9 @@ def change_password(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    if password_update.new_password != password_update.confirm_password:
+        raise HTTPException(status_code=400, detail="New passwords do not match")
+
     if not auth.verify_password(password_update.current_password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Incorrect current password")
 

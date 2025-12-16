@@ -15,6 +15,12 @@ class User(Base):
     password_hash = Column(String)
     unit_system = Column(String, default="METRIC")
 
+    # New fields
+    birth_year = Column(Integer)
+    gender = Column(String) # 'M', 'F', 'O'
+    goal_weight_kg = Column(Float)
+    calorie_goal = Column(Integer)
+
     daily_logs = relationship("DailyLog", back_populates="user")
     prescribers = relationship("Prescriber", back_populates="user")
     medications = relationship("Medication", back_populates="user")
@@ -105,6 +111,8 @@ class NutritionCache(Base):
     food_name = Column(String)
     calories = Column(Float)
     protein = Column(Float)
+    fat = Column(Float, default=0.0)
+    carbs = Column(Float, default=0.0)
     source = Column(String) # OFF/MANUAL
 
     food_item_logs = relationship("FoodItemLog", back_populates="nutrition_info")

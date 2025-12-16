@@ -8,6 +8,10 @@ class UserBase(BaseModel):
     name: str
     weight_kg: float
     height_cm: float
+    birth_year: Optional[int] = None
+    gender: Optional[str] = None
+    goal_weight_kg: Optional[float] = None
+    calorie_goal: Optional[int] = None
 
 class UserCreate(UserBase):
     password: str
@@ -17,10 +21,15 @@ class UserUpdate(BaseModel):
     weight_kg: Optional[float] = None
     height_cm: Optional[float] = None
     unit_system: Optional[str] = None
+    birth_year: Optional[int] = None
+    gender: Optional[str] = None
+    goal_weight_kg: Optional[float] = None
+    calorie_goal: Optional[int] = None
 
 class PasswordUpdate(BaseModel):
     current_password: str
     new_password: str
+    confirm_password: str
 
 class UserResponse(UserBase):
     user_id: int
@@ -135,6 +144,8 @@ class NutritionCacheResponse(BaseModel):
     food_name: str
     calories: float
     protein: float
+    fat: float
+    carbs: float
     source: str
     class Config:
         from_attributes = True
