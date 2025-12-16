@@ -1,0 +1,141 @@
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, DateTime, Boolean, Enum
+from sqlalchemy.orm import relationship, declarative_base
+import datetime
+import enum
+
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+
+    user_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    weight_kg = Column(Float)
+    height_cm = Column(Float)
+    password_hash = Column(String)
+
+    daily_logs = relationship("DailyLog", back_populates="user")
+    prescribers = relationship("Prescriber", back_populates="user")
+    medications = relationship("Medication", back_populates="user")
+    blood_pressures = relationship("BloodPressure", back_populates="user")
+    food_item_logs = relationship("FoodItemLog", back_populates="user")
+    api_keys = relationship("APIKey", back_populates="user")
+
+class DailyLog(Base):
+    __tablename__ = "daily_logs"
+
+    log_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    date = Column(Date)
+
+    total_calories_consumed = Column(Float, default=0.0)
+    total_calories_burned = Column(Float, default=0.0)
+
+    user = relationship("User", back_populates="daily_logs")
+
+class Prescriber(Base):
+    __tablename__ = "prescribers"
+
+    prescriber_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    name = Column(String)
+    phone_number = Column(String)
+
+    user = relationship("User", back_populates="prescribers")
+    medications = relationship("Medication", back_populates="prescriber")
+
+class MedicationType(str, enum.Enum):
+    PRESCRIPTION = "PRESCRIPTION"
+    OTC = "OTC"
+
+class Medication(Base):
+    __tablename__ = "medications"
+
+    med_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    prescriber_id = Column(Integer, ForeignKey("prescribers.prescriber_id"), nullable=True)
+    name = Column(String)
+    frequency = Column(String)
+    type = Column(String) # PRESCRIPTION or OTC
+    current_inventory = Column(Integer)
+    refills_remaining = Column(Integer)
+    daily_doses = Column(Integer, default=1)
+
+    user = relationship("User", back_populates="medications")
+    prescriber = relationship("Prescriber", back_populates="medications")
+    dose_logs = relationship("MedDoseLog", back_populates="medication")
+
+class MedDoseLog(Base):
+    __tablename__ = "med_dose_logs"
+
+    dose_log_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    med_id = Column(Integer, ForeignKey("medications.med_id"))
+    timestamp_taken = Column(DateTime, default=datetime.datetime.utcnow)
+    target_time_drift = Column(Float)
+
+    medication = relationship("Medication", back_populates="dose_logs")
+
+class BloodPressure(Base):
+    __tablename__ = "blood_pressure"
+
+    bp_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    systolic = Column(Integer)
+    diastolic = Column(Integer)
+    pulse = Column(Integer)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    location = Column(String)
+    stress_level = Column(Integer)
+    meds_taken_before = Column(String)
+
+    user = relationship("User", back_populates="blood_pressures")
+
+class NutritionSource(str, enum.Enum):
+    OFF = "OFF"
+    MANUAL = "MANUAL"
+
+class NutritionCache(Base):
+    __tablename__ = "nutrition_cache"
+
+    food_id = Column(Integer, primary_key=True, index=True)
+    barcode = Column(String, unique=True, index=True, nullable=True)
+    food_name = Column(String)
+    calories = Column(Float)
+    protein = Column(Float)
+    source = Column(String) # OFF/MANUAL
+
+    food_item_logs = relationship("FoodItemLog", back_populates="nutrition_info")
+
+class FoodItemLog(Base):
+    __tablename__ = "food_item_logs"
+
+    item_log_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    meal_id = Column(String)
+    food_id = Column(Integer, ForeignKey("nutrition_cache.food_id"))
+    serving_size = Column(Float)
+    quantity = Column(Float)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+
+    user = relationship("User", back_populates="food_item_logs")
+    nutrition_info = relationship("NutritionCache", back_populates="food_item_logs")
+
+class APIKey(Base):
+    __tablename__ = "api_keys"
+
+    key_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    name = Column(String)
+    hashed_key = Column(String, index=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+
+    user = relationship("User", back_populates="api_keys")
+
+class METLookup(Base):
+    __tablename__ = "met_lookup"
+
+    met_id = Column(Integer, primary_key=True, index=True)
+    activity_name = Column(String, unique=True)
+    met_value = Column(Float)
