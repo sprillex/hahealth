@@ -86,6 +86,8 @@ To ensure the application starts automatically on boot, you can create a systemd
 
 Use the included CLI tool to manage users and API keys.
 
+**Important:** Ensure your virtual environment is activated (`source venv/bin/activate`) before running these commands. Alternatively, use the full path to the python executable (e.g., `./venv/bin/python`).
+
 1.  **Create the first user:**
     ```bash
     python -m app.cli create-user --name "johndoe" --password "securepass" --weight 75.0 --height 180.0
