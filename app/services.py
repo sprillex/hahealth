@@ -125,7 +125,16 @@ class HealthLogService:
         if calories is None:
             calories = met_calc.calculate_calories(db, user, data.activity_type, data.duration_minutes)
 
-        # Update Daily Log
+        # 1. Save detailed log
+        exercise_log = models.ExerciseLog(
+            user_id=user.user_id,
+            activity_type=data.activity_type,
+            duration_minutes=data.duration_minutes,
+            calories_burned=calories
+        )
+        db.add(exercise_log)
+
+        # 2. Update Daily Log (Summary)
         today = date.today()
         daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == user.user_id, models.DailyLog.date == today).first()
         if not daily_log:

@@ -99,7 +99,10 @@ function showTab(tabName) {
     if (tabName === 'medications') loadMedications();
     if (tabName === 'reports') loadReports();
     if (tabName === 'settings') loadProfileData();
-    if (tabName === 'health-logs') updateWeightUnitDisplay();
+    if (tabName === 'health-logs') {
+        updateWeightUnitDisplay();
+        loadExerciseHistory();
+    }
 }
 
 // --- Medications ---
@@ -268,11 +271,41 @@ async function handleLogExercise(e) {
             const resp = await res.json();
             alert(`Exercise Logged. Calories: ${resp.calories_burned.toFixed(1)}`);
             e.target.reset();
+            loadExerciseHistory(); // Refresh history
         } else {
             alert('Error logging exercise');
         }
     } catch (err) {
         alert('Error logging exercise');
+    }
+}
+
+async function loadExerciseHistory() {
+    const tbody = document.getElementById('exercise-history-body');
+    try {
+        const res = await fetch(`${API_URL}/log/history/exercise`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const logs = await res.json();
+
+        if (logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4">No history found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        logs.forEach(log => {
+            const date = new Date(log.timestamp).toLocaleDateString() + ' ' + new Date(log.timestamp).toLocaleTimeString();
+            const row = `<tr>
+                <td>${date}</td>
+                <td>${log.activity_type}</td>
+                <td>${log.duration_minutes} min</td>
+                <td>${log.calories_burned.toFixed(1)} kcal</td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="4">Error loading history.</td></tr>';
     }
 }
 

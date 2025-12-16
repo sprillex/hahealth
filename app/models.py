@@ -21,6 +21,7 @@ class User(Base):
     blood_pressures = relationship("BloodPressure", back_populates="user")
     food_item_logs = relationship("FoodItemLog", back_populates="user")
     api_keys = relationship("APIKey", back_populates="user")
+    exercise_logs = relationship("ExerciseLog", back_populates="user")
 
 class DailyLog(Base):
     __tablename__ = "daily_logs"
@@ -121,6 +122,18 @@ class FoodItemLog(Base):
 
     user = relationship("User", back_populates="food_item_logs")
     nutrition_info = relationship("NutritionCache", back_populates="food_item_logs")
+
+class ExerciseLog(Base):
+    __tablename__ = "exercise_logs"
+
+    exercise_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    activity_type = Column(String)
+    duration_minutes = Column(Float)
+    calories_burned = Column(Float)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+
+    user = relationship("User", back_populates="exercise_logs")
 
 class APIKey(Base):
     __tablename__ = "api_keys"
