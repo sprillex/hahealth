@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
-from datetime import date, datetime
+from typing import List, Optional
+from datetime import date, datetime, timedelta
 from app import database, models, schemas, auth, services
 
 router = APIRouter(
@@ -53,32 +53,49 @@ def get_exercise_history(
 
 @router.get("/summary")
 def get_daily_summary(
+    date_str: Optional[str] = None,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    today = date.today()
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    else:
+        target_date = date.today()
 
     # 1. Daily Log (Calories In/Out)
     daily = db.query(models.DailyLog).filter(
         models.DailyLog.user_id == current_user.user_id,
-        models.DailyLog.date == today
+        models.DailyLog.date == target_date
     ).first()
 
     calories_consumed = daily.total_calories_consumed if daily else 0
     calories_burned = daily.total_calories_burned if daily else 0
 
-    # 2. Latest BP
+    # 2. Latest BP (for that day? Or just latest ever? Usually "Summary" implies current status,
+    # but if looking back, maybe we want "Latest on that day" or "Average on that day"?)
+    # The requirement is "previous days summary's".
+    # Showing "Latest BP ever" on a summary for last week is misleading.
+    # Let's show "Last BP of that day".
+
+    start_of_day = datetime.combine(target_date, datetime.min.time())
+    end_of_day = datetime.combine(target_date, datetime.max.time())
+
     bp = db.query(models.BloodPressure).filter(
-        models.BloodPressure.user_id == current_user.user_id
+        models.BloodPressure.user_id == current_user.user_id,
+        models.BloodPressure.timestamp >= start_of_day,
+        models.BloodPressure.timestamp <= end_of_day
     ).order_by(models.BloodPressure.timestamp.desc()).first()
 
     bp_str = f"{bp.systolic}/{bp.diastolic}" if bp else "Not Logged"
 
     # 3. Macro Calculation (Protein/Fat/Carbs/Fiber)
-    start_of_day = datetime.combine(today, datetime.min.time())
     food_logs = db.query(models.FoodItemLog).join(models.NutritionCache).filter(
         models.FoodItemLog.user_id == current_user.user_id,
-        models.FoodItemLog.timestamp >= start_of_day
+        models.FoodItemLog.timestamp >= start_of_day,
+        models.FoodItemLog.timestamp <= end_of_day
     ).all()
 
     macros = {"protein": 0, "fat": 0, "carbs": 0, "fiber": 0}

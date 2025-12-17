@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+from datetime import datetime, date
 from app import database, models, schemas, auth
 
 router = APIRouter(
@@ -29,6 +30,37 @@ def read_medications(
 ):
     meds = db.query(models.Medication).filter(models.Medication.user_id == current_user.user_id).offset(skip).limit(limit).all()
     return meds
+
+@router.get("/log")
+def read_medication_logs(
+    date_str: Optional[str] = None,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    else:
+        target_date = date.today()
+
+    start_of_day = datetime.combine(target_date, datetime.min.time())
+    end_of_day = datetime.combine(target_date, datetime.max.time())
+
+    # Query logs + join Med to get name
+    logs = db.query(
+        models.MedDoseLog.timestamp_taken,
+        models.Medication.name
+    ).join(
+        models.Medication, models.MedDoseLog.med_id == models.Medication.med_id
+    ).filter(
+        models.MedDoseLog.user_id == current_user.user_id,
+        models.MedDoseLog.timestamp_taken >= start_of_day,
+        models.MedDoseLog.timestamp_taken <= end_of_day
+    ).order_by(models.MedDoseLog.timestamp_taken.desc()).all()
+
+    return [{"med_name": log.name, "timestamp": log.timestamp_taken} for log in logs]
 
 @router.post("/{med_id}/refill", response_model=schemas.MedicationResponse)
 def refill_medication(

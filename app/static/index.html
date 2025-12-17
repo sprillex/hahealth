@@ -69,7 +69,15 @@
 
                 <!-- Daily Summary Section (Always visible on dashboard tab) -->
                 <div id="tab-dashboard" class="tab-content">
-                    <h2>Today's Summary</h2>
+                    <div class="header-actions">
+                        <h2 id="dashboard-date-title">Today's Summary</h2>
+                        <div class="date-nav">
+                            <button onclick="changeDate(-1)">&lt; Prev</button>
+                            <span id="current-date-display" style="margin: 0 10px; font-weight: bold;"></span>
+                            <button onclick="changeDate(1)">Next &gt;</button>
+                        </div>
+                    </div>
+
                     <div class="summary-card">
                         <div class="summary-grid">
                             <div class="summary-item">
@@ -99,6 +107,11 @@
                     <div class="card">
                         <h3>Recommendations</h3>
                         <p id="recommendation-text">Please complete your profile (Birth Year, Gender, Weight, Goal) in Settings to see recommendations.</p>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <h3>Medications Taken</h3>
+                        <div id="meds-taken-list">Loading...</div>
                     </div>
                 </div>
 
@@ -216,6 +229,22 @@
                                  <div class="stat-label">Taken Doses</div>
                              </div>
                         </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <h3>Medication Breakdown</h3>
+                        <table id="med-breakdown-table" style="width: 100%; text-align: left; margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Taken / Exp</th>
+                                    <th>Compliance</th>
+                                </tr>
+                            </thead>
+                            <tbody id="med-breakdown-body">
+                                <tr><td colspan="3">Loading...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
 
                     <div class="card" style="margin-top: 20px;">

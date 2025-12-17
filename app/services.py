@@ -282,6 +282,9 @@ class HealthLogService:
         total_expected = 0
         total_taken = 0
 
+        # Per-med stats initialization
+        med_stats = {med.med_id: {"name": med.name, "taken": 0, "expected": 0} for med in meds}
+
         current_d = start_date
         while current_d <= end_date:
             for med in meds:
@@ -294,19 +297,37 @@ class HealthLogService:
 
                 for w in schedule:
                     total_expected += 1
+                    med_stats[med.med_id]["expected"] += 1
+
                     if (med.med_id, w, current_d) in taken_set:
                         total_taken += 1
+                        med_stats[med.med_id]["taken"] += 1
 
             current_d += timedelta(days=1)
 
         percentage = (total_taken / total_expected * 100) if total_expected > 0 else 0.0
         missed = total_expected - total_taken
 
+        # Format detailed list
+        medications_list = []
+        for mid, stats in med_stats.items():
+            exp = stats["expected"]
+            tak = stats["taken"]
+            pct = (tak / exp * 100) if exp > 0 else 0.0
+            medications_list.append({
+                "name": stats["name"],
+                "compliance_percentage": round(pct, 1),
+                "taken": tak,
+                "expected": exp,
+                "missed": exp - tak
+            })
+
         return {
             "compliance_percentage": round(percentage, 1),
             "missed_doses": missed,
             "taken_doses": total_taken,
-            "total_scheduled": total_expected
+            "total_scheduled": total_expected,
+            "medications": medications_list
         }
 
 class BackupService:

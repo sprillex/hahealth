@@ -25,7 +25,8 @@ def webhook_ingestion(
         data = schemas.MedicationTakenPayload(**payload.payload)
         log, alert = service_med.log_dose(db, user.user_id, data.med_name, data.timestamp)
         if not log:
-            raise HTTPException(status_code=404, detail=alert)
+            # Return 400 Bad Request instead of 404 so user knows endpoint exists but data is invalid
+            raise HTTPException(status_code=400, detail=alert)
         return {"status": "success", "message": "Medication logged", "alert": alert}
 
     elif payload.data_type == schemas.WebhookDataType.EXERCISE_SESSION:
@@ -37,7 +38,7 @@ def webhook_ingestion(
         data = schemas.FoodLogPayload(**payload.payload)
         item, error = service_health.log_food(db, user, data)
         if error:
-             raise HTTPException(status_code=404, detail=error)
+             raise HTTPException(status_code=400, detail=error)
         return {"status": "success", "message": "Food logged"}
 
     else:

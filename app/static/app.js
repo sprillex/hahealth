@@ -5,6 +5,7 @@ const AUTH_URL = '/auth/token';
 let token = localStorage.getItem('access_token');
 let user = null;
 let summaryData = null;
+let currentDashboardDate = new Date(); // Defaults to today
 
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
@@ -121,7 +122,11 @@ function showTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
     document.getElementById(`tab-${tabName}`).classList.remove('hidden');
 
-    if (tabName === 'dashboard') loadSummary();
+    if (tabName === 'dashboard') {
+        updateDateDisplay();
+        loadSummary();
+        loadDailyMeds();
+    }
     if (tabName === 'medications') loadMedications();
     if (tabName === 'reports') {
         loadReports();
@@ -136,9 +141,38 @@ function showTab(tabName) {
 
 // --- Dashboard Summary & Gauges ---
 
+function changeDate(offset) {
+    currentDashboardDate.setDate(currentDashboardDate.getDate() + offset);
+    updateDateDisplay();
+    loadSummary();
+    loadDailyMeds();
+}
+
+function updateDateDisplay() {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('current-date-display').innerText = currentDashboardDate.toLocaleDateString(undefined, options);
+
+    // Check if today
+    const today = new Date();
+    if (currentDashboardDate.toDateString() === today.toDateString()) {
+        document.getElementById('dashboard-date-title').innerText = "Today's Summary";
+    } else {
+        document.getElementById('dashboard-date-title').innerText = "Daily Summary";
+    }
+}
+
+function getFormattedDate(dateObj) {
+    // YYYY-MM-DD
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
 async function loadSummary() {
     try {
-        const res = await fetch(`${API_URL}/log/summary`, {
+        const dateStr = getFormattedDate(currentDashboardDate);
+        const res = await fetch(`${API_URL}/log/summary?date_str=${dateStr}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         summaryData = await res.json();
@@ -265,6 +299,36 @@ function createGaugeHTML(label, value, max, colorClass, unit) {
 }
 
 // --- Medications ---
+
+async function loadDailyMeds() {
+    const listEl = document.getElementById('meds-taken-list');
+    listEl.innerHTML = 'Loading...';
+    try {
+        const dateStr = getFormattedDate(currentDashboardDate);
+        const res = await fetch(`${API_URL}/medications/log?date_str=${dateStr}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const logs = await res.json();
+
+        if (logs.length === 0) {
+            listEl.innerHTML = '<p style="color: #666; font-style: italic;">No medications logged for this date.</p>';
+            return;
+        }
+
+        listEl.innerHTML = '';
+        const ul = document.createElement('ul');
+        logs.forEach(log => {
+            const li = document.createElement('li');
+            const timeStr = new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            li.innerHTML = `<strong>${log.med_name}</strong> at ${timeStr}`;
+            ul.appendChild(li);
+        });
+        listEl.appendChild(ul);
+
+    } catch (err) {
+        listEl.innerHTML = 'Error loading logs.';
+    }
+}
 
 async function loadMedications() {
     const listEl = document.getElementById('med-list');
@@ -610,6 +674,27 @@ async function loadReports() {
         document.getElementById('report-compliance-pct').innerText = data.compliance_percentage + '%';
         document.getElementById('report-missed-doses').innerText = data.missed_doses;
         document.getElementById('report-taken-doses').innerText = data.taken_doses;
+
+        // Breakdown
+        const tbody = document.getElementById('med-breakdown-body');
+        if (data.medications && data.medications.length > 0) {
+            tbody.innerHTML = '';
+            data.medications.forEach(med => {
+                let color = 'red';
+                if (med.compliance_percentage >= 80) color = 'green';
+                else if (med.compliance_percentage >= 50) color = 'orange';
+
+                const row = `<tr>
+                    <td>${med.name}</td>
+                    <td>${med.taken} / ${med.expected}</td>
+                    <td style="color: ${color}; font-weight: bold;">${med.compliance_percentage}%</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="3">No data available.</td></tr>';
+        }
+
     } catch (err) {
         console.error("Report Error", err);
     }
