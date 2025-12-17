@@ -30,7 +30,42 @@ document.addEventListener('DOMContentLoaded', () => {
     // Admin Listeners
     document.getElementById('admin-key-form').addEventListener('submit', handleUpdateAdminKey);
     document.getElementById('restore-form').addEventListener('submit', handleRestoreBackup);
+
+    // Timezone Init
+    populateTimezones();
 });
+
+function populateTimezones() {
+    const select = document.getElementById('profile-timezone');
+    if (!select) return;
+
+    // Use Intl to guess list or hardcode common ones
+    // Modern browsers support Intl.supportedValuesOf('timeZone')
+    let timezones = [];
+    if (Intl.supportedValuesOf) {
+        try {
+            timezones = Intl.supportedValuesOf('timeZone');
+        } catch (e) {
+            console.error("Intl not supported", e);
+        }
+    }
+
+    if (timezones.length === 0) {
+        timezones = ["UTC", "America/New_York", "America/Los_Angeles", "America/Chicago", "Europe/London", "Europe/Paris", "Asia/Tokyo", "Australia/Sydney"];
+    }
+
+    // Clear and fill
+    select.innerHTML = '';
+
+    // Add current browser guess as top option?
+    // Actually just list them alphabetically
+    timezones.forEach(tz => {
+        const opt = document.createElement('option');
+        opt.value = tz;
+        opt.innerText = tz;
+        select.appendChild(opt);
+    });
+}
 
 // --- Auth ---
 
@@ -803,6 +838,14 @@ function loadProfileData() {
     document.getElementById('profile-name').value = user.name;
     document.getElementById('profile-units').value = user.unit_system || 'METRIC';
 
+    // Set Timezone
+    if (user.timezone) {
+        document.getElementById('profile-timezone').value = user.timezone;
+    } else {
+        // Guess
+        document.getElementById('profile-timezone').value = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    }
+
     let height = user.height_cm;
     let weight = user.weight_kg;
     let goalWeight = user.goal_weight_kg;
@@ -849,7 +892,8 @@ async function handleUpdateProfile(e) {
         goal_weight_kg: goalWeight || null,
         birth_year: parseInt(document.getElementById('profile-birthyear').value) || null,
         gender: document.getElementById('profile-gender').value || null,
-        calorie_goal: parseInt(document.getElementById('profile-cal-goal').value) || null
+        calorie_goal: parseInt(document.getElementById('profile-cal-goal').value) || null,
+        timezone: document.getElementById('profile-timezone').value
     };
 
     try {

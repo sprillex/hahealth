@@ -270,9 +270,22 @@ class HealthLogService:
         # Sort based on time object
         windows.sort(key=lambda x: x[1])
 
+        # Determine user timezone
+        import zoneinfo
+        try:
+            user_tz = zoneinfo.ZoneInfo(user.timezone) if user.timezone else timezone.utc
+        except Exception:
+            user_tz = timezone.utc
+
         def get_window_and_date(ts: datetime):
-            t = ts.time()
-            d = ts.date()
+            # Ensure aware
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+
+            # Convert to user timezone
+            ts_local = ts.astimezone(user_tz)
+            t = ts_local.time()
+            d = ts_local.date()
 
             # Find the slot
             matched_window = None

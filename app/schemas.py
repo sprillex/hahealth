@@ -12,6 +12,7 @@ class UserBase(BaseModel):
     gender: Optional[str] = None
     goal_weight_kg: Optional[float] = None
     calorie_goal: Optional[int] = None
+    timezone: str = "UTC"
 
 class UserCreate(UserBase):
     password: str
@@ -25,6 +26,7 @@ class UserUpdate(BaseModel):
     gender: Optional[str] = None
     goal_weight_kg: Optional[float] = None
     calorie_goal: Optional[int] = None
+    timezone: Optional[str] = None
 
     # Time Windows
     window_morning_start: Optional[time] = None

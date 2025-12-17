@@ -105,6 +105,13 @@ def migrate_all():
         except sqlite3.OperationalError:
             pass
 
+    # 6. Timezone
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN timezone VARCHAR DEFAULT 'UTC'")
+        print(" - Added timezone to users.")
+    except sqlite3.OperationalError:
+        pass
+
     conn.commit()
     conn.close()
     print("All migrations complete.")
