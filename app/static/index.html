@@ -217,6 +217,26 @@
                              </div>
                         </div>
                     </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <div class="header-actions">
+                            <h3>Blood Pressure History</h3>
+                            <button class="btn-secondary" onclick="downloadBPCSV()">Download CSV</button>
+                        </div>
+                        <table id="bp-history-table" style="width: 100%; text-align: left; margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>BP</th>
+                                    <th>Pulse</th>
+                                    <th>Context</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bp-history-body">
+                                <tr><td colspan="4">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- Admin Tab -->

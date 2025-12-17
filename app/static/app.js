@@ -123,7 +123,10 @@ function showTab(tabName) {
 
     if (tabName === 'dashboard') loadSummary();
     if (tabName === 'medications') loadMedications();
-    if (tabName === 'reports') loadReports();
+    if (tabName === 'reports') {
+        loadReports();
+        loadBPHistory();
+    }
     if (tabName === 'settings') loadProfileData();
     if (tabName === 'health-logs') {
         updateWeightUnitDisplay();
@@ -480,6 +483,76 @@ async function loadExerciseHistory() {
     } catch (err) {
         tbody.innerHTML = '<tr><td colspan="4">Error loading history.</td></tr>';
     }
+}
+
+async function loadBPHistory() {
+    const tbody = document.getElementById('bp-history-body');
+    try {
+        const res = await fetch(`${API_URL}/log/history/bp`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const logs = await res.json();
+
+        if (logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4">No history found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        logs.forEach(log => {
+            const date = new Date(log.timestamp).toLocaleDateString() + ' ' + new Date(log.timestamp).toLocaleTimeString();
+            const row = `<tr>
+                <td>${date}</td>
+                <td>${log.systolic}/${log.diastolic}</td>
+                <td>${log.pulse} bpm</td>
+                <td>${log.stress_level} / ${log.location}</td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+
+        // Store for CSV download
+        window.bpHistoryData = logs;
+
+    } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="4">Error loading history.</td></tr>';
+    }
+}
+
+function downloadBPCSV() {
+    if (!window.bpHistoryData || window.bpHistoryData.length === 0) {
+        alert("No data to download");
+        return;
+    }
+
+    const rows = [
+        ["Date", "Systolic", "Diastolic", "Pulse", "Location", "Stress Level", "Meds Taken Before"]
+    ];
+
+    window.bpHistoryData.forEach(log => {
+        rows.push([
+            log.timestamp,
+            log.systolic,
+            log.diastolic,
+            log.pulse,
+            log.location,
+            log.stress_level,
+            log.meds_taken_before
+        ]);
+    });
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    rows.forEach(rowArray => {
+        const row = rowArray.join(",");
+        csvContent += row + "\r\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "blood_pressure_history.csv");
+    document.body.appendChild(link); // Required for FF
+    link.click();
+    link.remove();
 }
 
 async function handleLogWeight(e) {

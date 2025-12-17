@@ -29,6 +29,17 @@ def log_exercise(
     log = service.log_exercise(db, current_user, exercise)
     return {"message": "Exercise logged", "calories_burned": log.total_calories_burned}
 
+@router.get("/history/bp")
+def get_bp_history(
+    limit: int = 50,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    history = db.query(models.BloodPressure).filter(
+        models.BloodPressure.user_id == current_user.user_id
+    ).order_by(models.BloodPressure.timestamp.desc()).limit(limit).all()
+    return history
+
 @router.get("/history/exercise")
 def get_exercise_history(
     limit: int = 50,

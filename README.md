@@ -126,9 +126,9 @@ To update the application to the latest version:
     ```
 
 3.  **Run Database Migrations:**
-    If new features (like Imperial units) were added, run the migration script:
+    If new features (like Imperial units, admin tables, etc.) were added, run the migration script:
     ```bash
-    python3 scripts/migrate_db.py
+    python3 scripts/migrate_all.py
     ```
 
 4.  **Restart the service:**
@@ -147,57 +147,88 @@ To send data from Home Assistant to this application, use the `rest_command` int
 - `Content-Type`: `application/json`
 - `X-Webhook-Secret`: `<YOUR_GENERATED_SECRET_KEY>`
 
-### Payload Examples
+### Configuration Example (`configuration.yaml`)
 
-**1. Log Blood Pressure:**
-```json
-{
-  "data_type": "BLOOD_PRESSURE",
-  "payload": {
-    "systolic": 120,
-    "diastolic": 80,
-    "pulse": 72,
-    "location": "Left Arm",
-    "stress_level": 3,
-    "meds_taken_before": "NO"
-  }
-}
-```
+Add these blocks to your Home Assistant `configuration.yaml` file to easily call the API from automations or scripts.
 
-**2. Log Medication Taken:**
-```json
-{
-  "data_type": "MEDICATION_TAKEN",
-  "payload": {
-    "med_name": "Ibuprofen",
-    "timestamp": "2023-10-27T10:00:00"
-  }
-}
-```
+**Note:** Replace `!secret hahealth_api_key` with your actual API key or define it in your `secrets.yaml`.
 
-**3. Log Exercise:**
-```json
-{
-  "data_type": "EXERCISE_SESSION",
-  "payload": {
-    "activity_type": "running",
-    "duration_minutes": 30,
-    "calories_burned": 300
-  }
-}
-```
+```yaml
+rest_command:
+  # Log Blood Pressure
+  # Expects variables: systolic, diastolic, pulse, stress_level (optional)
+  log_blood_pressure:
+    url: "http://<YOUR_APP_IP>:8000/api/webhook/health"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      X-Webhook-Secret: !secret hahealth_api_key
+    payload: >
+      {
+        "data_type": "BLOOD_PRESSURE",
+        "payload": {
+          "systolic": {{ states('input_number.systolic') | int }},
+          "diastolic": {{ states('input_number.diastolic') | int }},
+          "pulse": {{ states('input_number.pulse') | int }},
+          "location": "{{ states('input_select.bplocation') }}",
+          "stress_level": {{ states('input_number.stress_level') | int }},
+          "meds_taken_before": "NO"
+        }
+      }
 
-**4. Log Food (Barcode):**
-```json
-{
-  "data_type": "FOOD_LOG",
-  "payload": {
-    "barcode": "123456789",
-    "meal_id": "Lunch",
-    "serving_size": 1,
-    "quantity": 1
-  }
-}
+  # Log Medication Taken
+  # Expects variable: med_name
+  log_medication:
+    url: "http://<YOUR_APP_IP>:8000/api/webhook/health"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      X-Webhook-Secret: !secret hahealth_api_key
+    payload: >
+      {
+        "data_type": "MEDICATION_TAKEN",
+        "payload": {
+          "med_name": "{{ med_name }}",
+          "timestamp": "{{ now().isoformat() }}"
+        }
+      }
+
+  # Log Exercise
+  # Expects variables: activity, duration, calories
+  log_exercise:
+    url: "http://<YOUR_APP_IP>:8000/api/webhook/health"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      X-Webhook-Secret: !secret hahealth_api_key
+    payload: >
+      {
+        "data_type": "EXERCISE_SESSION",
+        "payload": {
+          "activity_type": "{{ activity }}",
+          "duration_minutes": {{ duration | int }},
+          "calories_burned": {{ calories | int }}
+        }
+      }
+
+  # Log Food (via Barcode)
+  # Expects variables: barcode, meal, serving, quantity
+  log_food:
+    url: "http://<YOUR_APP_IP>:8000/api/webhook/health"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      X-Webhook-Secret: !secret hahealth_api_key
+    payload: >
+      {
+        "data_type": "FOOD_LOG",
+        "payload": {
+          "barcode": "{{ barcode }}",
+          "meal_id": "{{ meal }}",
+          "serving_size": {{ serving | default(1) }},
+          "quantity": {{ quantity | default(1) }}
+        }
+      }
 ```
 
 ## Development
