@@ -33,6 +33,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Timezone Init
     populateTimezones();
+
+    // Nutrition Listeners
+    document.getElementById('create-food-form').addEventListener('submit', handleCreateFood);
+    document.getElementById('food-log-form').addEventListener('submit', handleLogFood);
+
+    const searchInput = document.getElementById('food-search-input');
+    if (searchInput) {
+        let debounceTimer;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => handleSearchFood(e.target.value), 300);
+        });
+    }
 });
 
 function populateTimezones() {
@@ -163,6 +176,11 @@ function showTab(tabName) {
         loadDailyMeds();
     }
     if (tabName === 'medications') loadMedications();
+    if (tabName === 'nutrition') {
+        // Clear forms
+        document.getElementById('food-search-input').value = '';
+        document.getElementById('food-search-results').classList.add('hidden');
+    }
     if (tabName === 'reports') {
         loadReports();
         loadBPHistory();
@@ -487,6 +505,145 @@ async function refillMed(id) {
         }
     } catch (err) {
         alert('Refill failed');
+    }
+}
+
+// --- Nutrition ---
+
+function openFoodModal() {
+    document.getElementById('food-modal').classList.remove('hidden');
+    document.getElementById('create-food-form').reset();
+}
+
+function closeFoodModal() {
+    document.getElementById('food-modal').classList.add('hidden');
+}
+
+async function handleCreateFood(e) {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = Object.fromEntries(fd.entries());
+
+    // Parse numbers
+    ['calories', 'protein', 'fat', 'carbs', 'fiber'].forEach(k => {
+        data[k] = parseFloat(data[k]) || 0;
+    });
+
+    data.source = 'MANUAL';
+    if (!data.barcode) delete data.barcode; // Send null or undefined if empty
+
+    try {
+        const res = await fetch(`${API_URL}/nutrition/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            alert('Food created successfully');
+            closeFoodModal();
+        } else {
+            const err = await res.json();
+            alert(err.detail || 'Error creating food');
+        }
+    } catch(err) {
+        alert('Error creating food');
+    }
+}
+
+async function handleSearchFood(query) {
+    const resultsDiv = document.getElementById('food-search-results');
+    if (!query || query.length < 2) {
+        resultsDiv.classList.add('hidden');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/nutrition/search?query=${encodeURIComponent(query)}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const foods = await res.json();
+
+        resultsDiv.innerHTML = '';
+        if (foods.length > 0) {
+            resultsDiv.classList.remove('hidden');
+            foods.forEach(food => {
+                const div = document.createElement('div');
+                div.className = 'search-item';
+                div.innerText = `${food.food_name} (${food.calories} kcal)`;
+                div.onclick = () => selectFood(food);
+                resultsDiv.appendChild(div);
+            });
+        } else {
+            resultsDiv.classList.add('hidden');
+        }
+
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+function selectFood(food) {
+    document.getElementById('food-search-input').value = food.food_name;
+    document.getElementById('selected-food-name').value = food.food_name;
+    document.getElementById('selected-food-barcode').value = food.barcode || '';
+    document.getElementById('food-search-results').classList.add('hidden');
+}
+
+async function handleLogFood(e) {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = {
+        food_name: fd.get('food_name'),
+        barcode: fd.get('barcode') || null,
+        meal_id: fd.get('meal_id'),
+        serving_size: parseFloat(fd.get('serving_size')),
+        quantity: parseFloat(fd.get('quantity'))
+    };
+
+    // If user typed a name but didn't select from dropdown, use that name.
+    // The backend will create a manual entry with 0 calories if not found.
+    // Or we could prompt them to create it.
+    if (!data.food_name && document.getElementById('food-search-input').value) {
+        data.food_name = document.getElementById('food-search-input').value;
+    }
+
+    if (!data.food_name) {
+        alert("Please enter a food name");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/nutrition/log`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            alert('Food logged successfully');
+            e.target.reset();
+            document.getElementById('food-search-results').classList.add('hidden');
+        } else {
+            const err = await res.json();
+            // If 404/Food not found, maybe prompt to create?
+            if (res.status === 404) {
+                if (confirm("Food not found. Create it now?")) {
+                    openFoodModal();
+                    document.querySelector('#create-food-form [name="food_name"]').value = data.food_name;
+                }
+            } else {
+                alert(err.detail || 'Error logging food');
+            }
+        }
+    } catch(err) {
+        alert('Error logging food');
     }
 }
 

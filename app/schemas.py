@@ -157,15 +157,20 @@ class FoodLogPayload(BaseModel):
     meal_id: str = "Snack"
 
 # Nutrition
-class NutritionCacheResponse(BaseModel):
-    food_id: int
-    barcode: Optional[str]
+class NutritionCacheBase(BaseModel):
+    barcode: Optional[str] = None
     food_name: str
     calories: float
-    protein: float
-    fat: float
-    carbs: float
-    fiber: float
+    protein: float = 0.0
+    fat: float = 0.0
+    carbs: float = 0.0
+    fiber: float = 0.0
+
+class NutritionCacheCreate(NutritionCacheBase):
+    pass
+
+class NutritionCacheResponse(NutritionCacheBase):
+    food_id: int
     source: str
     class Config:
         from_attributes = True
