@@ -71,10 +71,23 @@ class METCalculator:
         calories = (met_value * user.weight_kg * 3.5 / 200) * duration_minutes
         return calories
 
+from datetime import timezone
+
 class MedicationService:
     def log_dose(self, db: Session, user_id: int, med_name: str, timestamp_taken: datetime = None):
         if not timestamp_taken:
-            timestamp_taken = datetime.utcnow()
+            timestamp_taken = datetime.now(timezone.utc)
+        elif timestamp_taken.tzinfo is None:
+            # If naive, assume UTC (standard for API) but Pydantic might strip if we aren't careful.
+            # However, HA usually sends ISO with offset.
+            # If the timestamp came in naive, we should probably treat it as UTC if it's from machine logic,
+            # but user says "I logged this at X but recorded as Y".
+            # Safe bet is to ensure we store it as naive UTC for SQLite, but we want to Return it as Aware.
+            # But the user issue is that the return value lacks 'Z', so browser treats as local.
+            # So we must ensure we return Aware.
+            # But SQLite strips timezone.
+            # So the API Response Model is key.
+            pass
 
         med = db.query(models.Medication).filter(
             models.Medication.user_id == user_id,
@@ -114,6 +127,16 @@ class MedicationService:
 
 class HealthLogService:
     def log_bp(self, db: Session, user_id: int, data: schemas.BPPayload):
+        # Ensure timestamp is set if not provided (though model has default, strict control is better)
+        # Model default is datetime.utcnow (naive).
+        # We want to ensure we return something that Pydantic can verify as UTC.
+        # But wait, we can't easily change the stored data format in SQLite without migration if we want to add timezone info string.
+        # SQLite stores DateTime as string.
+        # If we just make sure the API response adds the "Z", the frontend will be happy.
+
+        # Best approach: When reading, ensure we attach UTC timezone if missing.
+        # But we are in the write path here.
+
         bp = models.BloodPressure(
             user_id=user_id,
             systolic=data.systolic,
@@ -121,7 +144,8 @@ class HealthLogService:
             pulse=data.pulse,
             location=data.location,
             stress_level=data.stress_level,
-            meds_taken_before=data.meds_taken_before
+            meds_taken_before=data.meds_taken_before,
+            timestamp=datetime.now(timezone.utc) # Explicitly set aware UTC
         )
         db.add(bp)
         db.commit()

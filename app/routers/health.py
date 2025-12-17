@@ -9,6 +9,8 @@ router = APIRouter(
     tags=["health"]
 )
 
+from datetime import timezone
+
 @router.post("/bp", response_model=schemas.BloodPressureResponse)
 def log_blood_pressure(
     bp: schemas.BloodPressureCreate,
@@ -17,7 +19,11 @@ def log_blood_pressure(
 ):
     service = services.HealthLogService()
     payload = schemas.BPPayload(**bp.dict())
-    return service.log_bp(db, current_user.user_id, payload)
+    result = service.log_bp(db, current_user.user_id, payload)
+    # Ensure timezone is attached for Pydantic serialization
+    if result.timestamp and result.timestamp.tzinfo is None:
+        result.timestamp = result.timestamp.replace(tzinfo=timezone.utc)
+    return result
 
 @router.post("/exercise")
 def log_exercise(
@@ -38,6 +44,12 @@ def get_bp_history(
     history = db.query(models.BloodPressure).filter(
         models.BloodPressure.user_id == current_user.user_id
     ).order_by(models.BloodPressure.timestamp.desc()).limit(limit).all()
+
+    # Attach timezone info (SQLite stores as naive UTC)
+    for bp in history:
+        if bp.timestamp and bp.timestamp.tzinfo is None:
+            bp.timestamp = bp.timestamp.replace(tzinfo=timezone.utc)
+
     return history
 
 @router.get("/history/exercise")
