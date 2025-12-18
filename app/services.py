@@ -21,27 +21,46 @@ class OpenFoodFactsService:
         response = requests.get(self.BASE_URL.format(barcode=barcode))
         if response.status_code == 200:
             data = response.json()
-            if data.get("status") == 1:
+            # OpenFoodFacts API v0 usually returns status 1 if found.
+            # Sometimes 'status_verbose' says 'product found'.
+            if data.get("status") == 1 or data.get("product"):
                 product = data["product"]
                 nutriments = product.get("nutriments", {})
 
                 # Extract data
                 food_name = product.get("product_name", "Unknown")
-                calories = nutriments.get("energy-kcal_100g", 0)
-                protein = nutriments.get("proteins_100g", 0)
-                fat = nutriments.get("fat_100g", 0)
-                carbs = nutriments.get("carbohydrates_100g", 0)
-                fiber = nutriments.get("fiber_100g", 0)
+
+                # Ensure we handle missing keys gracefully and convert to float
+                def get_nutriment(key):
+                    val = nutriments.get(key)
+                    if val is None:
+                        return 0.0
+                    try:
+                        return float(val)
+                    except (ValueError, TypeError):
+                        return 0.0
+
+                calories = get_nutriment("energy-kcal_100g")
+                # Fallback if kcal is missing but kj exists? (1 kcal = 4.184 kJ)
+                if calories == 0:
+                    kj = get_nutriment("energy-kj_100g")
+                    if kj > 0:
+                        calories = kj / 4.184
+
+                protein = get_nutriment("proteins_100g")
+                fat = get_nutriment("fat_100g")
+                carbs = get_nutriment("carbohydrates_100g")
+                fiber = get_nutriment("fiber_100g")
 
                 # Write to Cache
                 new_cache = models.NutritionCache(
                     barcode=barcode,
                     food_name=food_name,
-                    calories=float(calories) if calories else 0.0,
-                    protein=float(protein) if protein else 0.0,
-                    fat=float(fat) if fat else 0.0,
-                    carbs=float(carbs) if carbs else 0.0,
-                    fiber=float(fiber) if fiber else 0.0,
+                    calories=calories,
+                    protein=protein,
+                    fat=fat,
+                    carbs=carbs,
+                    fiber=fiber,
                     source="OFF"
                 )
                 db.add(new_cache)
