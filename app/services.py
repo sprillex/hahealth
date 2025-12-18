@@ -91,6 +91,23 @@ class METCalculator:
         return calories
 
 from datetime import timezone
+import zoneinfo
+
+def get_user_local_date(user: models.User, utc_dt: datetime) -> date:
+    """Returns the local date for the user based on their timezone."""
+    if not utc_dt:
+        utc_dt = datetime.now(timezone.utc)
+
+    # Ensure aware
+    if utc_dt.tzinfo is None:
+        utc_dt = utc_dt.replace(tzinfo=timezone.utc)
+
+    try:
+        user_tz = zoneinfo.ZoneInfo(user.timezone) if user.timezone else timezone.utc
+    except Exception:
+        user_tz = timezone.utc
+
+    return utc_dt.astimezone(user_tz).date()
 
 class MedicationService:
     def log_dose(self, db: Session, user_id: int, med_name: str, timestamp_taken: datetime = None):
@@ -188,10 +205,13 @@ class HealthLogService:
         db.add(exercise_log)
 
         # 2. Update Daily Log (Summary)
-        today = date.today()
-        daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == user.user_id, models.DailyLog.date == today).first()
+        # Use user's local date, not server date
+        utc_now = datetime.now(timezone.utc)
+        local_date = get_user_local_date(user, utc_now)
+
+        daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == user.user_id, models.DailyLog.date == local_date).first()
         if not daily_log:
-            daily_log = models.DailyLog(user_id=user.user_id, date=today, total_calories_burned=0, total_calories_consumed=0)
+            daily_log = models.DailyLog(user_id=user.user_id, date=local_date, total_calories_burned=0, total_calories_consumed=0)
             db.add(daily_log)
 
         daily_log.total_calories_burned += calories
@@ -243,10 +263,13 @@ class HealthLogService:
         db.add(item_log)
 
         # Update Daily Log
-        today = date.today()
-        daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == user.user_id, models.DailyLog.date == today).first()
+        # Use user's local date
+        utc_now = datetime.now(timezone.utc)
+        local_date = get_user_local_date(user, utc_now)
+
+        daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == user.user_id, models.DailyLog.date == local_date).first()
         if not daily_log:
-            daily_log = models.DailyLog(user_id=user.user_id, date=today, total_calories_burned=0, total_calories_consumed=0)
+            daily_log = models.DailyLog(user_id=user.user_id, date=local_date, total_calories_burned=0, total_calories_consumed=0)
             db.add(daily_log)
 
         total_cals = food_item.calories * data.serving_size * data.quantity

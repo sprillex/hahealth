@@ -92,13 +92,26 @@ def get_daily_summary(
     # Showing "Latest BP ever" on a summary for last week is misleading.
     # Let's show "Last BP of that day".
 
-    start_of_day = datetime.combine(target_date, datetime.min.time())
-    end_of_day = datetime.combine(target_date, datetime.max.time())
+    # Determine UTC range for the User's Local Day
+    import zoneinfo
+    try:
+        user_tz = zoneinfo.ZoneInfo(current_user.timezone) if current_user.timezone else timezone.utc
+    except Exception:
+        user_tz = timezone.utc
+
+    # Local day start/end
+    # Using naive combine and then attaching timezone
+    local_start = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=user_tz)
+    local_end = datetime.combine(target_date, datetime.max.time()).replace(tzinfo=user_tz)
+
+    # Convert to UTC for DB Query
+    utc_start = local_start.astimezone(timezone.utc)
+    utc_end = local_end.astimezone(timezone.utc)
 
     bp = db.query(models.BloodPressure).filter(
         models.BloodPressure.user_id == current_user.user_id,
-        models.BloodPressure.timestamp >= start_of_day,
-        models.BloodPressure.timestamp <= end_of_day
+        models.BloodPressure.timestamp >= utc_start,
+        models.BloodPressure.timestamp <= utc_end
     ).order_by(models.BloodPressure.timestamp.desc()).first()
 
     bp_str = f"{bp.systolic}/{bp.diastolic}" if bp else "Not Logged"
@@ -106,8 +119,8 @@ def get_daily_summary(
     # 3. Macro Calculation (Protein/Fat/Carbs/Fiber)
     food_logs = db.query(models.FoodItemLog).join(models.NutritionCache).filter(
         models.FoodItemLog.user_id == current_user.user_id,
-        models.FoodItemLog.timestamp >= start_of_day,
-        models.FoodItemLog.timestamp <= end_of_day
+        models.FoodItemLog.timestamp >= utc_start,
+        models.FoodItemLog.timestamp <= utc_end
     ).all()
 
     macros = {"protein": 0, "fat": 0, "carbs": 0, "fiber": 0}

@@ -1,0 +1,27 @@
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [79154]
+INFO:     Started server process [81156]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:app.routers.auth:Login attempt for user: tz_macro_test_user
+INFO:app.routers.auth:Login successful for user: tz_macro_test_user
+INFO:     127.0.0.1:36062 - "POST /auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36074 - "PUT /api/v1/users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36090 - "POST /api/v1/nutrition/ HTTP/1.1" 200 OK
+DEBUG: log_food local_date=2025-12-17 for user=tz_macro_test_user tz=America/New_York
+INFO:     127.0.0.1:36092 - "POST /api/v1/nutrition/log HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36094 - "GET /api/v1/log/summary?date_str=2025-12-17 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59602 - "GET /static/index.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59602 - "GET /static/style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59616 - "GET /static/gauge.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59630 - "GET /static/app.js HTTP/1.1" 200 OK
+INFO:app.routers.auth:Login attempt for user: tz_macro_test_user
+INFO:app.routers.auth:Login successful for user: tz_macro_test_user
+INFO:     127.0.0.1:59630 - "POST /auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59630 - "GET /api/v1/users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59616 - "GET /api/v1/medications/log?date_str=2025-12-18 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59630 - "GET /api/v1/log/summary?date_str=2025-12-18 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59616 - "GET /api/v1/log/summary?date_str=2025-12-18 HTTP/1.1" 200 OK

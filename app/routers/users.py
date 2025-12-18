@@ -52,6 +52,8 @@ def update_user_profile(
         current_user.goal_weight_kg = user_update.goal_weight_kg
     if user_update.calorie_goal is not None:
         current_user.calorie_goal = user_update.calorie_goal
+    if user_update.timezone is not None:
+        current_user.timezone = user_update.timezone
 
     # Time Windows
     if user_update.window_morning_start is not None:
