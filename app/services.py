@@ -188,96 +188,6 @@ class HealthLogService:
         db.refresh(bp)
         return bp
 
-    def log_exercise(self, db: Session, user: models.User, data: schemas.ExercisePayload):
-        met_calc = METCalculator()
-
-        calories = data.calories_burned
-        if calories is None:
-            calories = met_calc.calculate_calories(db, user, data.activity_type, data.duration_minutes)
-
-        # 1. Save detailed log
-        exercise_log = models.ExerciseLog(
-            user_id=user.user_id,
-            activity_type=data.activity_type,
-            duration_minutes=data.duration_minutes,
-            calories_burned=calories
-        )
-        db.add(exercise_log)
-
-        # 2. Update Daily Log (Summary)
-        # Use user's local date, not server date
-        utc_now = datetime.now(timezone.utc)
-        local_date = get_user_local_date(user, utc_now)
-
-        daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == user.user_id, models.DailyLog.date == local_date).first()
-        if not daily_log:
-            daily_log = models.DailyLog(user_id=user.user_id, date=local_date, total_calories_burned=0, total_calories_consumed=0)
-            db.add(daily_log)
-
-        daily_log.total_calories_burned += calories
-        db.commit()
-        return daily_log
-
-    def log_food(self, db: Session, user: models.User, data: schemas.FoodLogPayload):
-        off_service = OpenFoodFactsService()
-
-        food_item = None
-        if data.barcode:
-            food_item = off_service.get_product(data.barcode, db)
-
-        # If not found or no barcode, handle manual or fallback
-        # Ideally if no barcode, we look up by name in cache or fail to manual
-        if not food_item and data.food_name:
-             # Try to find by name in cache
-             food_item = db.query(models.NutritionCache).filter(models.NutritionCache.food_name == data.food_name).first()
-
-        if not food_item:
-            # Plan says "API Fail (404): Flag for user manual entry".
-            # For automation, we might need to create a placeholder or error out.
-            # Let's create a placeholder Manual entry if it doesn't exist
-            if data.food_name:
-                 food_item = models.NutritionCache(
-                    barcode=data.barcode, # might be None
-                    food_name=data.food_name,
-                    calories=0, # Unknown
-                    protein=0,
-                    fat=0,
-                    carbs=0,
-                    fiber=0,
-                    source="MANUAL"
-                 )
-                 db.add(food_item)
-                 db.commit()
-                 db.refresh(food_item)
-            else:
-                return None, "Food not found and no name provided"
-
-        # Log Item
-        item_log = models.FoodItemLog(
-            user_id=user.user_id,
-            meal_id=data.meal_id,
-            food_id=food_item.food_id,
-            serving_size=data.serving_size,
-            quantity=data.quantity
-        )
-        db.add(item_log)
-
-        # Update Daily Log
-        # Use user's local date
-        utc_now = datetime.now(timezone.utc)
-        local_date = get_user_local_date(user, utc_now)
-
-        daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == user.user_id, models.DailyLog.date == local_date).first()
-        if not daily_log:
-            daily_log = models.DailyLog(user_id=user.user_id, date=local_date, total_calories_burned=0, total_calories_consumed=0)
-            db.add(daily_log)
-
-        total_cals = food_item.calories * data.serving_size * data.quantity
-        daily_log.total_calories_consumed += total_cals
-
-        db.commit()
-        return item_log, None
-
     def calculate_compliance_report(self, db: Session, user: models.User):
         # Time range: Last 30 days excluding today
         today = date.today()
@@ -427,6 +337,126 @@ class HealthLogService:
             "total_scheduled": total_expected,
             "medications": medications_list
         }
+
+    def get_sensor_data(self, db: Session, user: models.User):
+        """
+        Generates a flat dictionary of sensor data for Home Assistant.
+        Keys are formatted to be compatible with HA entity naming.
+        """
+        sensors = {}
+
+        # 1. Latest Blood Pressure
+        latest_bp = db.query(models.BloodPressure).filter(models.BloodPressure.user_id == user.user_id).order_by(models.BloodPressure.timestamp.desc()).first()
+        if latest_bp:
+            sensors["blood_pressure_systolic"] = latest_bp.systolic
+            sensors["blood_pressure_diastolic"] = latest_bp.diastolic
+            sensors["blood_pressure_pulse"] = latest_bp.pulse
+            sensors["blood_pressure_timestamp"] = latest_bp.timestamp.isoformat()
+
+        # 2. Medication Compliance
+        compliance_report = self.calculate_compliance_report(db, user)
+        if compliance_report:
+            sensors["medication_compliance_percentage"] = compliance_report.get("compliance_percentage")
+            sensors["medication_missed_doses"] = compliance_report.get("missed_doses")
+
+        # 3. Daily Summary
+        today_local = get_user_local_date(user, datetime.now(timezone.utc))
+        daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == user.user_id, models.DailyLog.date == today_local).first()
+        if daily_log:
+            sensors["daily_calories_consumed"] = daily_log.total_calories_consumed
+            sensors["daily_calories_burned"] = daily_log.total_calories_burned
+
+        return sensors
+
+    def log_exercise(self, db: Session, user: models.User, data: schemas.ExercisePayload):
+        met_calc = METCalculator()
+
+        calories = data.calories_burned
+        if calories is None:
+            calories = met_calc.calculate_calories(db, user, data.activity_type, data.duration_minutes)
+
+        # 1. Save detailed log
+        exercise_log = models.ExerciseLog(
+            user_id=user.user_id,
+            activity_type=data.activity_type,
+            duration_minutes=data.duration_minutes,
+            calories_burned=calories
+        )
+        db.add(exercise_log)
+
+        # 2. Update Daily Log (Summary)
+        # Use user's local date, not server date
+        utc_now = datetime.now(timezone.utc)
+        local_date = get_user_local_date(user, utc_now)
+
+        daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == user.user_id, models.DailyLog.date == local_date).first()
+        if not daily_log:
+            daily_log = models.DailyLog(user_id=user.user_id, date=local_date, total_calories_burned=0, total_calories_consumed=0)
+            db.add(daily_log)
+
+        daily_log.total_calories_burned += calories
+        db.commit()
+        return daily_log
+
+    def log_food(self, db: Session, user: models.User, data: schemas.FoodLogPayload):
+        off_service = OpenFoodFactsService()
+
+        food_item = None
+        if data.barcode:
+            food_item = off_service.get_product(data.barcode, db)
+
+        # If not found or no barcode, handle manual or fallback
+        # Ideally if no barcode, we look up by name in cache or fail to manual
+        if not food_item and data.food_name:
+             # Try to find by name in cache
+             food_item = db.query(models.NutritionCache).filter(models.NutritionCache.food_name == data.food_name).first()
+
+        if not food_item:
+            # Plan says "API Fail (404): Flag for user manual entry".
+            # For automation, we might need to create a placeholder or error out.
+            # Let's create a placeholder Manual entry if it doesn't exist
+            if data.food_name:
+                 food_item = models.NutritionCache(
+                    barcode=data.barcode, # might be None
+                    food_name=data.food_name,
+                    calories=0, # Unknown
+                    protein=0,
+                    fat=0,
+                    carbs=0,
+                    fiber=0,
+                    source="MANUAL"
+                 )
+                 db.add(food_item)
+                 db.commit()
+                 db.refresh(food_item)
+            else:
+                return None, "Food not found and no name provided"
+
+        # Log Item
+        item_log = models.FoodItemLog(
+            user_id=user.user_id,
+            meal_id=data.meal_id,
+            food_id=food_item.food_id,
+            serving_size=data.serving_size,
+            quantity=data.quantity
+        )
+        db.add(item_log)
+
+        # Update Daily Log
+        # Use user's local date
+        utc_now = datetime.now(timezone.utc)
+        local_date = get_user_local_date(user, utc_now)
+
+        daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == user.user_id, models.DailyLog.date == local_date).first()
+        if not daily_log:
+            daily_log = models.DailyLog(user_id=user.user_id, date=local_date, total_calories_burned=0, total_calories_consumed=0)
+            db.add(daily_log)
+
+        total_cals = food_item.calories * data.serving_size * data.quantity
+        daily_log.total_calories_consumed += total_cals
+
+        db.commit()
+        return item_log, None
 
 class BackupService:
     CONFIG_KEY = "backup_encryption_key"

@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from app import database, models
-from app.routers import auth, users, medication, health, webhook, prescribers, admin, nutrition, medical
+from app.routers import auth, users, medication, health, webhook, prescribers, admin, nutrition, medical, homeassistant
 from app.version import BUILD_VERSION, BUILD_DATE
 import os
 
@@ -25,6 +25,7 @@ app.include_router(admin.router)
 app.include_router(nutrition.router)
 app.include_router(prescribers.router) # Was missing import? No, it was imported.
 app.include_router(medical.router) # Add Medical
+app.include_router(homeassistant.router)
 
 # Mount Static Files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
