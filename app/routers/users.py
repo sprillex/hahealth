@@ -46,6 +46,8 @@ def update_user_profile(
     # Profile Fields
     if user_update.birth_year is not None:
         current_user.birth_year = user_update.birth_year
+    if user_update.date_of_birth is not None:
+        current_user.date_of_birth = user_update.date_of_birth
     if user_update.gender is not None:
         current_user.gender = user_update.gender
     if user_update.goal_weight_kg is not None:

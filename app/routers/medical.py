@@ -22,6 +22,39 @@ def create_allergy(
     db.refresh(db_allergy)
     return db_allergy
 
+@router.put("/allergies/{allergy_id}", response_model=schemas.AllergyResponse)
+def update_allergy(
+    allergy_id: int,
+    allergy: schemas.AllergyCreate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    db_allergy = db.query(models.Allergy).filter(models.Allergy.allergy_id == allergy_id, models.Allergy.user_id == current_user.user_id).first()
+    if not db_allergy:
+        raise HTTPException(status_code=404, detail="Allergy not found")
+
+    data = allergy.dict(exclude_unset=True)
+    for key, value in data.items():
+        setattr(db_allergy, key, value)
+
+    db.commit()
+    db.refresh(db_allergy)
+    return db_allergy
+
+@router.delete("/allergies/{allergy_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_allergy(
+    allergy_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    db_allergy = db.query(models.Allergy).filter(models.Allergy.allergy_id == allergy_id, models.Allergy.user_id == current_user.user_id).first()
+    if not db_allergy:
+        raise HTTPException(status_code=404, detail="Allergy not found")
+
+    db.delete(db_allergy)
+    db.commit()
+    return None
+
 @router.get("/allergies", response_model=List[schemas.AllergyResponse])
 def get_allergies(
     db: Session = Depends(database.get_db),

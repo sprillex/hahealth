@@ -19,6 +19,7 @@ class User(Base):
 
     # New fields
     birth_year = Column(Integer)
+    date_of_birth = Column(Date, nullable=True) # Full birthday
     gender = Column(String) # 'M', 'F', 'O'
     goal_weight_kg = Column(Float)
     calorie_goal = Column(Integer)

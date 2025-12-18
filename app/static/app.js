@@ -82,6 +82,28 @@ function populateTimezones() {
     });
 }
 
+// --- Utils ---
+
+function formatWeight(kg) {
+    if (!user || !kg) return '0 kg';
+    if (user.unit_system === 'IMPERIAL') {
+        const lbs = kg / 0.453592;
+        return `${lbs.toFixed(1)} lbs`;
+    }
+    return `${kg.toFixed(1)} kg`;
+}
+
+function formatHeight(cm) {
+    if (!user || !cm) return '0 cm';
+    if (user.unit_system === 'IMPERIAL') {
+        const inches = cm / 2.54;
+        const ft = Math.floor(inches / 12);
+        const remIn = Math.round(inches % 12);
+        return `${ft}'${remIn}"`;
+    }
+    return `${cm.toFixed(1)} cm`;
+}
+
 // --- Auth ---
 
 async function handleLogin(e) {
@@ -513,7 +535,24 @@ async function handleSaveMed(e) {
             alert('Error saving medication');
         }
     } else {
-        alert("Edit functionality requires backend update. Only Create is fully supported in UI now.");
+        try {
+            const res = await fetch(`${API_URL}/medications/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                closeMedModal();
+                loadMedications();
+            } else {
+                alert('Error updating medication');
+            }
+        } catch (err) {
+            alert('Error updating medication');
+        }
     }
 }
 
@@ -676,9 +715,27 @@ async function handleLogFood(e) {
 
 // --- Medical (Allergies & Vaccinations) ---
 
-function openAllergyModal() {
+function openAllergyModal(allergy = null) {
     document.getElementById('allergy-modal').classList.remove('hidden');
-    document.getElementById('allergy-form').reset();
+    const form = document.getElementById('allergy-form');
+    form.reset();
+
+    // Cleanup any existing ID input
+    const existingId = form.querySelector('input[name="allergy_id"]');
+    if(existingId) existingId.remove();
+
+    if (allergy) {
+        // Edit mode
+        const idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'allergy_id';
+        idInput.value = allergy.allergy_id;
+        form.appendChild(idInput);
+
+        form.querySelector('input[name="allergen"]').value = allergy.allergen;
+        form.querySelector('input[name="reaction"]').value = allergy.reaction || '';
+        form.querySelector('select[name="severity"]').value = allergy.severity || 'Mild';
+    }
 }
 
 function closeAllergyModal() {
@@ -689,10 +746,20 @@ async function handleAddAllergy(e) {
     e.preventDefault();
     const fd = new FormData(e.target);
     const data = Object.fromEntries(fd.entries());
+    const id = data.allergy_id;
+    if (id) delete data.allergy_id;
 
     try {
-        const res = await fetch(`${API_URL}/medical/allergies`, {
-            method: 'POST',
+        let url = `${API_URL}/medical/allergies`;
+        let method = 'POST';
+
+        if (id) {
+            url = `${API_URL}/medical/allergies/${id}`;
+            method = 'PUT';
+        }
+
+        const res = await fetch(url, {
+            method: method,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
@@ -700,14 +767,31 @@ async function handleAddAllergy(e) {
             body: JSON.stringify(data)
         });
         if (res.ok) {
-            alert('Allergy added');
+            alert(id ? 'Allergy updated' : 'Allergy added');
             closeAllergyModal();
-            loadAllergiesSettings(); // Refresh list if on settings
+            loadAllergiesSettings();
         } else {
-            alert('Error adding allergy');
+            alert('Error saving allergy');
         }
     } catch(err) {
-        alert('Error adding allergy');
+        alert('Error saving allergy');
+    }
+}
+
+async function deleteAllergy(id) {
+    if (!confirm("Are you sure?")) return;
+    try {
+        const res = await fetch(`${API_URL}/medical/allergies/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            loadAllergiesSettings();
+        } else {
+            alert('Error deleting allergy');
+        }
+    } catch(err) {
+        alert('Error deleting allergy');
     }
 }
 
@@ -749,7 +833,23 @@ async function loadAllergiesSettings() {
             div.innerHTML = '<em>No allergies logged.</em>';
             return;
         }
-        div.innerHTML = '<ul>' + list.map(a => `<li><strong>${a.allergen}</strong> - ${a.severity || ''} (${a.reaction || ''})</li>`).join('') + '</ul>';
+
+        let html = '<ul>';
+        list.forEach(a => {
+            // Need to escape strings in real app
+            const json = JSON.stringify(a).replace(/"/g, '&quot;');
+            html += `
+            <li style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <span><strong>${a.allergen}</strong> - ${a.severity || ''}</span>
+                <div>
+                    <button onclick="openAllergyModal(${json})" style="padding: 2px 5px; font-size: 0.8em; margin-right: 5px;">Edit</button>
+                    <button onclick="deleteAllergy(${a.allergy_id})" style="padding: 2px 5px; font-size: 0.8em; background-color: #dc3545;">Del</button>
+                </div>
+            </li>`;
+        });
+        html += '</ul>';
+        div.innerHTML = html;
+
     } catch(err) {
         div.innerHTML = 'Error loading allergies';
     }
@@ -767,9 +867,9 @@ async function loadVaccinationReport() {
 
         let html = '<table style="width:100%; text-align:left;"><thead><tr><th>Vaccine</th><th>Last Date</th><th>Status</th></tr></thead><tbody>';
         report.forEach(r => {
-            let color = 'black';
-            if (r.status === 'Overdue') color = 'red';
-            if (r.status === 'Up to Date' || r.status === 'Completed') color = 'green';
+            let cls = 'status-neutral';
+            if (r.status === 'Overdue') cls = 'status-warning';
+            if (r.status === 'Up to Date' || r.status === 'Completed') cls = 'status-ok';
 
             const dateStr = r.last_date ? new Date(r.last_date).toLocaleDateString() : 'Never';
             let statusText = r.status;
@@ -780,7 +880,7 @@ async function loadVaccinationReport() {
             html += `<tr>
                 <td>${r.vaccine_type}</td>
                 <td>${dateStr}</td>
-                <td style="color:${color}; font-weight:bold;">${statusText}</td>
+                <td class="${cls}">${statusText}</td>
             </tr>`;
         });
         html += '</tbody></table>';
@@ -1026,8 +1126,14 @@ async function loadReports() {
     // Populate User Info
     if (user) {
         document.getElementById('rep-name').innerText = user.name;
-        document.getElementById('rep-dob').innerText = user.birth_year || 'N/A';
-        document.getElementById('rep-weight').innerText = (user.weight_kg ? user.weight_kg + ' kg' : 'N/A');
+        let dobStr = 'N/A';
+        if (user.date_of_birth) {
+            dobStr = new Date(user.date_of_birth).toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+        } else if (user.birth_year) {
+            dobStr = user.birth_year;
+        }
+        document.getElementById('rep-dob').innerText = dobStr;
+        document.getElementById('rep-weight').innerText = formatWeight(user.weight_kg);
         document.getElementById('rep-date').innerText = new Date().toLocaleDateString();
     }
 
@@ -1191,7 +1297,17 @@ function loadProfileData() {
     document.getElementById('profile-height').value = height ? height.toFixed(1) : '';
     document.getElementById('profile-weight').value = weight ? weight.toFixed(1) : '';
     document.getElementById('profile-goal-weight').value = goalWeight ? goalWeight.toFixed(1) : '';
-    document.getElementById('profile-birthyear').value = user.birth_year || '';
+
+    // DOB
+    if (user.date_of_birth) {
+        document.getElementById('profile-dob').value = user.date_of_birth; // YYYY-MM-DD
+    } else if (user.birth_year) {
+        // Fallback? Or leave empty?
+        // User asked for "full birthday", so previous data (year) might be incomplete.
+        // We can just leave date picker empty if no full date.
+    }
+    document.getElementById('profile-birthyear').value = user.birth_year || ''; // Keep hidden for legacy? Or deprecated.
+
     document.getElementById('profile-gender').value = user.gender || '';
     document.getElementById('profile-cal-goal').value = user.calorie_goal || '';
 
@@ -1221,7 +1337,8 @@ async function handleUpdateProfile(e) {
         height_cm: height || null,
         weight_kg: weight || null,
         goal_weight_kg: goalWeight || null,
-        birth_year: parseInt(document.getElementById('profile-birthyear').value) || null,
+        birth_year: null, // Deprecated in UI, or keep sync?
+        date_of_birth: document.getElementById('profile-dob').value || null,
         gender: document.getElementById('profile-gender').value || null,
         calorie_goal: parseInt(document.getElementById('profile-cal-goal').value) || null,
         timezone: document.getElementById('profile-timezone').value

@@ -162,3 +162,12 @@ button:hover {
     width: auto;
     margin: 0;
 }
+
+/* Status Colors (Light/Dark Mode Compatible) */
+.status-neutral { color: #666; font-weight: bold; }
+.status-ok { color: #28a745; font-weight: bold; } /* Green */
+.status-warning { color: #dc3545; font-weight: bold; } /* Red */
+
+body.dark-theme .status-neutral { color: #aaa; }
+body.dark-theme .status-ok { color: #4ade80; } /* Lighter Green */
+body.dark-theme .status-warning { color: #ef4444; } /* Lighter Red */

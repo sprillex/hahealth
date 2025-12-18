@@ -31,6 +31,27 @@ def read_medications(
     meds = db.query(models.Medication).filter(models.Medication.user_id == current_user.user_id).offset(skip).limit(limit).all()
     return meds
 
+@router.put("/{med_id}", response_model=schemas.MedicationResponse)
+def update_medication(
+    med_id: int,
+    med: schemas.MedicationCreate, # Reusing Create schema as Update usually has same fields
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    db_med = db.query(models.Medication).filter(models.Medication.med_id == med_id, models.Medication.user_id == current_user.user_id).first()
+    if not db_med:
+        raise HTTPException(status_code=404, detail="Medication not found")
+
+    # Update fields
+    # Iterate over schema fields and update
+    data = med.dict(exclude_unset=True)
+    for key, value in data.items():
+        setattr(db_med, key, value)
+
+    db.commit()
+    db.refresh(db_med)
+    return db_med
+
 @router.get("/log")
 def read_medication_logs(
     date_str: Optional[str] = None,

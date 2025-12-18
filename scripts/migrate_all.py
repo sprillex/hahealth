@@ -142,6 +142,20 @@ def migrate_all():
     cursor.execute("CREATE INDEX IF NOT EXISTS ix_vaccinations_user_id ON vaccinations (user_id)")
     print(" - Checked vaccinations table.")
 
+    # 8. Date of Birth
+    if "users" in existing_tables:
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [col[1] for col in cursor.fetchall()]
+        if "date_of_birth" not in columns:
+            print("Adding 'date_of_birth' column to 'users' table...")
+            try:
+                cursor.execute("ALTER TABLE users ADD COLUMN date_of_birth DATE")
+                # Migrate birth_year to date_of_birth (Jan 1st)
+                print("Migrating birth_year data...")
+                cursor.execute("UPDATE users SET date_of_birth = printf('%d-01-01', birth_year) WHERE birth_year IS NOT NULL")
+            except sqlite3.OperationalError as e:
+                print(f"Error adding column: {e}")
+
     conn.commit()
     conn.close()
     print("All migrations complete.")

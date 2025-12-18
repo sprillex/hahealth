@@ -9,6 +9,7 @@ class UserBase(BaseModel):
     weight_kg: float
     height_cm: float
     birth_year: Optional[int] = None
+    date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     goal_weight_kg: Optional[float] = None
     calorie_goal: Optional[int] = None
@@ -23,6 +24,7 @@ class UserUpdate(BaseModel):
     height_cm: Optional[float] = None
     unit_system: Optional[str] = None
     birth_year: Optional[int] = None
+    date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     goal_weight_kg: Optional[float] = None
     calorie_goal: Optional[int] = None
