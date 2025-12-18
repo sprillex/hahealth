@@ -36,6 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Timezone Init
     populateTimezones();
 
+    // Load Version
+    loadVersion();
+
     // Nutrition Listeners
     document.getElementById('create-food-form').addEventListener('submit', handleCreateFood);
     document.getElementById('food-log-form').addEventListener('submit', handleLogFood);
@@ -80,6 +83,19 @@ function populateTimezones() {
         opt.innerText = tz;
         select.appendChild(opt);
     });
+}
+
+async function loadVersion() {
+    try {
+        const res = await fetch(`${API_URL}/version`);
+        if (res.ok) {
+            const data = await res.json();
+            const el = document.getElementById('app-version');
+            if(el) el.innerText = `${data.version} (${data.date})`;
+        }
+    } catch (e) {
+        console.error("Version load failed", e);
+    }
 }
 
 // --- Utils ---

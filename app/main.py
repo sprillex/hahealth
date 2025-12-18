@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from app import database, models
 from app.routers import auth, users, medication, health, webhook, prescribers, admin, nutrition, medical
+from app.version import BUILD_VERSION, BUILD_DATE
 import os
 
 # Create DB tables
@@ -40,3 +41,7 @@ async def custom_swagger_ui_html():
 @app.get("/")
 async def read_index():
     return FileResponse('app/static/index.html')
+
+@app.get("/api/v1/version")
+async def get_version():
+    return {"version": BUILD_VERSION, "date": BUILD_DATE}
