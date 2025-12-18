@@ -25,3 +25,7 @@ INFO:     127.0.0.1:59630 - "GET /api/v1/users/me HTTP/1.1" 200 OK
 INFO:     127.0.0.1:59616 - "GET /api/v1/medications/log?date_str=2025-12-18 HTTP/1.1" 200 OK
 INFO:     127.0.0.1:59630 - "GET /api/v1/log/summary?date_str=2025-12-18 HTTP/1.1" 200 OK
 INFO:     127.0.0.1:59616 - "GET /api/v1/log/summary?date_str=2025-12-18 HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [81156]

@@ -174,3 +174,33 @@ class NutritionCacheResponse(NutritionCacheBase):
     source: str
     class Config:
         from_attributes = True
+
+# Medical History
+class AllergyBase(BaseModel):
+    allergen: str
+    reaction: Optional[str] = None
+    severity: Optional[str] = None
+
+class AllergyCreate(AllergyBase):
+    pass
+
+class AllergyResponse(AllergyBase):
+    allergy_id: int
+    user_id: int
+    class Config:
+        from_attributes = True
+
+class VaccinationBase(BaseModel):
+    vaccine_type: str
+    date_administered: date
+
+class VaccinationCreate(VaccinationBase):
+    pass
+
+class VaccinationResponse(VaccinationBase):
+    vaccine_id: int
+    user_id: int
+    status: Optional[str] = None # For report (Overdue, etc)
+    next_due: Optional[date] = None
+    class Config:
+        from_attributes = True

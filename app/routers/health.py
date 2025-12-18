@@ -33,7 +33,12 @@ def log_exercise(
 ):
     service = services.HealthLogService()
     log = service.log_exercise(db, current_user, exercise)
-    return {"message": "Exercise logged", "calories_burned": log.total_calories_burned}
+    # The return value log is a DailyLog object which only has date and total_cals.
+    # The caller expects calories burned.
+    # In services.py log_exercise returns the DailyLog.
+    # It also creates an ExerciseLog.
+    # The DailyLog has total_calories_burned updated.
+    return {"message": "Exercise logged", "calories_burned": exercise.calories_burned or 0} # Approximate or need to fetch details
 
 @router.get("/history/bp")
 def get_bp_history(
@@ -61,6 +66,12 @@ def get_exercise_history(
     history = db.query(models.ExerciseLog).filter(
         models.ExerciseLog.user_id == current_user.user_id
     ).order_by(models.ExerciseLog.timestamp.desc()).limit(limit).all()
+
+    # Attach timezone info (SQLite stores as naive UTC)
+    for ex in history:
+        if ex.timestamp and ex.timestamp.tzinfo is None:
+            ex.timestamp = ex.timestamp.replace(tzinfo=timezone.utc)
+
     return history
 
 @router.get("/summary")
@@ -124,19 +135,42 @@ def get_daily_summary(
     ).all()
 
     macros = {"protein": 0, "fat": 0, "carbs": 0, "fiber": 0}
+    food_list = []
     for log in food_logs:
         multiplier = log.serving_size * log.quantity
-        # Assuming values in cache are numeric and defaults are 0
         macros["protein"] += (log.nutrition_info.protein or 0) * multiplier
         macros["fat"] += (log.nutrition_info.fat or 0) * multiplier
         macros["carbs"] += (log.nutrition_info.carbs or 0) * multiplier
         macros["fiber"] += (log.nutrition_info.fiber or 0) * multiplier
 
+        food_list.append({
+            "name": log.nutrition_info.food_name,
+            "calories": (log.nutrition_info.calories or 0) * multiplier,
+            "meal": log.meal_id
+        })
+
+    # Fetch Exercises for Today
+    exercises_list = []
+    daily_exercises = db.query(models.ExerciseLog).filter(
+        models.ExerciseLog.user_id == current_user.user_id,
+        models.ExerciseLog.timestamp >= utc_start,
+        models.ExerciseLog.timestamp <= utc_end
+    ).order_by(models.ExerciseLog.timestamp.desc()).all()
+
+    for ex in daily_exercises:
+        exercises_list.append({
+            "activity": ex.activity_type,
+            "duration": ex.duration_minutes,
+            "calories": ex.calories_burned
+        })
+
     return {
         "blood_pressure": bp_str,
         "calories_consumed": calories_consumed,
         "calories_burned": calories_burned,
-        "macros": macros
+        "macros": macros,
+        "food_logs": food_list,
+        "exercises": exercises_list
     }
 
 @router.get("/reports/compliance")

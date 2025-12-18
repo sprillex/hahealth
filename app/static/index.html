@@ -124,8 +124,21 @@
                     </div>
 
                     <div class="card" style="margin-top: 20px;">
-                        <h3>Medications Taken</h3>
-                        <div id="meds-taken-list">Loading...</div>
+                        <h3>Activity Log</h3>
+                        <div class="summary-grid" style="text-align: left;">
+                            <div>
+                                <h4>Medications Taken</h4>
+                                <div id="meds-taken-list">Loading...</div>
+                            </div>
+                            <div>
+                                <h4>Exercises Today</h4>
+                                <div id="exercises-today-list">Loading...</div>
+                            </div>
+                            <div>
+                                <h4>Food Log Today</h4>
+                                <div id="food-today-list">Loading...</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -219,6 +232,29 @@
                             </form>
                         </div>
 
+                        <!-- Vaccination Form -->
+                        <div class="card">
+                            <h3>Log Vaccination</h3>
+                            <form id="vac-form">
+                                <div class="form-group">
+                                    <label>Vaccine Type</label>
+                                    <select name="vaccine_type">
+                                        <option value="Influenza">Influenza (Flu)</option>
+                                        <option value="Covid-19">Covid-19</option>
+                                        <option value="Tdap (Tetanus)">Tdap (Tetanus)</option>
+                                        <option value="Shingles Dose 1">Shingles Dose 1</option>
+                                        <option value="Shingles Dose 2">Shingles Dose 2</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Date Administered</label>
+                                    <input type="date" name="date_administered" required>
+                                </div>
+                                <button type="submit" class="btn-primary">Log Vaccination</button>
+                            </form>
+                        </div>
+
                         <!-- Exercise Form -->
                         <div class="card">
                             <h3>Log Exercise</h3>
@@ -264,11 +300,44 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <h3>Vaccinations</h3>
+                        <div id="vaccination-report">Loading...</div>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <h3>Allergies</h3>
+                        <div id="allergy-report">Loading...</div>
+                    </div>
                 </div>
 
                 <!-- Reports Tab -->
                 <div id="tab-reports" class="tab-content hidden">
                     <h2>Reports</h2>
+
+                    <div class="card" id="report-user-info" style="margin-bottom: 20px;">
+                        <h3>User Profile</h3>
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <h4>Name</h4>
+                                <div class="value" style="font-size: 1.2em;" id="rep-name">--</div>
+                            </div>
+                            <div class="summary-item">
+                                <h4>DOB</h4>
+                                <div class="value" style="font-size: 1.2em;" id="rep-dob">--</div>
+                            </div>
+                            <div class="summary-item">
+                                <h4>Weight</h4>
+                                <div class="value" style="font-size: 1.2em;" id="rep-weight">--</div>
+                            </div>
+                            <div class="summary-item">
+                                <h4>Report Date</h4>
+                                <div class="value" style="font-size: 1.2em;" id="rep-date">--</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="card">
                         <h3>Medication Compliance (Last 30 Days)</h3>
                         <div class="summary-grid">
@@ -293,6 +362,7 @@
                             <thead>
                                 <tr>
                                     <th>Medication</th>
+                                    <th>Schedule</th>
                                     <th>Taken / Exp</th>
                                     <th>Compliance</th>
                                 </tr>
@@ -470,6 +540,15 @@
                             </form>
                         </div>
 
+                        <!-- Medical Profile (Allergies) -->
+                        <div class="card">
+                            <div class="header-actions">
+                                <h3>Allergies</h3>
+                                <button onclick="openAllergyModal()">+ Add</button>
+                            </div>
+                            <div id="allergy-list-settings">Loading...</div>
+                        </div>
+
                         <!-- App Settings -->
                         <div class="card">
                             <h3>Appearance</h3>
@@ -485,6 +564,35 @@
     </div>
 
     <!-- Modals -->
+    <div id="allergy-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeAllergyModal()">&times;</span>
+            <h2>Add Allergy</h2>
+            <form id="allergy-form">
+                <div class="form-group">
+                    <label>Allergen</label>
+                    <input type="text" name="allergen" required placeholder="e.g. Peanuts, Penicillin">
+                </div>
+                <div class="form-group">
+                    <label>Reaction</label>
+                    <input type="text" name="reaction" placeholder="e.g. Hives, Anaphylaxis">
+                </div>
+                <div class="form-group">
+                    <label>Severity</label>
+                    <select name="severity">
+                        <option value="Mild">Mild</option>
+                        <option value="Moderate">Moderate</option>
+                        <option value="Severe">Severe</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="closeAllergyModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="food-modal" class="modal hidden">
         <div class="modal-content">
             <span class="close" onclick="closeFoodModal()">&times;</span>

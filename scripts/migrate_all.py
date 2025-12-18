@@ -10,6 +10,10 @@ def migrate_all():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
+    # Get existing tables
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    existing_tables = [row[0] for row in cursor.fetchall()]
+
     print("Running migrations...")
 
     # 1. Unit System (v1)
@@ -111,6 +115,32 @@ def migrate_all():
         print(" - Added timezone to users.")
     except sqlite3.OperationalError:
         pass
+
+    # 7. Allergies & Vaccinations
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS allergies (
+            allergy_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            allergen VARCHAR,
+            reaction VARCHAR,
+            severity VARCHAR,
+            FOREIGN KEY(user_id) REFERENCES users(user_id)
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS ix_allergies_user_id ON allergies (user_id)")
+    print(" - Checked allergies table.")
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS vaccinations (
+            vaccine_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            vaccine_type VARCHAR,
+            date_administered DATE,
+            FOREIGN KEY(user_id) REFERENCES users(user_id)
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS ix_vaccinations_user_id ON vaccinations (user_id)")
+    print(" - Checked vaccinations table.")
 
     conn.commit()
     conn.close()

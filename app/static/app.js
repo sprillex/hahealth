@@ -22,6 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('bp-form').addEventListener('submit', handleLogBP);
     document.getElementById('weight-form').addEventListener('submit', handleLogWeight);
     document.getElementById('exercise-form').addEventListener('submit', handleLogExercise);
+    document.getElementById('vac-form').addEventListener('submit', handleLogVaccination);
+    document.getElementById('allergy-form').addEventListener('submit', handleAddAllergy);
     document.getElementById('profile-form').addEventListener('submit', handleUpdateProfile);
     document.getElementById('windows-form').addEventListener('submit', handleUpdateWindows);
     document.getElementById('password-form').addEventListener('submit', handleChangePassword);
@@ -184,8 +186,13 @@ function showTab(tabName) {
     if (tabName === 'reports') {
         loadReports();
         loadBPHistory();
+        loadVaccinationReport();
+        loadAllergyReport();
     }
-    if (tabName === 'settings') loadProfileData();
+    if (tabName === 'settings') {
+        loadProfileData();
+        loadAllergiesSettings();
+    }
     if (tabName === 'health-logs') {
         updateWeightUnitDisplay();
         loadExerciseHistory();
@@ -240,8 +247,28 @@ async function loadSummary() {
         updateRecommendations(targets);
         renderGauges(summaryData, targets);
 
+        // Render Today Lists
+        renderTodayLists(summaryData);
+
     } catch (err) {
         console.error("Summary load error", err);
+    }
+}
+
+function renderTodayLists(data) {
+    const exList = document.getElementById('exercises-today-list');
+    const foodList = document.getElementById('food-today-list');
+
+    if (data.exercises && data.exercises.length > 0) {
+        exList.innerHTML = '<ul>' + data.exercises.map(ex => `<li>${ex.activity} (${ex.duration} min) - ${Math.round(ex.calories)} kcal</li>`).join('') + '</ul>';
+    } else {
+        exList.innerHTML = '<em>No exercise.</em>';
+    }
+
+    if (data.food_logs && data.food_logs.length > 0) {
+        foodList.innerHTML = '<ul>' + data.food_logs.map(f => `<li>${f.name} (${Math.round(f.calories)} kcal)</li>`).join('') + '</ul>';
+    } else {
+        foodList.innerHTML = '<em>No food logged.</em>';
     }
 }
 
@@ -647,6 +674,141 @@ async function handleLogFood(e) {
     }
 }
 
+// --- Medical (Allergies & Vaccinations) ---
+
+function openAllergyModal() {
+    document.getElementById('allergy-modal').classList.remove('hidden');
+    document.getElementById('allergy-form').reset();
+}
+
+function closeAllergyModal() {
+    document.getElementById('allergy-modal').classList.add('hidden');
+}
+
+async function handleAddAllergy(e) {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = Object.fromEntries(fd.entries());
+
+    try {
+        const res = await fetch(`${API_URL}/medical/allergies`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            alert('Allergy added');
+            closeAllergyModal();
+            loadAllergiesSettings(); // Refresh list if on settings
+        } else {
+            alert('Error adding allergy');
+        }
+    } catch(err) {
+        alert('Error adding allergy');
+    }
+}
+
+async function handleLogVaccination(e) {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = Object.fromEntries(fd.entries());
+
+    try {
+        const res = await fetch(`${API_URL}/medical/vaccinations`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            alert('Vaccination logged');
+            e.target.reset();
+        } else {
+            alert('Error logging vaccination');
+        }
+    } catch(err) {
+        alert('Error logging vaccination');
+    }
+}
+
+async function loadAllergiesSettings() {
+    const div = document.getElementById('allergy-list-settings');
+    if(!div) return;
+    div.innerHTML = 'Loading...';
+    try {
+        const res = await fetch(`${API_URL}/medical/allergies`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const list = await res.json();
+        if (list.length === 0) {
+            div.innerHTML = '<em>No allergies logged.</em>';
+            return;
+        }
+        div.innerHTML = '<ul>' + list.map(a => `<li><strong>${a.allergen}</strong> - ${a.severity || ''} (${a.reaction || ''})</li>`).join('') + '</ul>';
+    } catch(err) {
+        div.innerHTML = 'Error loading allergies';
+    }
+}
+
+async function loadVaccinationReport() {
+    const div = document.getElementById('vaccination-report');
+    if(!div) return;
+    div.innerHTML = 'Loading...';
+    try {
+        const res = await fetch(`${API_URL}/medical/reports/vaccinations`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const report = await res.json();
+
+        let html = '<table style="width:100%; text-align:left;"><thead><tr><th>Vaccine</th><th>Last Date</th><th>Status</th></tr></thead><tbody>';
+        report.forEach(r => {
+            let color = 'black';
+            if (r.status === 'Overdue') color = 'red';
+            if (r.status === 'Up to Date' || r.status === 'Completed') color = 'green';
+
+            const dateStr = r.last_date ? new Date(r.last_date).toLocaleDateString() : 'Never';
+            let statusText = r.status;
+            if (r.next_due) {
+                statusText += ` (Due: ${new Date(r.next_due).toLocaleDateString()})`;
+            }
+
+            html += `<tr>
+                <td>${r.vaccine_type}</td>
+                <td>${dateStr}</td>
+                <td style="color:${color}; font-weight:bold;">${statusText}</td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        div.innerHTML = html;
+
+    } catch(err) {
+        div.innerHTML = 'Error loading report';
+    }
+}
+
+async function loadAllergyReport() {
+    const div = document.getElementById('allergy-report');
+    if(!div) return;
+    try {
+        const res = await fetch(`${API_URL}/medical/allergies`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const list = await res.json();
+        if (list.length === 0) {
+            div.innerHTML = '<em>No allergies known.</em>';
+            return;
+        }
+        div.innerHTML = '<ul>' + list.map(a => `<li><strong style="color:red;">${a.allergen}</strong>: ${a.reaction || ''} [${a.severity || ''}]</li>`).join('') + '</ul>';
+    } catch(err) {
+        div.innerHTML = 'Error loading allergies';
+    }
+}
+
 // --- Health Logs ---
 
 async function handleLogBP(e) {
@@ -727,9 +889,12 @@ async function loadExerciseHistory() {
 
         tbody.innerHTML = '';
         logs.forEach(log => {
-            const date = new Date(log.timestamp).toLocaleDateString() + ' ' + new Date(log.timestamp).toLocaleTimeString();
+            // log.timestamp should be ISO UTC e.g. "2025-12-18T05:00:00+00:00"
+            // browser new Date() handles conversion to local time
+            const d = new Date(log.timestamp);
+            const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             const row = `<tr>
-                <td>${date}</td>
+                <td>${dateStr}</td>
                 <td>${log.activity_type}</td>
                 <td>${log.duration_minutes} min</td>
                 <td>${log.calories_burned.toFixed(1)} kcal</td>
@@ -858,6 +1023,14 @@ function updateWeightUnitDisplay() {
 // --- Reports ---
 
 async function loadReports() {
+    // Populate User Info
+    if (user) {
+        document.getElementById('rep-name').innerText = user.name;
+        document.getElementById('rep-dob').innerText = user.birth_year || 'N/A';
+        document.getElementById('rep-weight').innerText = (user.weight_kg ? user.weight_kg + ' kg' : 'N/A');
+        document.getElementById('rep-date').innerText = new Date().toLocaleDateString();
+    }
+
     try {
         const res = await fetch(`${API_URL}/log/reports/compliance`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -878,13 +1051,14 @@ async function loadReports() {
 
                 const row = `<tr>
                     <td>${med.name}</td>
+                    <td>${med.schedule}</td>
                     <td>${med.taken} / ${med.expected}</td>
                     <td style="color: ${color}; font-weight: bold;">${med.compliance_percentage}%</td>
                 </tr>`;
                 tbody.innerHTML += row;
             });
         } else {
-            tbody.innerHTML = '<tr><td colspan="3">No data available.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4">No data available.</td></tr>';
         }
 
     } catch (err) {

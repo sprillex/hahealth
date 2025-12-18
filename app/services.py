@@ -392,13 +392,32 @@ class HealthLogService:
         for mid, stats in med_stats.items():
             exp = stats["expected"]
             tak = stats["taken"]
-            pct = (tak / exp * 100) if exp > 0 else 0.0
+            if exp == 0:
+                pct = 100.0 # No schedule = 100% compliance
+            else:
+                pct = (tak / exp * 100)
+
+            # Fetch med object again to get schedule string? Or cache it.
+            # Using med_stats which we initialized earlier.
+            # We didn't store schedule in med_stats. Let's fix that.
+            # But we can query it or loop again.
+            # Ideally update initialization.
+
+            med = next((m for m in meds if m.med_id == mid), None)
+            schedule_str = []
+            if med:
+                if med.schedule_morning: schedule_str.append("M")
+                if med.schedule_afternoon: schedule_str.append("A")
+                if med.schedule_evening: schedule_str.append("E")
+                if med.schedule_bedtime: schedule_str.append("B")
+
             medications_list.append({
                 "name": stats["name"],
                 "compliance_percentage": round(pct, 1),
                 "taken": tak,
                 "expected": exp,
-                "missed": exp - tak
+                "missed": exp - tak if exp > 0 else 0,
+                "schedule": ", ".join(schedule_str)
             })
 
         return {

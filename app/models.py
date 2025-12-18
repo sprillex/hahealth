@@ -36,6 +36,25 @@ class User(Base):
     food_item_logs = relationship("FoodItemLog", back_populates="user")
     api_keys = relationship("APIKey", back_populates="user")
     exercise_logs = relationship("ExerciseLog", back_populates="user")
+    allergies = relationship("Allergy", back_populates="user")
+    vaccinations = relationship("Vaccination", back_populates="user")
+
+class Allergy(Base):
+    __tablename__ = "allergies"
+    allergy_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    allergen = Column(String)
+    reaction = Column(String, nullable=True)
+    severity = Column(String, nullable=True)
+    user = relationship("User", back_populates="allergies")
+
+class Vaccination(Base):
+    __tablename__ = "vaccinations"
+    vaccine_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    vaccine_type = Column(String) # Influenza, Covid, Tdap, Shingles Dose 1, Shingles Dose 2
+    date_administered = Column(Date)
+    user = relationship("User", back_populates="vaccinations")
 
 class SystemConfig(Base):
     __tablename__ = "system_config"
