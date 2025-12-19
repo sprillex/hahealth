@@ -234,6 +234,8 @@ function showTab(tabName) {
     if (tabName === 'health-logs') {
         updateWeightUnitDisplay();
         loadExerciseHistory();
+        loadVaccinationReport();
+        loadAllergyReport();
     }
 }
 
