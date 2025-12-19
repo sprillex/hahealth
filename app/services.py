@@ -150,8 +150,29 @@ class HealthLogService:
         return item_log, None
 
     def calculate_compliance_report(self, db: Session, user: models.User):
-        end_date = get_user_local_date(user, datetime.now(timezone.utc)) - timedelta(days=1)
-        start_date = end_date - timedelta(days=29)
+# [KEPT FROM CURRENT CHANGE] Use your new timezone-aware date logic
+    end_date = get_user_local_date(user, datetime.now(timezone.utc)) - timedelta(days=1)
+    start_date = end_date - timedelta(days=29)
+
+    # [KEPT FROM INCOMING CHANGE] Keep the logic that actually fetches the data
+    # Get active medications
+    meds = db.query(models.Medication).filter(models.Medication.user_id == user.user_id).all()
+    if not meds:
+        return {"compliance_percentage": 0, "missed_doses": 0, "taken_doses": 0, "total_scheduled": 0, "medications": []}
+
+    import zoneinfo
+    try:
+        user_tz = zoneinfo.ZoneInfo(user.timezone) if user.timezone else timezone.utc
+    except Exception:
+        user_tz = timezone.utc
+        
+    start_dt = datetime.combine(start_date, time.min).replace(tzinfo=user_tz)
+    end_dt = datetime.combine(end_date + timedelta(days=1), time.min).replace(tzinfo=user_tz)
+    
+    logs = db.query(models.MedDoseLog).filter(
+        models.MedDoseLog.user_id == user.user_id,
+        models.MedDoseLog.timestamp_taken >= start_dt,
+        # ... rest of the query
         meds = db.query(models.Medication).filter(models.Medication.user_id == user.user_id).all()
         if not meds:
             return {"compliance_percentage": 0, "missed_doses": 0, "taken_doses": 0, "total_scheduled": 0, "medications": []}
