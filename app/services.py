@@ -1,4 +1,3 @@
-
 import requests
 import os
 import shutil
@@ -8,6 +7,8 @@ from datetime import datetime, date, timedelta, time
 from cryptography.fernet import Fernet
 import base64
 import hashlib
+from datetime import timezone
+import zoneinfo
 
 class OpenFoodFactsService:
     BASE_URL = "https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
@@ -53,9 +54,6 @@ class METCalculator:
         met_entry = db.query(models.METLookup).filter(models.METLookup.activity_name == activity_type.lower()).first()
         met_value = met_entry.met_value if met_entry else default_mets.get(activity_type.lower(), 1.0)
         return (met_value * user.weight_kg * 3.5 / 200) * duration_minutes
-
-from datetime import timezone
-import zoneinfo
 
 def get_user_local_date(user: models.User, utc_dt: datetime) -> date:
     if not utc_dt: utc_dt = datetime.now(timezone.utc)
@@ -150,40 +148,23 @@ class HealthLogService:
         return item_log, None
 
     def calculate_compliance_report(self, db: Session, user: models.User):
-# [KEPT FROM CURRENT CHANGE] Use your new timezone-aware date logic
-    end_date = get_user_local_date(user, datetime.now(timezone.utc)) - timedelta(days=1)
-    start_date = end_date - timedelta(days=29)
+        # [FIXED INDENTATION HERE]
+        end_date = get_user_local_date(user, datetime.now(timezone.utc)) - timedelta(days=1)
+        start_date = end_date - timedelta(days=29)
 
-    # [KEPT FROM INCOMING CHANGE] Keep the logic that actually fetches the data
-    # Get active medications
-    meds = db.query(models.Medication).filter(models.Medication.user_id == user.user_id).all()
-    if not meds:
-        return {"compliance_percentage": 0, "missed_doses": 0, "taken_doses": 0, "total_scheduled": 0, "medications": []}
-
-    import zoneinfo
-    try:
-        user_tz = zoneinfo.ZoneInfo(user.timezone) if user.timezone else timezone.utc
-    except Exception:
-        user_tz = timezone.utc
-        
-    start_dt = datetime.combine(start_date, time.min).replace(tzinfo=user_tz)
-    end_dt = datetime.combine(end_date + timedelta(days=1), time.min).replace(tzinfo=user_tz)
-    
-    logs = db.query(models.MedDoseLog).filter(
-        models.MedDoseLog.user_id == user.user_id,
-        models.MedDoseLog.timestamp_taken >= start_dt,
-        # ... rest of the query
+        # Get active medications
         meds = db.query(models.Medication).filter(models.Medication.user_id == user.user_id).all()
         if not meds:
             return {"compliance_percentage": 0, "missed_doses": 0, "taken_doses": 0, "total_scheduled": 0, "medications": []}
 
-        import zoneinfo
         try:
             user_tz = zoneinfo.ZoneInfo(user.timezone) if user.timezone else timezone.utc
         except Exception:
             user_tz = timezone.utc
+            
         start_dt = datetime.combine(start_date, time.min).replace(tzinfo=user_tz)
         end_dt = datetime.combine(end_date + timedelta(days=1), time.min).replace(tzinfo=user_tz)
+        
         logs = db.query(models.MedDoseLog).filter(
             models.MedDoseLog.user_id == user.user_id,
             models.MedDoseLog.timestamp_taken >= start_dt,
