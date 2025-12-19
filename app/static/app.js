@@ -224,16 +224,17 @@ function showTab(tabName) {
     if (tabName === 'reports') {
         loadReports();
         loadBPHistory();
-        loadVaccinationReport();
-        loadAllergyReport();
     }
     if (tabName === 'settings') {
         loadProfileData();
         loadAllergiesSettings();
     }
     if (tabName === 'health-logs') {
+        console.log("Switching to Health Logs tab.");
         updateWeightUnitDisplay();
         loadExerciseHistory();
+        loadVaccinationReport();
+        loadAllergyReport();
     }
 }
 
@@ -872,6 +873,7 @@ async function loadAllergiesSettings() {
 }
 
 async function loadVaccinationReport() {
+    console.log("Attempting to load vaccination report.");
     const div = document.getElementById('vaccination-report');
     if(!div) return;
     div.innerHTML = 'Loading...';
@@ -908,6 +910,7 @@ async function loadVaccinationReport() {
 }
 
 async function loadAllergyReport() {
+    console.log("Attempting to load allergy report.");
     const div = document.getElementById('allergy-report');
     if(!div) return;
     try {
@@ -1144,7 +1147,12 @@ async function loadReports() {
         document.getElementById('rep-name').innerText = user.name;
         let dobStr = 'N/A';
         if (user.date_of_birth) {
-            dobStr = new Date(user.date_of_birth).toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+            // Fix for timezone bug where "YYYY-MM-DD" is parsed as UTC midnight
+            // and can roll back to the previous day in some timezones.
+            // By splitting the string, we force the Date constructor to use local time.
+            const parts = user.date_of_birth.split('-');
+            const dob = new Date(parts[0], parts[1] - 1, parts[2]);
+            dobStr = dob.toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric', timeZone: 'UTC'});
         } else if (user.birth_year) {
             dobStr = user.birth_year;
         }
