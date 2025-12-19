@@ -224,8 +224,6 @@ function showTab(tabName) {
     if (tabName === 'reports') {
         loadReports();
         loadBPHistory();
-        loadVaccinationReport();
-        loadAllergyReport();
     }
     if (tabName === 'settings') {
         loadProfileData();
@@ -234,6 +232,8 @@ function showTab(tabName) {
     if (tabName === 'health-logs') {
         updateWeightUnitDisplay();
         loadExerciseHistory();
+        loadVaccinationReport();
+        loadAllergyReport();
     }
 }
 
