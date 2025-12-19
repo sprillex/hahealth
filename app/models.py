@@ -108,6 +108,11 @@ class Medication(Base):
     schedule_evening = Column(Boolean, default=False)
     schedule_bedtime = Column(Boolean, default=False)
 
+    # Compliance & Refill
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+    refill_quantity = Column(Integer, default=30)
+
     user = relationship("User", back_populates="medications")
     prescriber = relationship("Prescriber", back_populates="medications")
     dose_logs = relationship("MedDoseLog", back_populates="medication")

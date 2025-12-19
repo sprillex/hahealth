@@ -156,6 +156,19 @@ def migrate_all():
             except sqlite3.OperationalError as e:
                 print(f"Error adding column: {e}")
 
+    # 9. Medication Dates & Refill Qty
+    med_updates = [
+        ("start_date", "DATE"),
+        ("end_date", "DATE"),
+        ("refill_quantity", "INTEGER DEFAULT 30")
+    ]
+    for col, type_ in med_updates:
+        try:
+            cursor.execute(f"ALTER TABLE medications ADD COLUMN {col} {type_}")
+            print(f" - Added {col} to medications.")
+        except sqlite3.OperationalError:
+            pass
+
     conn.commit()
     conn.close()
     print("All migrations complete.")

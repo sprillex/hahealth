@@ -476,9 +476,10 @@ async function loadMedications() {
                 <p><strong>Schedule:</strong> ${sched.length ? sched.join(', ') : 'None'}</p>
                 <p><strong>Type:</strong> ${med.type}</p>
                 <p><strong>Stock:</strong> ${med.current_inventory} (Refills: ${med.refills_remaining})</p>
+                <p><strong>Active:</strong> ${med.start_date || '?'} to ${med.end_date || '?'}</p>
                 <div class="form-actions">
                     <button onclick='openMedModal(${JSON.stringify(med)})'>Edit</button>
-                    <button class="btn-primary" onclick="refillMed(${med.med_id})">Refill (+30)</button>
+                    <button class="btn-primary" onclick="refillMed(${med.med_id}, ${med.refill_quantity || 30})">Refill Received</button>
                 </div>
             `;
             listEl.appendChild(card);
@@ -500,6 +501,9 @@ function openMedModal(med = null) {
         document.getElementById('med_type').value = med.type;
         document.getElementById('med_inventory').value = med.current_inventory;
         document.getElementById('med_refills').value = med.refills_remaining;
+        document.getElementById('med_refill_quantity').value = med.refill_quantity || 30;
+        document.getElementById('med_start_date').value = med.start_date || '';
+        document.getElementById('med_end_date').value = med.end_date || '';
 
         document.getElementById('sched_morning').checked = med.schedule_morning;
         document.getElementById('sched_afternoon').checked = med.schedule_afternoon;
@@ -509,6 +513,8 @@ function openMedModal(med = null) {
         document.getElementById('med-modal-title').innerText = 'Add Medication';
         document.getElementById('med-form').reset();
         document.getElementById('med_id').value = '';
+        // Set defaults
+        document.getElementById('med_refill_quantity').value = 30;
     }
 }
 
@@ -525,6 +531,9 @@ async function handleSaveMed(e) {
         type: document.getElementById('med_type').value,
         current_inventory: parseInt(document.getElementById('med_inventory').value),
         refills_remaining: parseInt(document.getElementById('med_refills').value),
+        refill_quantity: parseInt(document.getElementById('med_refill_quantity').value),
+        start_date: document.getElementById('med_start_date').value || null,
+        end_date: document.getElementById('med_end_date').value || null,
         daily_doses: 1,
         schedule_morning: document.getElementById('sched_morning').checked,
         schedule_afternoon: document.getElementById('sched_afternoon').checked,
@@ -573,7 +582,8 @@ async function handleSaveMed(e) {
     }
 }
 
-async function refillMed(id) {
+async function refillMed(id, qty) {
+    if(!confirm(`Refill received? Adding ${qty} to stock and decrementing refills left.`)) return;
     try {
         const res = await fetch(`${API_URL}/medications/${id}/refill`, {
             method: 'POST',
@@ -581,10 +591,12 @@ async function refillMed(id) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ quantity: 30 })
+            body: JSON.stringify({ quantity: qty })
         });
         if (res.ok) {
             loadMedications();
+        } else {
+             alert('Refill failed');
         }
     } catch (err) {
         alert('Refill failed');

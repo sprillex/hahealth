@@ -94,9 +94,13 @@ def refill_medication(
     if not med:
         raise HTTPException(status_code=404, detail="Medication not found")
 
+    # Logic: update stock with refill.quantity (or med.refill_quantity if available?)
+    # The payload 'refill.quantity' is passed from frontend.
+    # The user said: "when it it pressed it should update both the stock and it should decremnt the number of refills left."
+    # We should assume the payload quantity IS the quantity to add.
+
     med.current_inventory += refill.quantity
-    # Logic for refilling "refills_remaining" is vague in plan ("Log supply addition").
-    # Usually you use a refill to add inventory, reducing refills_remaining.
+
     if med.refills_remaining > 0:
         med.refills_remaining -= 1
 

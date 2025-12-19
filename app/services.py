@@ -208,6 +208,16 @@ class HealthLogService:
         current_d = start_date
         while current_d <= end_date:
             for med in meds:
+                # Check active range
+                # If start_date is set, ignore if current_d < start_date
+                # Note: start_date is inclusive
+                if med.start_date and current_d < med.start_date:
+                    continue
+                # If end_date is set, ignore if current_d > end_date
+                # Note: end_date is inclusive
+                if med.end_date and current_d > med.end_date:
+                    continue
+
                 schedule = []
                 if med.schedule_morning: schedule.append("morning")
                 if med.schedule_afternoon: schedule.append("afternoon")

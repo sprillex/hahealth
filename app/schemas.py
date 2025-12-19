@@ -90,6 +90,10 @@ class MedicationBase(BaseModel):
     schedule_evening: bool = False
     schedule_bedtime: bool = False
 
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    refill_quantity: Optional[int] = 30
+
 class MedicationCreate(MedicationBase):
     pass
 
