@@ -2,4 +2,3 @@ __pycache__/
 *.pyc
 *.db
 .pytest_cache/
-uvicorn.log

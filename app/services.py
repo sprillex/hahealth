@@ -279,10 +279,10 @@ class HealthLogService:
         return item_log, None
 
     def calculate_compliance_report(self, db: Session, user: models.User):
-        # Time range: Last 30 days excluding today
+        # Time range: Last 30 days including today
         today = date.today()
-        start_date = today - timedelta(days=30)
-        end_date = today - timedelta(days=1)
+        start_date = today - timedelta(days=29)
+        end_date = today
 
         # Get active medications
         meds = db.query(models.Medication).filter(models.Medication.user_id == user.user_id).all()
