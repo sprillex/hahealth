@@ -90,6 +90,44 @@ class MedicationService:
         db.commit()
         return dose_log, alert
 
+    def delete_dose_log(self, db: Session, log_id: int, user_id: int):
+        log = db.query(models.MedDoseLog).filter(models.MedDoseLog.dose_log_id == log_id, models.MedDoseLog.user_id == user_id).first()
+        if not log: return False
+
+        # Restore Inventory
+        med = db.query(models.Medication).filter(models.Medication.med_id == log.med_id).first()
+        if med:
+            med.current_inventory += 1
+
+        db.delete(log)
+        db.commit()
+        return True
+
+    def update_dose_log(self, db: Session, log_id: int, user_id: int, updates: schemas.LogUpdate):
+        log = db.query(models.MedDoseLog).filter(models.MedDoseLog.dose_log_id == log_id, models.MedDoseLog.user_id == user_id).first()
+        if not log: return None
+
+        if updates.timestamp:
+            log.timestamp_taken = updates.timestamp
+        if updates.dose_window:
+            log.dose_window = updates.dose_window.lower()
+
+        # If medication changed, handle inventory swap
+        # Assuming we allow changing the medication type for a log?
+        # Maybe complex, but let's support it if med_id is passed.
+        if updates.med_id and updates.med_id != log.med_id:
+            old_med = db.query(models.Medication).filter(models.Medication.med_id == log.med_id).first()
+            if old_med: old_med.current_inventory += 1 # Refund old
+
+            new_med = db.query(models.Medication).filter(models.Medication.med_id == updates.med_id).first()
+            if new_med:
+                new_med.current_inventory -= 1 # Deduct new
+                log.med_id = updates.med_id
+
+        db.commit()
+        db.refresh(log)
+        return log
+
 class HealthLogService:
     def log_bp(self, db: Session, user_id: int, data: schemas.BPPayload):
         bp = models.BloodPressure(
@@ -119,7 +157,7 @@ class HealthLogService:
             db.add(daily_log)
         daily_log.total_calories_burned += calories
         db.commit()
-        return daily_log
+        return exercise_log # Return the ExerciseLog, not DailyLog
 
     def log_food(self, db: Session, user: models.User, data: schemas.FoodLogPayload):
         off_service = OpenFoodFactsService()
@@ -152,6 +190,126 @@ class HealthLogService:
         daily_log.total_calories_consumed += total_cals
         db.commit()
         return item_log, None
+
+    def delete_exercise_log(self, db: Session, log_id: int, user_id: int):
+        log = db.query(models.ExerciseLog).filter(models.ExerciseLog.exercise_id == log_id, models.ExerciseLog.user_id == user_id).first()
+        if not log: return False
+
+        # Deduct from DailyLog
+        local_date = get_user_local_date(log.user, log.timestamp)
+        daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == user_id, models.DailyLog.date == local_date).first()
+        if daily_log:
+            daily_log.total_calories_burned -= log.calories_burned
+            if daily_log.total_calories_burned < 0: daily_log.total_calories_burned = 0
+
+        db.delete(log)
+        db.commit()
+        return True
+
+    def update_exercise_log(self, db: Session, log_id: int, user_id: int, updates: schemas.LogUpdate):
+        log = db.query(models.ExerciseLog).filter(models.ExerciseLog.exercise_id == log_id, models.ExerciseLog.user_id == user_id).first()
+        if not log: return None
+
+        # We must handle DailyLog updates.
+        # Strategy: Revert old values from old date's log, Apply new values to new date's log.
+        old_cals = log.calories_burned
+        old_date = get_user_local_date(log.user, log.timestamp)
+
+        # Apply updates to object in memory
+        if updates.timestamp: log.timestamp = updates.timestamp
+        if updates.activity_type: log.activity_type = updates.activity_type
+        if updates.duration_minutes is not None: log.duration_minutes = updates.duration_minutes
+
+        # Recalculate calories if needed?
+        # If user updates cals explicit:
+        if updates.calories_burned is not None:
+             log.calories_burned = updates.calories_burned
+        # If user updates duration but not cals, maybe recalculate?
+        # For simplicity, if they update duration we will just recalculate if they don't provide cals.
+        # But here 'updates.calories_burned' might be None.
+        # Let's assume frontend passes cals if they want to override.
+        # If just duration changed, we might want to recalculate using MET?
+        # The prompt says "edit those entries".
+        # Let's trust the input. If they change duration, frontend should ideally recalc cals or send 0?
+        # Let's stick to direct field updates for now unless cals is missing and duration changed.
+        elif updates.duration_minutes is not None and log.activity_type:
+             # Try calc
+             met_calc = METCalculator()
+             log.calories_burned = met_calc.calculate_calories(db, log.user, log.activity_type, log.duration_minutes)
+
+        new_cals = log.calories_burned
+        new_date = get_user_local_date(log.user, log.timestamp)
+
+        # Update DB for DailyLogs
+        # 1. Revert Old
+        old_daily = db.query(models.DailyLog).filter(models.DailyLog.user_id == user_id, models.DailyLog.date == old_date).first()
+        if old_daily:
+            old_daily.total_calories_burned -= old_cals
+            if old_daily.total_calories_burned < 0: old_daily.total_calories_burned = 0
+
+        # 2. Apply New
+        new_daily = db.query(models.DailyLog).filter(models.DailyLog.user_id == user_id, models.DailyLog.date == new_date).first()
+        if not new_daily:
+            new_daily = models.DailyLog(user_id=user_id, date=new_date, total_calories_burned=0, total_calories_consumed=0)
+            db.add(new_daily)
+        new_daily.total_calories_burned += new_cals
+
+        db.commit()
+        db.refresh(log)
+        return log
+
+    def delete_food_log(self, db: Session, log_id: int, user_id: int):
+        log = db.query(models.FoodItemLog).filter(models.FoodItemLog.item_log_id == log_id, models.FoodItemLog.user_id == user_id).first()
+        if not log: return False
+
+        # Deduct from DailyLog
+        # Need to know total calories of this item
+        # log has nutrition_info rel
+        cals = log.nutrition_info.calories * log.serving_size * log.quantity
+
+        local_date = get_user_local_date(log.user, log.timestamp)
+        daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == user_id, models.DailyLog.date == local_date).first()
+        if daily_log:
+            daily_log.total_calories_consumed -= cals
+            if daily_log.total_calories_consumed < 0: daily_log.total_calories_consumed = 0
+
+        db.delete(log)
+        db.commit()
+        return True
+
+    def update_food_log(self, db: Session, log_id: int, user_id: int, updates: schemas.LogUpdate):
+        log = db.query(models.FoodItemLog).filter(models.FoodItemLog.item_log_id == log_id, models.FoodItemLog.user_id == user_id).first()
+        if not log: return None
+
+        # Old values
+        old_cals = log.nutrition_info.calories * log.serving_size * log.quantity
+        old_date = get_user_local_date(log.user, log.timestamp)
+
+        # Updates
+        if updates.timestamp: log.timestamp = updates.timestamp
+        if updates.quantity is not None: log.quantity = updates.quantity
+        if updates.serving_size is not None: log.serving_size = updates.serving_size
+        if updates.meal_id: log.meal_id = updates.meal_id
+
+        # New values
+        new_cals = log.nutrition_info.calories * log.serving_size * log.quantity
+        new_date = get_user_local_date(log.user, log.timestamp)
+
+        # Update DailyLogs
+        old_daily = db.query(models.DailyLog).filter(models.DailyLog.user_id == user_id, models.DailyLog.date == old_date).first()
+        if old_daily:
+            old_daily.total_calories_consumed -= old_cals
+            if old_daily.total_calories_consumed < 0: old_daily.total_calories_consumed = 0
+
+        new_daily = db.query(models.DailyLog).filter(models.DailyLog.user_id == user_id, models.DailyLog.date == new_date).first()
+        if not new_daily:
+            new_daily = models.DailyLog(user_id=user_id, date=new_date, total_calories_burned=0, total_calories_consumed=0)
+            db.add(new_daily)
+        new_daily.total_calories_consumed += new_cals
+
+        db.commit()
+        db.refresh(log)
+        return log
 
     def calculate_compliance_report(self, db: Session, user: models.User):
         # [FIXED INDENTATION HERE]

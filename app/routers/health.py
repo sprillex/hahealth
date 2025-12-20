@@ -144,9 +144,13 @@ def get_daily_summary(
         macros["fiber"] += (log.nutrition_info.fiber or 0) * multiplier
 
         food_list.append({
+            "log_id": log.item_log_id,
             "name": log.nutrition_info.food_name,
             "calories": (log.nutrition_info.calories or 0) * multiplier,
-            "meal": log.meal_id
+            "meal": log.meal_id,
+            "serving_size": log.serving_size,
+            "quantity": log.quantity,
+            "timestamp": log.timestamp
         })
 
     # Fetch Exercises for Today
@@ -159,9 +163,11 @@ def get_daily_summary(
 
     for ex in daily_exercises:
         exercises_list.append({
+            "log_id": ex.exercise_id,
             "activity": ex.activity_type,
             "duration": ex.duration_minutes,
-            "calories": ex.calories_burned
+            "calories": ex.calories_burned,
+            "timestamp": ex.timestamp
         })
 
     return {
@@ -192,3 +198,74 @@ def get_adherence(
     logs = db.query(models.MedDoseLog).filter(models.MedDoseLog.user_id == current_user.user_id).all()
     total_doses = len(logs)
     return {"total_doses_logged": total_doses}
+
+# --- Management Endpoints ---
+
+@router.delete("/exercise/{log_id}")
+def delete_exercise(
+    log_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    service = services.HealthLogService()
+    success = service.delete_exercise_log(db, log_id, current_user.user_id)
+    if not success:
+         raise HTTPException(status_code=404, detail="Log not found")
+    return {"status": "success"}
+
+@router.put("/exercise/{log_id}", response_model=schemas.ExerciseLogResponse)
+def update_exercise(
+    log_id: int,
+    updates: schemas.LogUpdate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    service = services.HealthLogService()
+    log = service.update_exercise_log(db, log_id, current_user.user_id, updates)
+    if not log:
+         raise HTTPException(status_code=404, detail="Log not found")
+
+    return {
+        "log_id": log.exercise_id,
+        "activity_type": log.activity_type,
+        "duration_minutes": log.duration_minutes,
+        "calories_burned": log.calories_burned,
+        "timestamp": log.timestamp
+    }
+
+@router.delete("/food/{log_id}")
+def delete_food(
+    log_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    service = services.HealthLogService()
+    success = service.delete_food_log(db, log_id, current_user.user_id)
+    if not success:
+         raise HTTPException(status_code=404, detail="Log not found")
+    return {"status": "success"}
+
+@router.put("/food/{log_id}", response_model=schemas.FoodLogResponse)
+def update_food(
+    log_id: int,
+    updates: schemas.LogUpdate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    service = services.HealthLogService()
+    log = service.update_food_log(db, log_id, current_user.user_id, updates)
+    if not log:
+         raise HTTPException(status_code=404, detail="Log not found")
+
+    # Calculate calories for response
+    cals = log.nutrition_info.calories * log.serving_size * log.quantity
+
+    return {
+        "log_id": log.item_log_id,
+        "food_name": log.nutrition_info.food_name,
+        "meal_id": log.meal_id,
+        "calories": cals,
+        "serving_size": log.serving_size,
+        "quantity": log.quantity,
+        "timestamp": log.timestamp
+    }

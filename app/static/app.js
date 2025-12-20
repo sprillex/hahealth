@@ -1494,3 +1494,395 @@ function toggleTheme(e) {
         localStorage.setItem('theme', 'light');
     }
 }
+// --- Management Functions (Appended) ---
+
+async function openManageMedsModal() {
+    const modal = document.getElementById('manage-meds-modal');
+    modal.classList.remove('hidden');
+    loadManageMedsList();
+}
+
+function closeManageMedsModal() {
+    document.getElementById('manage-meds-modal').classList.add('hidden');
+    document.getElementById('edit-med-form-container').classList.add('hidden');
+    // Refresh dashboard list
+    loadDailyMeds();
+}
+
+async function loadManageMedsList() {
+    const listDiv = document.getElementById('manage-meds-list');
+    listDiv.innerHTML = 'Loading...';
+    try {
+        const dateStr = getFormattedDate(currentDashboardDate);
+        const res = await fetch(`${API_URL}/medications/log?date_str=${dateStr}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const logs = await res.json();
+
+        if (logs.length === 0) {
+            listDiv.innerHTML = '<em>No logs for this date.</em>';
+            return;
+        }
+
+        let html = '<ul style="list-style: none; padding: 0;">';
+        logs.forEach(log => {
+             // log has log_id, med_name, timestamp, dose_window
+             // need to escape JSON for onclick
+             const safeLog = JSON.stringify(log).replace(/"/g, '&quot;');
+             const timeStr = new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+             html += `
+             <li style="border-bottom: 1px solid #eee; padding: 8px 0; display: flex; justify-content: space-between; align-items: center;">
+                <span>
+                    <strong>${log.med_name}</strong> <br>
+                    <small>${timeStr}</small>
+                </span>
+                <div>
+                    <button onclick="editMedLog(${safeLog})" class="btn-secondary" style="font-size: 0.8em; padding: 2px 5px;">Edit</button>
+                    <button onclick="deleteMedLog(${log.log_id})" class="btn-warning" style="font-size: 0.8em; padding: 2px 5px;">Del</button>
+                </div>
+             </li>
+             `;
+        });
+        html += '</ul>';
+        listDiv.innerHTML = html;
+
+    } catch (err) {
+        listDiv.innerHTML = 'Error loading logs.';
+    }
+}
+
+async function deleteMedLog(logId) {
+    if(!confirm("Are you sure? This will increment stock.")) return;
+    try {
+        const res = await fetch(`${API_URL}/medications/log/${logId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if(res.ok) {
+            loadManageMedsList();
+        } else {
+            alert("Delete failed");
+        }
+    } catch(err) { alert("Delete failed"); }
+}
+
+function editMedLog(log) {
+    const container = document.getElementById('edit-med-form-container');
+    container.classList.remove('hidden');
+
+    document.getElementById('edit_med_log_id').value = log.log_id;
+    // Format timestamp for datetime-local input: YYYY-MM-DDTHH:mm
+    const dt = new Date(log.timestamp);
+    // Adjust to local ISO string roughly
+    // Or just use the time part if date is fixed?
+    // The user might want to change date too (fix "wrong day").
+    // datetime-local expects local time string.
+    const localIso = new Date(dt.getTime() - (dt.getTimezoneOffset() * 60000)).toISOString().slice(0, 19);
+    document.getElementById('edit_med_time').value = localIso;
+
+    document.getElementById('edit_med_window').value = log.dose_window || "";
+}
+
+document.getElementById('edit-med-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const logId = document.getElementById('edit_med_log_id').value;
+    const timeVal = document.getElementById('edit_med_time').value; // Local string
+    // Convert back to ISO/UTC for API?
+    // API expects datetime. User sends "2023-01-01T10:00".
+    // If we send this as string, Pydantic might interpret as naive (local) or UTC depending on parsing.
+    // Ideally we send ISO with offset or UTC.
+    const dateObj = new Date(timeVal);
+    const isoStr = dateObj.toISOString();
+
+    const windowVal = document.getElementById('edit_med_window').value;
+
+    const updates = {
+        timestamp: isoStr,
+        dose_window: windowVal || null
+    };
+
+    try {
+        const res = await fetch(`${API_URL}/medications/log/${logId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(updates)
+        });
+        if(res.ok) {
+            document.getElementById('edit-med-form-container').classList.add('hidden');
+            loadManageMedsList();
+        } else {
+            alert("Update failed");
+        }
+    } catch(err) { alert("Update failed"); }
+});
+
+
+// --- Manage Exercise ---
+
+async function openManageExerciseModal() {
+    const modal = document.getElementById('manage-exercise-modal');
+    modal.classList.remove('hidden');
+    loadManageExerciseList();
+}
+
+function closeManageExerciseModal() {
+    document.getElementById('manage-exercise-modal').classList.add('hidden');
+    document.getElementById('edit-exercise-form-container').classList.add('hidden');
+    loadSummary(); // Refresh summary stats
+}
+
+async function loadManageExerciseList() {
+    const listDiv = document.getElementById('manage-exercise-list');
+    listDiv.innerHTML = 'Loading...';
+    try {
+        // Need specific endpoint for daily exercise logs with IDs
+        // The summary endpoint returns a simplified list WITHOUT IDs currently in backend patch?
+        // Wait, I updated `get_daily_summary` in `health.py` to include `log_id`.
+        // So I can reuse `summaryData` or fetch again.
+        // Let's fetch again via summary endpoint to be safe or use what I have.
+        // Summary endpoint needs date_str.
+        const dateStr = getFormattedDate(currentDashboardDate);
+        const res = await fetch(`${API_URL}/log/summary?date_str=${dateStr}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const logs = data.exercises; // These should now have log_id from my patch
+
+        if (!logs || logs.length === 0) {
+            listDiv.innerHTML = '<em>No logs.</em>';
+            return;
+        }
+
+        let html = '<ul style="list-style: none; padding: 0;">';
+        logs.forEach(log => {
+             // log: {log_id, activity, duration, calories}
+             // Note: summary endpoint might not return timestamp?
+             // In my patch to `get_daily_summary`, I added `log_id`.
+             // But I didn't add timestamp to the summary response list.
+             // I only added it to the HISTORY endpoint.
+             // Oh. The summary `exercises_list` construction in `health.py` iterates `daily_exercises`.
+             // I need to ensure `timestamp` is passed if I want to edit it.
+             // Let's assume for now I didn't add timestamp to summary response.
+             // I should probably fetch from `history` endpoint and filter client side?
+             // Or update summary endpoint patch.
+             // Actually, I can use the HISTORY endpoint (`/log/history/exercise`) but that is paginated and across all time.
+             // It might be better to filter the history client side if it's recent.
+             // Or rely on the summary data and default the time to "noon" if missing? No, that breaks "wrong day" fix.
+             // FIX: I will update the summary endpoint in the next patch block to include timestamp.
+             // For now, let's assume it's there or I will add it.
+
+             // Wait, I can't edit the backend patch I already applied in memory?
+             // I applied the patch to `app/routers/health.py`.
+             // Let's double check what I wrote.
+             // I wrote: `exercises_list.append({ "log_id": ex.exercise_id, ... })`
+             // I did NOT add timestamp.
+             // So I need to add timestamp to the summary endpoint response in `health.py`.
+             // I'll add a step to fix that.
+
+             const safeLog = JSON.stringify(log).replace(/"/g, '&quot;');
+
+             html += `
+             <li style="border-bottom: 1px solid #eee; padding: 8px 0; display: flex; justify-content: space-between; align-items: center;">
+                <span>
+                    <strong>${log.activity}</strong> (${log.duration}m)<br>
+                    <small>${Math.round(log.calories)} kcal</small>
+                </span>
+                <div>
+                    <button onclick="editExerciseLog(${safeLog})" class="btn-secondary" style="font-size: 0.8em; padding: 2px 5px;">Edit</button>
+                    <button onclick="deleteExerciseLog(${log.log_id})" class="btn-warning" style="font-size: 0.8em; padding: 2px 5px;">Del</button>
+                </div>
+             </li>
+             `;
+        });
+        html += '</ul>';
+        listDiv.innerHTML = html;
+
+    } catch (err) {
+        listDiv.innerHTML = 'Error loading logs.';
+    }
+}
+
+async function deleteExerciseLog(id) {
+    if(!confirm("Are you sure?")) return;
+    try {
+        const res = await fetch(`${API_URL}/log/exercise/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if(res.ok) loadManageExerciseList();
+        else alert("Delete failed");
+    } catch(err) { alert("Delete failed"); }
+}
+
+function editExerciseLog(log) {
+    const container = document.getElementById('edit-exercise-form-container');
+    container.classList.remove('hidden');
+    document.getElementById('edit_exercise_log_id').value = log.log_id;
+    document.getElementById('edit_exercise_activity').value = log.activity;
+    document.getElementById('edit_exercise_duration').value = log.duration;
+    document.getElementById('edit_exercise_cals').value = log.calories;
+
+    // Timestamp missing? If so, default to current view date + noon?
+    // I need to patch backend to send timestamp.
+    // Assuming backend sends it (I will fix it):
+    if (log.timestamp) {
+        const dt = new Date(log.timestamp);
+        const localIso = new Date(dt.getTime() - (dt.getTimezoneOffset() * 60000)).toISOString().slice(0, 19);
+        document.getElementById('edit_exercise_time').value = localIso;
+    } else {
+        // Fallback
+        const d = new Date(currentDashboardDate);
+        d.setHours(12, 0, 0);
+        const localIso = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 19);
+        document.getElementById('edit_exercise_time').value = localIso;
+    }
+}
+
+document.getElementById('edit-exercise-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit_exercise_log_id').value;
+    const timeVal = document.getElementById('edit_exercise_time').value;
+    const isoStr = new Date(timeVal).toISOString();
+
+    const updates = {
+        timestamp: isoStr,
+        activity_type: document.getElementById('edit_exercise_activity').value,
+        duration_minutes: parseFloat(document.getElementById('edit_exercise_duration').value),
+        calories_burned: parseFloat(document.getElementById('edit_exercise_cals').value)
+    };
+
+    try {
+         const res = await fetch(`${API_URL}/log/exercise/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(updates)
+        });
+        if(res.ok) {
+            document.getElementById('edit-exercise-form-container').classList.add('hidden');
+            loadManageExerciseList();
+        } else alert("Update failed");
+    } catch(e) { alert("Update failed"); }
+});
+
+// --- Manage Food ---
+
+async function openManageFoodModal() {
+    const modal = document.getElementById('manage-food-modal');
+    modal.classList.remove('hidden');
+    loadManageFoodList();
+}
+
+function closeManageFoodModal() {
+    document.getElementById('manage-food-modal').classList.add('hidden');
+    document.getElementById('edit-food-form-container').classList.add('hidden');
+    loadSummary();
+}
+
+async function loadManageFoodList() {
+    const listDiv = document.getElementById('manage-food-list');
+    listDiv.innerHTML = 'Loading...';
+    try {
+        const dateStr = getFormattedDate(currentDashboardDate);
+        const res = await fetch(`${API_URL}/log/summary?date_str=${dateStr}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const logs = data.food_logs;
+
+        if (!logs || logs.length === 0) {
+            listDiv.innerHTML = '<em>No logs.</em>';
+            return;
+        }
+
+        let html = '<ul style="list-style: none; padding: 0;">';
+        logs.forEach(log => {
+             const safeLog = JSON.stringify(log).replace(/"/g, '&quot;');
+             html += `
+             <li style="border-bottom: 1px solid #eee; padding: 8px 0; display: flex; justify-content: space-between; align-items: center;">
+                <span>
+                    <strong>${log.name}</strong> (${log.meal})<br>
+                    <small>${Math.round(log.calories)} kcal</small>
+                </span>
+                <div>
+                    <button onclick="editFoodLog(${safeLog})" class="btn-secondary" style="font-size: 0.8em; padding: 2px 5px;">Edit</button>
+                    <button onclick="deleteFoodLog(${log.log_id})" class="btn-warning" style="font-size: 0.8em; padding: 2px 5px;">Del</button>
+                </div>
+             </li>
+             `;
+        });
+        html += '</ul>';
+        listDiv.innerHTML = html;
+
+    } catch (err) {
+        listDiv.innerHTML = 'Error loading logs.';
+    }
+}
+
+async function deleteFoodLog(id) {
+    if(!confirm("Are you sure?")) return;
+    try {
+        const res = await fetch(`${API_URL}/log/food/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if(res.ok) loadManageFoodList();
+        else alert("Delete failed");
+    } catch(err) { alert("Delete failed"); }
+}
+
+function editFoodLog(log) {
+    const container = document.getElementById('edit-food-form-container');
+    container.classList.remove('hidden');
+    document.getElementById('edit_food_log_id').value = log.log_id;
+    document.getElementById('edit_food_quantity').value = log.quantity;
+    document.getElementById('edit_food_serving').value = log.serving_size;
+    document.getElementById('edit_food_meal').value = log.meal;
+
+    // Timestamp handling (Same issue as exercise, need to patch backend)
+    if (log.timestamp) {
+        const dt = new Date(log.timestamp);
+        const localIso = new Date(dt.getTime() - (dt.getTimezoneOffset() * 60000)).toISOString().slice(0, 19);
+        document.getElementById('edit_food_time').value = localIso;
+    } else {
+        const d = new Date(currentDashboardDate);
+        d.setHours(12, 0, 0);
+        const localIso = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 19);
+        document.getElementById('edit_food_time').value = localIso;
+    }
+}
+
+document.getElementById('edit-food-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit_food_log_id').value;
+    const timeVal = document.getElementById('edit_food_time').value;
+    const isoStr = new Date(timeVal).toISOString();
+
+    const updates = {
+        timestamp: isoStr,
+        quantity: parseFloat(document.getElementById('edit_food_quantity').value),
+        serving_size: parseFloat(document.getElementById('edit_food_serving').value),
+        meal_id: document.getElementById('edit_food_meal').value
+    };
+
+    try {
+         const res = await fetch(`${API_URL}/log/food/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(updates)
+        });
+        if(res.ok) {
+            document.getElementById('edit-food-form-container').classList.add('hidden');
+            loadManageFoodList();
+        } else alert("Update failed");
+    } catch(e) { alert("Update failed"); }
+});
