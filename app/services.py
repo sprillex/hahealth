@@ -165,10 +165,14 @@ class HealthLogService:
         start_dt = datetime.combine(start_date, time.min).replace(tzinfo=user_tz)
         end_dt = datetime.combine(end_date + timedelta(days=1), time.min).replace(tzinfo=user_tz)
         
+        # Convert to UTC for DB query
+        start_dt_utc = start_dt.astimezone(timezone.utc)
+        end_dt_utc = end_dt.astimezone(timezone.utc)
+
         logs = db.query(models.MedDoseLog).filter(
             models.MedDoseLog.user_id == user.user_id,
-            models.MedDoseLog.timestamp_taken >= start_dt,
-            models.MedDoseLog.timestamp_taken < end_dt
+            models.MedDoseLog.timestamp_taken >= start_dt_utc,
+            models.MedDoseLog.timestamp_taken < end_dt_utc
         ).all()
 
         windows = [
