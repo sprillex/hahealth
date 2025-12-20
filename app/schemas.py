@@ -14,6 +14,7 @@ class UserBase(BaseModel):
     goal_weight_kg: Optional[float] = None
     calorie_goal: Optional[int] = None
     timezone: str = "UTC"
+    theme_preference: str = "SYSTEM"
 
 class UserCreate(UserBase):
     password: str
@@ -29,6 +30,7 @@ class UserUpdate(BaseModel):
     goal_weight_kg: Optional[float] = None
     calorie_goal: Optional[int] = None
     timezone: Optional[str] = None
+    theme_preference: Optional[str] = None
 
     # Time Windows
     window_morning_start: Optional[time] = None
@@ -45,6 +47,7 @@ class UserResponse(UserBase):
     user_id: int
     unit_system: str
     is_admin: bool
+    theme_preference: str
     window_morning_start: Optional[time] = None
     window_afternoon_start: Optional[time] = None
     window_evening_start: Optional[time] = None

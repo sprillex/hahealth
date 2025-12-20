@@ -16,6 +16,7 @@ class User(Base):
     unit_system = Column(String, default="METRIC")
     is_admin = Column(Boolean, default=False)
     timezone = Column(String, default="UTC")
+    theme_preference = Column(String, default="SYSTEM") # SYSTEM, LIGHT, DARK
 
     # New fields
     birth_year = Column(Integer)

@@ -176,6 +176,13 @@ def migrate_all():
     except sqlite3.OperationalError:
         pass
 
+    # 11. Theme Preference
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN theme_preference VARCHAR DEFAULT 'SYSTEM'")
+        print(" - Added theme_preference to users.")
+    except sqlite3.OperationalError:
+        pass
+
     conn.commit()
     conn.close()
     print("All migrations complete.")

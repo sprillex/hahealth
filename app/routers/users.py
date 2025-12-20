@@ -56,6 +56,8 @@ def update_user_profile(
         current_user.calorie_goal = user_update.calorie_goal
     if user_update.timezone is not None:
         current_user.timezone = user_update.timezone
+    if user_update.theme_preference is not None:
+        current_user.theme_preference = user_update.theme_preference
 
     # Time Windows
     if user_update.window_morning_start is not None:

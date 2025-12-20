@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('profile-form').addEventListener('submit', handleUpdateProfile);
     document.getElementById('windows-form').addEventListener('submit', handleUpdateWindows);
     document.getElementById('password-form').addEventListener('submit', handleChangePassword);
-    document.getElementById('dark-mode-toggle').addEventListener('change', toggleTheme);
+    // document.getElementById('dark-mode-toggle').addEventListener('change', toggleTheme); // Removed old toggle
 
     // Admin Listeners
     document.getElementById('admin-key-form').addEventListener('submit', handleUpdateAdminKey);
@@ -178,6 +178,7 @@ async function checkAuth() {
             showDashboard();
             loadProfileData();
             loadSummary();
+            applyTheme(); // Re-apply theme after user load
         } else {
             logout();
         }
@@ -1478,21 +1479,67 @@ async function handleChangePassword(e) {
 // --- Theme ---
 
 function initTheme() {
-    const isDark = localStorage.getItem('theme') === 'dark';
-    if (isDark) {
+    // We defer actual theme application until user profile is loaded or fallback to system
+    applyTheme();
+
+    // Listen for system changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+        // Only react if user pref is SYSTEM or not loaded yet
+        if (!user || user.theme_preference === 'SYSTEM') {
+            applyTheme();
+        }
+    });
+}
+
+function applyTheme() {
+    let pref = 'SYSTEM';
+    if (user && user.theme_preference) pref = user.theme_preference;
+
+    // Update Dropdown if on settings page
+    const select = document.getElementById('theme-select');
+    if (select) select.value = pref;
+
+    let useDark = false;
+    if (pref === 'DARK') useDark = true;
+    else if (pref === 'LIGHT') useDark = false;
+    else {
+        // System
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            useDark = true;
+        }
+    }
+
+    if (useDark) {
         document.body.classList.add('dark-theme');
-        document.getElementById('dark-mode-toggle').checked = true;
+    } else {
+        document.body.classList.remove('dark-theme');
     }
 }
 
-function toggleTheme(e) {
-    if (e.target.checked) {
-        document.body.classList.add('dark-theme');
-        localStorage.setItem('theme', 'dark');
-    } else {
-        document.body.classList.remove('dark-theme');
-        localStorage.setItem('theme', 'light');
+async function updateThemePreference(val) {
+    // Optimistic update
+    if (user) {
+        user.theme_preference = val;
+        applyTheme();
+
+        // Save to backend
+        try {
+            await fetch(`${API_URL}/users/me`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ theme_preference: val })
+            });
+        } catch(err) {
+            console.error("Failed to save theme pref");
+        }
     }
+}
+
+function printReport() {
+    window.print();
 }
 // --- Management Functions (Appended) ---
 

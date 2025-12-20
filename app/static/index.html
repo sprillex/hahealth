@@ -376,7 +376,10 @@
                     <div class="card" style="margin-top: 20px;">
                         <div class="header-actions">
                             <h3>Blood Pressure History</h3>
-                            <button class="btn-secondary" onclick="downloadBPCSV()">Download CSV</button>
+                            <div>
+                                <button class="btn-secondary" onclick="printReport()">Print Report</button>
+                                <button class="btn-secondary" onclick="downloadBPCSV()">Download CSV</button>
+                            </div>
                         </div>
                         <table id="bp-history-table" style="width: 100%; text-align: left; margin-top: 10px;">
                             <thead>
@@ -553,9 +556,13 @@
                         <!-- App Settings -->
                         <div class="card">
                             <h3>Appearance</h3>
-                            <div class="form-group checkbox-group">
-                                <label for="dark-mode-toggle">Dark Mode</label>
-                                <input type="checkbox" id="dark-mode-toggle">
+                            <div class="form-group">
+                                <label>Theme Preference</label>
+                                <select id="theme-select" onchange="updateThemePreference(this.value)">
+                                    <option value="SYSTEM">System Default</option>
+                                    <option value="LIGHT">Light</option>
+                                    <option value="DARK">Dark</option>
+                                </select>
                             </div>
                         </div>
                     </div>
