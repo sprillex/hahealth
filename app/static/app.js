@@ -43,6 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('create-food-form').addEventListener('submit', handleCreateFood);
     document.getElementById('food-log-form').addEventListener('submit', handleLogFood);
 
+    // Profile Listeners
+    document.getElementById('profile-units').addEventListener('change', updateProfileUnitLabels);
+
     const searchInput = document.getElementById('food-search-input');
     if (searchInput) {
         let debounceTimer;
@@ -1331,6 +1334,8 @@ function loadProfileData() {
         if (goalWeight) goalWeight = goalWeight / 0.453592;
     }
 
+    updateProfileUnitLabels();
+
     document.getElementById('profile-height').value = height ? height.toFixed(1) : '';
     document.getElementById('profile-weight').value = weight ? weight.toFixed(1) : '';
     document.getElementById('profile-goal-weight').value = goalWeight ? goalWeight.toFixed(1) : '';
@@ -1353,6 +1358,23 @@ function loadProfileData() {
     if(user.window_afternoon_start) document.getElementById('win-afternoon').value = user.window_afternoon_start.substring(0, 5);
     if(user.window_evening_start) document.getElementById('win-evening').value = user.window_evening_start.substring(0, 5);
     if(user.window_bedtime_start) document.getElementById('win-bedtime').value = user.window_bedtime_start.substring(0, 5);
+}
+
+function updateProfileUnitLabels() {
+    const unitSystem = document.getElementById('profile-units').value;
+    const hSpan = document.getElementById('unit-height');
+    const wSpan = document.getElementById('unit-weight');
+    const gwSpan = document.getElementById('unit-goal-weight');
+
+    if (unitSystem === 'IMPERIAL') {
+        hSpan.innerText = '(inches)';
+        wSpan.innerText = '(lbs)';
+        gwSpan.innerText = '(lbs)';
+    } else {
+        hSpan.innerText = '(cm)';
+        wSpan.innerText = '(kg)';
+        gwSpan.innerText = '(kg)';
+    }
 }
 
 async function handleUpdateProfile(e) {
