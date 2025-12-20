@@ -1,59 +1,81 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, date
+from datetime import date, datetime, timedelta
 from app import database, models, schemas, auth, services
 
 router = APIRouter(
-    prefix="/api/v1/medications",
-    tags=["medications"]
+    prefix="/api/v1/log",
+    tags=["health"]
 )
 
-@router.post("/", response_model=schemas.MedicationResponse)
-def create_medication(
-    med: schemas.MedicationCreate,
+from datetime import timezone
+
+@router.post("/bp", response_model=schemas.BloodPressureResponse)
+def log_blood_pressure(
+    bp: schemas.BloodPressureCreate,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    db_med = models.Medication(**med.dict(), user_id=current_user.user_id)
-    db.add(db_med)
-    db.commit()
-    db.refresh(db_med)
-    return db_med
+    service = services.HealthLogService()
+    payload = schemas.BPPayload(**bp.dict())
+    result = service.log_bp(db, current_user.user_id, payload)
+    # Ensure timezone is attached for Pydantic serialization
+    if result.timestamp and result.timestamp.tzinfo is None:
+        result.timestamp = result.timestamp.replace(tzinfo=timezone.utc)
+    return result
 
-@router.get("/", response_model=List[schemas.MedicationResponse])
-def read_medications(
-    skip: int = 0,
-    limit: int = 100,
+@router.post("/exercise")
+def log_exercise(
+    exercise: schemas.ExercisePayload,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    meds = db.query(models.Medication).filter(models.Medication.user_id == current_user.user_id).offset(skip).limit(limit).all()
-    return meds
+    service = services.HealthLogService()
+    log = service.log_exercise(db, current_user, exercise)
+    # The return value log is a DailyLog object which only has date and total_cals.
+    # The caller expects calories burned.
+    # In services.py log_exercise returns the DailyLog.
+    # It also creates an ExerciseLog.
+    # The DailyLog has total_calories_burned updated.
+    return {"message": "Exercise logged", "calories_burned": exercise.calories_burned or 0} # Approximate or need to fetch details
 
-@router.put("/{med_id}", response_model=schemas.MedicationResponse)
-def update_medication(
-    med_id: int,
-    med: schemas.MedicationCreate, # Reusing Create schema as Update usually has same fields
+@router.get("/history/bp")
+def get_bp_history(
+    limit: int = 50,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    db_med = db.query(models.Medication).filter(models.Medication.med_id == med_id, models.Medication.user_id == current_user.user_id).first()
-    if not db_med:
-        raise HTTPException(status_code=404, detail="Medication not found")
+    history = db.query(models.BloodPressure).filter(
+        models.BloodPressure.user_id == current_user.user_id
+    ).order_by(models.BloodPressure.timestamp.desc()).limit(limit).all()
 
-    # Update fields
-    # Iterate over schema fields and update
-    data = med.dict(exclude_unset=True)
-    for key, value in data.items():
-        setattr(db_med, key, value)
+    # Attach timezone info (SQLite stores as naive UTC)
+    for bp in history:
+        if bp.timestamp and bp.timestamp.tzinfo is None:
+            bp.timestamp = bp.timestamp.replace(tzinfo=timezone.utc)
 
-    db.commit()
-    db.refresh(db_med)
-    return db_med
+    return history
 
-@router.get("/log")
-def read_medication_logs(
+@router.get("/history/exercise")
+def get_exercise_history(
+    limit: int = 50,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    history = db.query(models.ExerciseLog).filter(
+        models.ExerciseLog.user_id == current_user.user_id
+    ).order_by(models.ExerciseLog.timestamp.desc()).limit(limit).all()
+
+    # Attach timezone info (SQLite stores as naive UTC)
+    for ex in history:
+        if ex.timestamp and ex.timestamp.tzinfo is None:
+            ex.timestamp = ex.timestamp.replace(tzinfo=timezone.utc)
+
+    return history
+
+@router.get("/summary")
+def get_daily_summary(
     date_str: Optional[str] = None,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
@@ -66,8 +88,23 @@ def read_medication_logs(
     else:
         target_date = date.today()
 
+    # 1. Daily Log (Calories In/Out)
+    daily = db.query(models.DailyLog).filter(
+        models.DailyLog.user_id == current_user.user_id,
+        models.DailyLog.date == target_date
+    ).first()
+
+    calories_consumed = daily.total_calories_consumed if daily else 0
+    calories_burned = daily.total_calories_burned if daily else 0
+
+    # 2. Latest BP (for that day? Or just latest ever? Usually "Summary" implies current status,
+    # but if looking back, maybe we want "Latest on that day" or "Average on that day"?)
+    # The requirement is "previous days summary's".
+    # Showing "Latest BP ever" on a summary for last week is misleading.
+    # Let's show "Last BP of that day".
+
+    # Determine UTC range for the User's Local Day
     import zoneinfo
-    from datetime import timezone
     try:
         user_tz = zoneinfo.ZoneInfo(current_user.timezone) if current_user.timezone else timezone.utc
     except Exception:
@@ -82,103 +119,167 @@ def read_medication_logs(
     utc_start = local_start.astimezone(timezone.utc)
     utc_end = local_end.astimezone(timezone.utc)
 
-    # Query logs + join Med to get name
-    logs = db.query(
-        models.MedDoseLog.dose_log_id,
-        models.MedDoseLog.med_id,
-        models.MedDoseLog.timestamp_taken,
-        models.Medication.name,
-        models.MedDoseLog.dose_window
-    ).join(
-        models.Medication, models.MedDoseLog.med_id == models.Medication.med_id
-    ).filter(
-        models.MedDoseLog.user_id == current_user.user_id,
-        models.MedDoseLog.timestamp_taken >= utc_start,
-        models.MedDoseLog.timestamp_taken <= utc_end
-    ).order_by(models.MedDoseLog.timestamp_taken.desc()).all()
+    bp = db.query(models.BloodPressure).filter(
+        models.BloodPressure.user_id == current_user.user_id,
+        models.BloodPressure.timestamp >= utc_start,
+        models.BloodPressure.timestamp <= utc_end
+    ).order_by(models.BloodPressure.timestamp.desc()).first()
 
-    from datetime import timezone
-    results = []
-    for log in logs:
-        name = log.name
-        if log.dose_window:
-             name += f" - {log.dose_window[0].upper()}"
+    bp_str = f"{bp.systolic}/{bp.diastolic}" if bp else "Not Logged"
 
-        ts = log.timestamp_taken
+    # 3. Macro Calculation (Protein/Fat/Carbs/Fiber)
+    food_logs = db.query(models.FoodItemLog).join(models.NutritionCache).filter(
+        models.FoodItemLog.user_id == current_user.user_id,
+        models.FoodItemLog.timestamp >= utc_start,
+        models.FoodItemLog.timestamp <= utc_end
+    ).all()
+
+    macros = {"protein": 0, "fat": 0, "carbs": 0, "fiber": 0}
+    food_list = []
+    for log in food_logs:
+        multiplier = log.serving_size * log.quantity
+        macros["protein"] += (log.nutrition_info.protein or 0) * multiplier
+        macros["fat"] += (log.nutrition_info.fat or 0) * multiplier
+        macros["carbs"] += (log.nutrition_info.carbs or 0) * multiplier
+        macros["fiber"] += (log.nutrition_info.fiber or 0) * multiplier
+
+        ts = log.timestamp
         if ts and ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
-
-        results.append({
-            "log_id": log.dose_log_id,
-            "med_id": log.med_id,
-            "med_name": name,
-            "timestamp": ts,
-            "dose_window": log.dose_window
+        food_list.append({
+            "log_id": log.item_log_id,
+            "name": log.nutrition_info.food_name,
+            "calories": (log.nutrition_info.calories or 0) * multiplier,
+            "meal": log.meal_id,
+            "serving_size": log.serving_size,
+            "quantity": log.quantity,
+            "timestamp": ts
         })
-    return results
 
-@router.delete("/log/{log_id}")
-def delete_med_log(
+    # Fetch Exercises for Today
+    exercises_list = []
+    daily_exercises = db.query(models.ExerciseLog).filter(
+        models.ExerciseLog.user_id == current_user.user_id,
+        models.ExerciseLog.timestamp >= utc_start,
+        models.ExerciseLog.timestamp <= utc_end
+    ).order_by(models.ExerciseLog.timestamp.desc()).all()
+
+    for ex in daily_exercises:
+        ts = ex.timestamp
+        if ts and ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        exercises_list.append({
+            "log_id": ex.exercise_id,
+            "activity": ex.activity_type,
+            "duration": ex.duration_minutes,
+            "calories": ex.calories_burned,
+            "timestamp": ts
+        })
+
+    return {
+        "blood_pressure": bp_str,
+        "calories_consumed": calories_consumed,
+        "calories_burned": calories_burned,
+        "macros": macros,
+        "food_logs": food_list,
+        "exercises": exercises_list
+    }
+
+@router.get("/reports/compliance")
+def get_compliance(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    service = services.HealthLogService()
+    report = service.calculate_compliance_report(db, current_user)
+    return report
+
+@router.get("/reports/adherence")
+def get_adherence(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # Deprecated/Simple version kept for backward compatibility if needed,
+    # but compliance report is better.
+    logs = db.query(models.MedDoseLog).filter(models.MedDoseLog.user_id == current_user.user_id).all()
+    total_doses = len(logs)
+    return {"total_doses_logged": total_doses}
+
+# --- Management Endpoints ---
+
+@router.delete("/exercise/{log_id}")
+def delete_exercise(
     log_id: int,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    service = services.MedicationService()
-    success = service.delete_dose_log(db, log_id, current_user.user_id)
+    service = services.HealthLogService()
+    success = service.delete_exercise_log(db, log_id, current_user.user_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Log not found")
+         raise HTTPException(status_code=404, detail="Log not found")
     return {"status": "success"}
 
-@router.put("/log/{log_id}", response_model=schemas.MedicationLogResponse)
-def update_med_log(
+@router.put("/exercise/{log_id}", response_model=schemas.ExerciseLogResponse)
+def update_exercise(
     log_id: int,
     updates: schemas.LogUpdate,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    service = services.MedicationService()
-    log = service.update_dose_log(db, log_id, current_user.user_id, updates)
+    service = services.HealthLogService()
+    log = service.update_exercise_log(db, log_id, current_user.user_id, updates)
     if not log:
-        raise HTTPException(status_code=404, detail="Log not found")
+         raise HTTPException(status_code=404, detail="Log not found")
 
-    # We need to return proper response structure.
-    # Log object has med_id, need name.
-    med = db.query(models.Medication).filter(models.Medication.med_id == log.med_id).first()
-
-    ts = log.timestamp_taken
+    ts = log.timestamp
     if ts and ts.tzinfo is None:
-        from datetime import timezone
         ts = ts.replace(tzinfo=timezone.utc)
 
     return {
-        "log_id": log.dose_log_id,
-        "med_id": log.med_id,
-        "med_name": med.name if med else "Unknown",
-        "timestamp": ts,
-        "dose_window": log.dose_window
+        "log_id": log.exercise_id,
+        "activity_type": log.activity_type,
+        "duration_minutes": log.duration_minutes,
+        "calories_burned": log.calories_burned,
+        "timestamp": ts
     }
 
-@router.post("/{med_id}/refill", response_model=schemas.MedicationResponse)
-def refill_medication(
-    med_id: int,
-    refill: schemas.MedicationRefill,
+@router.delete("/food/{log_id}")
+def delete_food(
+    log_id: int,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    med = db.query(models.Medication).filter(models.Medication.med_id == med_id, models.Medication.user_id == current_user.user_id).first()
-    if not med:
-        raise HTTPException(status_code=404, detail="Medication not found")
+    service = services.HealthLogService()
+    success = service.delete_food_log(db, log_id, current_user.user_id)
+    if not success:
+         raise HTTPException(status_code=404, detail="Log not found")
+    return {"status": "success"}
 
-    # Logic: update stock with refill.quantity (or med.refill_quantity if available?)
-    # The payload 'refill.quantity' is passed from frontend.
-    # The user said: "when it it pressed it should update both the stock and it should decremnt the number of refills left."
-    # We should assume the payload quantity IS the quantity to add.
+@router.put("/food/{log_id}", response_model=schemas.FoodLogResponse)
+def update_food(
+    log_id: int,
+    updates: schemas.LogUpdate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    service = services.HealthLogService()
+    log = service.update_food_log(db, log_id, current_user.user_id, updates)
+    if not log:
+         raise HTTPException(status_code=404, detail="Log not found")
 
-    med.current_inventory += refill.quantity
+    # Calculate calories for response
+    cals = log.nutrition_info.calories * log.serving_size * log.quantity
 
-    if med.refills_remaining > 0:
-        med.refills_remaining -= 1
+    ts = log.timestamp
+    if ts and ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
 
-    db.commit()
-    db.refresh(med)
-    return med
+    return {
+        "log_id": log.item_log_id,
+        "food_name": log.nutrition_info.food_name,
+        "meal_id": log.meal_id,
+        "calories": cals,
+        "serving_size": log.serving_size,
+        "quantity": log.quantity,
+        "timestamp": ts
+    }

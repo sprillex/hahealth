@@ -404,10 +404,8 @@ function createGaugeHTML(label, value, max, colorClass, unit) {
     return `
     <div class="gauge-container">
         <svg class="gauge-svg" viewBox="0 0 100 60">
-            <!-- Background Arc (Semi-circle) -->
             <path d="M 10 50 A 40 40 0 0 1 90 50" class="gauge-bg" />
 
-            <!-- Fill Arc -->
             <path d="M 10 50 A 40 40 0 0 1 90 50" class="gauge-fill ${colorClass}"
                   stroke-dasharray="${fillLength}, 200" />
 
@@ -1541,6 +1539,7 @@ async function updateThemePreference(val) {
 function printReport() {
     window.print();
 }
+
 // --- Management Functions (Appended) ---
 
 async function openManageMedsModal() {
