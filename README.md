@@ -110,6 +110,12 @@ Use the included CLI tool to manage users and API keys.
     ./venv/bin/python -m app.cli revoke-apikey --key-id 1
     ```
 
+5.  **Make a User Admin:**
+    ```bash
+    ./venv/bin/python -m app.cli make-admin --user-id 1
+    ```
+    *Use `--revoke` flag to remove admin privileges.*
+
 ## Updating the Application
 
 To update the application to the latest version:
