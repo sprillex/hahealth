@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, date
-from app import database, models, schemas, auth
+from app import database, models, schemas, auth, services
 
 router = APIRouter(
     prefix="/api/v1/medications",
@@ -71,6 +71,8 @@ def read_medication_logs(
 
     # Query logs + join Med to get name
     logs = db.query(
+        models.MedDoseLog.dose_log_id,
+        models.MedDoseLog.med_id,
         models.MedDoseLog.timestamp_taken,
         models.Medication.name,
         models.MedDoseLog.dose_window
@@ -87,8 +89,50 @@ def read_medication_logs(
         name = log.name
         if log.dose_window:
              name += f" - {log.dose_window[0].upper()}"
-        results.append({"med_name": name, "timestamp": log.timestamp_taken})
+        results.append({
+            "log_id": log.dose_log_id,
+            "med_id": log.med_id,
+            "med_name": name,
+            "timestamp": log.timestamp_taken,
+            "dose_window": log.dose_window
+        })
     return results
+
+@router.delete("/log/{log_id}")
+def delete_med_log(
+    log_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    service = services.MedicationService()
+    success = service.delete_dose_log(db, log_id, current_user.user_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Log not found")
+    return {"status": "success"}
+
+@router.put("/log/{log_id}", response_model=schemas.MedicationLogResponse)
+def update_med_log(
+    log_id: int,
+    updates: schemas.LogUpdate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    service = services.MedicationService()
+    log = service.update_dose_log(db, log_id, current_user.user_id, updates)
+    if not log:
+        raise HTTPException(status_code=404, detail="Log not found")
+
+    # We need to return proper response structure.
+    # Log object has med_id, need name.
+    med = db.query(models.Medication).filter(models.Medication.med_id == log.med_id).first()
+
+    return {
+        "log_id": log.dose_log_id,
+        "med_id": log.med_id,
+        "med_name": med.name if med else "Unknown",
+        "timestamp": log.timestamp_taken,
+        "dose_window": log.dose_window
+    }
 
 @router.post("/{med_id}/refill", response_model=schemas.MedicationResponse)
 def refill_medication(
