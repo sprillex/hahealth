@@ -148,12 +148,26 @@ class BPPayload(BaseModel):
 class MedicationTakenPayload(BaseModel):
     med_name: str # Using name to lookup
     timestamp: Optional[datetime] = None
+    med_window: Optional[str] = None
+
+class MedicationLogResponse(BaseModel):
+    log_id: int
+    med_name: str
+    timestamp: datetime
+    dose_window: Optional[str] = None
+    med_id: int
 
 class ExercisePayload(BaseModel):
     duration_minutes: float
     calories_burned: Optional[float] = None
-    activity_type: str # Needed for MET lookup if cals missing? Plan says "MET Formula" using duration.
-    # We might need a MET table or lookup.
+    activity_type: str
+
+class ExerciseLogResponse(BaseModel):
+    log_id: int
+    activity_type: str
+    duration_minutes: float
+    calories_burned: float
+    timestamp: datetime
 
 class FoodLogPayload(BaseModel):
     barcode: Optional[str] = None
@@ -161,6 +175,30 @@ class FoodLogPayload(BaseModel):
     serving_size: float = 1.0
     quantity: float = 1.0
     meal_id: str = "Snack"
+
+class FoodLogResponse(BaseModel):
+    log_id: int
+    food_name: str
+    meal_id: str
+    calories: float
+    serving_size: float
+    quantity: float
+    timestamp: datetime
+
+class LogUpdate(BaseModel):
+    # Generic update fields, specific logic in service
+    timestamp: Optional[datetime] = None
+    # For Meds
+    med_id: Optional[int] = None # If changing the med
+    dose_window: Optional[str] = None
+    # For Exercise
+    duration_minutes: Optional[float] = None
+    calories_burned: Optional[float] = None
+    activity_type: Optional[str] = None
+    # For Food
+    quantity: Optional[float] = None
+    serving_size: Optional[float] = None
+    meal_id: Optional[str] = None
 
 # Nutrition
 class NutritionCacheBase(BaseModel):

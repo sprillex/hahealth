@@ -127,15 +127,15 @@
                         <h3>Activity Log</h3>
                         <div class="summary-grid" style="text-align: left;">
                             <div>
-                                <h4>Medications Taken</h4>
+                                <h4>Medications Taken <small><a href="#" onclick="openManageMedsModal()">[Manage]</a></small></h4>
                                 <div id="meds-taken-list">Loading...</div>
                             </div>
                             <div>
-                                <h4>Exercises Today</h4>
+                                <h4>Exercises Today <small><a href="#" onclick="openManageExerciseModal()">[Manage]</a></small></h4>
                                 <div id="exercises-today-list">Loading...</div>
                             </div>
                             <div>
-                                <h4>Food Log Today</h4>
+                                <h4>Food Log Today <small><a href="#" onclick="openManageFoodModal()">[Manage]</a></small></h4>
                                 <div id="food-today-list">Loading...</div>
                             </div>
                         </div>
@@ -591,6 +591,106 @@
                     <button type="submit" class="btn-primary">Save</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Management Modals -->
+    <div id="manage-meds-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeManageMedsModal()">&times;</span>
+            <h2>Manage Medication Logs</h2>
+            <div id="manage-meds-list">Loading...</div>
+            <div id="edit-med-form-container" class="hidden" style="margin-top:20px; border-top:1px solid #ccc; padding-top:10px;">
+                 <h3>Edit Log</h3>
+                 <form id="edit-med-form">
+                     <input type="hidden" id="edit_med_log_id">
+                     <div class="form-group">
+                         <label>Time</label>
+                         <input type="datetime-local" id="edit_med_time" step="1">
+                     </div>
+                     <div class="form-group">
+                         <label>Window</label>
+                         <select id="edit_med_window">
+                             <option value="">None (Auto)</option>
+                             <option value="morning">Morning</option>
+                             <option value="afternoon">Afternoon</option>
+                             <option value="evening">Evening</option>
+                             <option value="bedtime">Bedtime</option>
+                         </select>
+                     </div>
+                     <button type="submit" class="btn-primary">Update</button>
+                     <button type="button" onclick="document.getElementById('edit-med-form-container').classList.add('hidden')">Cancel</button>
+                 </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="manage-exercise-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeManageExerciseModal()">&times;</span>
+            <h2>Manage Exercise Logs</h2>
+            <div id="manage-exercise-list">Loading...</div>
+            <div id="edit-exercise-form-container" class="hidden" style="margin-top:20px; border-top:1px solid #ccc; padding-top:10px;">
+                 <h3>Edit Log</h3>
+                 <form id="edit-exercise-form">
+                     <input type="hidden" id="edit_exercise_log_id">
+                     <div class="form-group">
+                         <label>Time</label>
+                         <input type="datetime-local" id="edit_exercise_time" step="1">
+                     </div>
+                     <div class="form-group">
+                         <label>Activity</label>
+                         <input type="text" id="edit_exercise_activity">
+                     </div>
+                     <div class="form-group">
+                         <label>Duration (mins)</label>
+                         <input type="number" id="edit_exercise_duration" step="1">
+                     </div>
+                     <div class="form-group">
+                         <label>Calories</label>
+                         <input type="number" id="edit_exercise_cals" step="1">
+                     </div>
+                     <button type="submit" class="btn-primary">Update</button>
+                     <button type="button" onclick="document.getElementById('edit-exercise-form-container').classList.add('hidden')">Cancel</button>
+                 </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="manage-food-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeManageFoodModal()">&times;</span>
+            <h2>Manage Food Logs</h2>
+            <div id="manage-food-list">Loading...</div>
+             <div id="edit-food-form-container" class="hidden" style="margin-top:20px; border-top:1px solid #ccc; padding-top:10px;">
+                 <h3>Edit Log</h3>
+                 <form id="edit-food-form">
+                     <input type="hidden" id="edit_food_log_id">
+                     <div class="form-group">
+                         <label>Time</label>
+                         <input type="datetime-local" id="edit_food_time" step="1">
+                     </div>
+                     <div class="form-group">
+                         <label>Quantity</label>
+                         <input type="number" id="edit_food_quantity" step="0.1">
+                     </div>
+                     <div class="form-group">
+                         <label>Serving Size</label>
+                         <input type="number" id="edit_food_serving" step="0.1">
+                     </div>
+                      <div class="form-group">
+                         <label>Meal</label>
+                         <select id="edit_food_meal">
+                            <option value="Breakfast">Breakfast</option>
+                            <option value="Lunch">Lunch</option>
+                            <option value="Dinner">Dinner</option>
+                            <option value="Snack">Snack</option>
+                         </select>
+                     </div>
+                     <button type="submit" class="btn-primary">Update</button>
+                     <button type="button" onclick="document.getElementById('edit-food-form-container').classList.add('hidden')">Cancel</button>
+                 </form>
+            </div>
         </div>
     </div>
 

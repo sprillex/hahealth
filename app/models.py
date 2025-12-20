@@ -125,6 +125,7 @@ class MedDoseLog(Base):
     med_id = Column(Integer, ForeignKey("medications.med_id"))
     timestamp_taken = Column(DateTime, default=datetime.datetime.utcnow)
     target_time_drift = Column(Float)
+    dose_window = Column(String, nullable=True)
 
     medication = relationship("Medication", back_populates="dose_logs")
 
