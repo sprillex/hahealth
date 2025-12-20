@@ -65,16 +65,22 @@ def get_user_local_date(user: models.User, utc_dt: datetime) -> date:
     return utc_dt.astimezone(user_tz).date()
 
 class MedicationService:
-    def log_dose(self, db: Session, user_id: int, med_name: str, timestamp_taken: datetime = None):
+    def log_dose(self, db: Session, user_id: int, med_name: str, timestamp_taken: datetime = None, med_window: str = None):
         if not timestamp_taken: timestamp_taken = datetime.now(timezone.utc)
         med = db.query(models.Medication).filter(
             models.Medication.user_id == user_id, models.Medication.name == med_name
         ).first()
         if not med: return None, "Medication not found"
         if med.current_inventory > 0: med.current_inventory -= 1
+
+        dose_window = None
+        if med_window:
+            dose_window = med_window.lower()
+
         dose_log = models.MedDoseLog(
             user_id=user_id, med_id=med.med_id,
-            timestamp_taken=timestamp_taken, target_time_drift=0.0
+            timestamp_taken=timestamp_taken, target_time_drift=0.0,
+            dose_window=dose_window
         )
         db.add(dose_log)
         alert = None
