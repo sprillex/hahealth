@@ -177,7 +177,7 @@ rest_command:
       }
 
   # Log Medication Taken
-  # Expects variable: med_name
+  # Expects variable: med_name, dose_window (optional: M, A, E, B, O)
   log_medication:
     url: "http://<YOUR_APP_IP>:8000/api/webhook/health"
     method: POST
@@ -189,7 +189,8 @@ rest_command:
         "data_type": "MEDICATION_TAKEN",
         "payload": {
           "med_name": "{{ med_name }}",
-          "timestamp": "{{ now().isoformat() }}"
+          "timestamp": "{{ now().utcnow().isoformat() }}Z",
+          "dose_window": "{{ dose_window | default('O') }}"
         }
       }
 

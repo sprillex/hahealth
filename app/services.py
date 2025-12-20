@@ -65,7 +65,7 @@ def get_user_local_date(user: models.User, utc_dt: datetime) -> date:
     return utc_dt.astimezone(user_tz).date()
 
 class MedicationService:
-    def log_dose(self, db: Session, user_id: int, med_name: str, timestamp_taken: datetime = None):
+    def log_dose(self, db: Session, user_id: int, med_name: str, timestamp_taken: datetime = None, dose_window: str = None):
         if not timestamp_taken:
             timestamp_taken = datetime.now(timezone.utc)
         elif timestamp_taken.tzinfo is not None:
@@ -79,7 +79,8 @@ class MedicationService:
         if med.current_inventory > 0: med.current_inventory -= 1
         dose_log = models.MedDoseLog(
             user_id=user_id, med_id=med.med_id,
-            timestamp_taken=timestamp_taken, target_time_drift=0.0
+            timestamp_taken=timestamp_taken, target_time_drift=0.0,
+            dose_window=dose_window
         )
         db.add(dose_log)
         alert = None
@@ -206,9 +207,64 @@ class HealthLogService:
             else:
                 return windows[-1][0], d - timedelta(days=1)
 
+        # Map Explicit Codes to Window Names
+        code_map = {"M": "morning", "A": "afternoon", "E": "evening", "B": "bedtime"}
+
         taken_set = set()
         for log in logs:
-            w_name, w_date = get_window_and_date(log.timestamp_taken)
+            if log.dose_window and log.dose_window in code_map:
+                # Use Explicit Window
+                # But we still need the date from the timestamp (adjusted to local)
+                if log.timestamp_taken.tzinfo is None:
+                    ts = log.timestamp_taken.replace(tzinfo=timezone.utc)
+                else:
+                    ts = log.timestamp_taken
+                ts_local = ts.astimezone(user_tz)
+                w_date = ts_local.date()
+
+                # If late night shift logic is needed for Explicit Windows, it's ambiguous.
+                # Assuming if user says "Bedtime", it belongs to the date of the timestamp...
+                # UNLESS the timestamp is 1AM.
+                # If I take a "Bedtime" dose at 1AM on Dec 19. It belongs to Dec 18 Bedtime.
+                # The explicit window says "Bedtime". The date is Dec 19.
+                # If we just use Dec 19 Bedtime, we might miss the target for Dec 18.
+                # HOWEVER, if the user explicitly tracks "Bedtime", they likely associate it with the "logical day".
+                # But here we only have the physical timestamp.
+
+                # Let's fallback to `get_window_and_date` solely for the DATE determination if needed,
+                # OR trust the timestamp's date.
+                # But the existing logic `get_window_and_date` handles the day-shift for late nights.
+                # If we use that logic to get the DATE, but overwrite the WINDOW with the explicit one, that seems safest.
+
+                calc_window, calc_date = get_window_and_date(log.timestamp_taken)
+
+                # But if I take a Morning dose at 1AM (very early), `get_window_and_date` might call it Bedtime (prev day).
+                # If explicit is "M", and timestamp is 1AM.
+                # 1AM is < Morning Start (6AM). So calc logic says "Bedtime Prev Day".
+                # But user said "Morning".
+                # If user said Morning at 1AM, maybe they mean Morning of current day?
+                # If I use calc_date (Prev Day), then I have (M, Prev Day).
+                # Does Prev Day have a Morning slot? Yes. But I took it at 1AM next day?
+
+                # Let's use the calculated date from `get_window_and_date` as it handles the "day boundary" defined by the user's Morning Start.
+                # If 1AM is considered "Yesterday" by the system configuration, then the dose belongs to Yesterday.
+                # Even if explicitly labeled "Morning", if it happens in "Yesterday's" timeframe, it's Yesterday's Morning?
+                # That sounds weird. (Taking Yesterday's Morning dose at 1AM tonight?)
+                # Unlikely.
+
+                # If the user sends Explicit Window, we should probably trust the Date of the timestamp roughly,
+                # but the "Day Boundary" logic is crucial for Bedtime.
+
+                # Strategy: Use `get_window_and_date` to determine the "Logical Date" of the log.
+                # Use `dose_window` to determine the "Window".
+
+                _, w_date = get_window_and_date(log.timestamp_taken)
+                w_name = code_map[log.dose_window]
+
+            else:
+                # Fallback to calculated window
+                w_name, w_date = get_window_and_date(log.timestamp_taken)
+
             if start_date <= w_date <= end_date:
                 taken_set.add((log.med_id, w_name, w_date))
 
