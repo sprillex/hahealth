@@ -169,6 +169,13 @@ def migrate_all():
         except sqlite3.OperationalError:
             pass
 
+    # 10. Med Dose Log Window
+    try:
+        cursor.execute("ALTER TABLE med_dose_logs ADD COLUMN dose_window VARCHAR")
+        print(" - Added dose_window to med_dose_logs.")
+    except sqlite3.OperationalError:
+        pass
+
     conn.commit()
     conn.close()
     print("All migrations complete.")
