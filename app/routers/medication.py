@@ -72,7 +72,8 @@ def read_medication_logs(
     # Query logs + join Med to get name
     logs = db.query(
         models.MedDoseLog.timestamp_taken,
-        models.Medication.name
+        models.Medication.name,
+        models.MedDoseLog.dose_window
     ).join(
         models.Medication, models.MedDoseLog.med_id == models.Medication.med_id
     ).filter(
@@ -81,7 +82,13 @@ def read_medication_logs(
         models.MedDoseLog.timestamp_taken <= end_of_day
     ).order_by(models.MedDoseLog.timestamp_taken.desc()).all()
 
-    return [{"med_name": log.name, "timestamp": log.timestamp_taken} for log in logs]
+    results = []
+    for log in logs:
+        name = log.name
+        if log.dose_window:
+             name += f" - {log.dose_window[0].upper()}"
+        results.append({"med_name": name, "timestamp": log.timestamp_taken})
+    return results
 
 @router.post("/{med_id}/refill", response_model=schemas.MedicationResponse)
 def refill_medication(

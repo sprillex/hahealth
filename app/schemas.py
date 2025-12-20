@@ -148,6 +148,7 @@ class BPPayload(BaseModel):
 class MedicationTakenPayload(BaseModel):
     med_name: str # Using name to lookup
     timestamp: Optional[datetime] = None
+    med_window: Optional[str] = None
 
 class ExercisePayload(BaseModel):
     duration_minutes: float
