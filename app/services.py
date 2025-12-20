@@ -203,7 +203,26 @@ class HealthLogService:
 
         taken_set = set()
         for log in logs:
-            w_name, w_date = get_window_and_date(log.timestamp_taken)
+            if log.dose_window:
+                w_name = log.dose_window
+                # Date logic: If explicit bedtime dose is taken early morning (before morning window),
+                # attribute it to previous day.
+                # Note: get_window_and_date logic handles this for inferred windows.
+                # We need similar logic here for explicit windows.
+                if log.timestamp_taken.tzinfo is None:
+                     ts = log.timestamp_taken.replace(tzinfo=timezone.utc)
+                else:
+                     ts = log.timestamp_taken
+                ts_local = ts.astimezone(user_tz)
+                w_date = ts_local.date()
+
+                morning_start = windows[0][1] # First window is morning
+
+                if w_name == "bedtime" and ts_local.time() < morning_start:
+                     w_date -= timedelta(days=1)
+            else:
+                w_name, w_date = get_window_and_date(log.timestamp_taken)
+
             if start_date <= w_date <= end_date:
                 taken_set.add((log.med_id, w_name, w_date))
 
