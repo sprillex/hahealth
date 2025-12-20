@@ -66,7 +66,12 @@ def get_user_local_date(user: models.User, utc_dt: datetime) -> date:
 
 class MedicationService:
     def log_dose(self, db: Session, user_id: int, med_name: str, timestamp_taken: datetime = None):
-        if not timestamp_taken: timestamp_taken = datetime.now(timezone.utc)
+        if not timestamp_taken:
+            timestamp_taken = datetime.now(timezone.utc)
+        elif timestamp_taken.tzinfo is not None:
+            # Normalize to UTC to avoid SQLite string comparison issues
+            timestamp_taken = timestamp_taken.astimezone(timezone.utc)
+
         med = db.query(models.Medication).filter(
             models.Medication.user_id == user_id, models.Medication.name == med_name
         ).first()
@@ -86,10 +91,12 @@ class MedicationService:
 
 class HealthLogService:
     def log_bp(self, db: Session, user_id: int, data: schemas.BPPayload):
+        # Always log in UTC
+        timestamp = datetime.now(timezone.utc)
         bp = models.BloodPressure(
             user_id=user_id, systolic=data.systolic, diastolic=data.diastolic,
             pulse=data.pulse, location=data.location, stress_level=data.stress_level,
-            meds_taken_before=data.meds_taken_before, timestamp=datetime.now(timezone.utc)
+            meds_taken_before=data.meds_taken_before, timestamp=timestamp
         )
         db.add(bp)
         db.commit()
