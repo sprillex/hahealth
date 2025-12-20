@@ -312,6 +312,11 @@ class HealthLogService:
         return log
 
     def calculate_compliance_report(self, db: Session, user: models.User):
+        try:
+            user_tz = zoneinfo.ZoneInfo(user.timezone) if user.timezone else timezone.utc
+        except Exception:
+            user_tz = timezone.utc
+
         # [FIXED INDENTATION HERE]
         end_date = get_user_local_date(user, datetime.now(timezone.utc)) - timedelta(days=1)
         start_date = end_date - timedelta(days=29)
@@ -320,11 +325,6 @@ class HealthLogService:
         meds = db.query(models.Medication).filter(models.Medication.user_id == user.user_id).all()
         if not meds:
             return {"compliance_percentage": 0, "missed_doses": 0, "taken_doses": 0, "total_scheduled": 0, "medications": []}
-
-        try:
-            user_tz = zoneinfo.ZoneInfo(user.timezone) if user.timezone else timezone.utc
-        except Exception:
-            user_tz = timezone.utc
             
         start_dt = datetime.combine(start_date, time.min).replace(tzinfo=user_tz)
         end_dt = datetime.combine(end_date + timedelta(days=1), time.min).replace(tzinfo=user_tz)

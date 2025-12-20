@@ -66,8 +66,21 @@ def read_medication_logs(
     else:
         target_date = date.today()
 
-    start_of_day = datetime.combine(target_date, datetime.min.time())
-    end_of_day = datetime.combine(target_date, datetime.max.time())
+    import zoneinfo
+    from datetime import timezone
+    try:
+        user_tz = zoneinfo.ZoneInfo(current_user.timezone) if current_user.timezone else timezone.utc
+    except Exception:
+        user_tz = timezone.utc
+
+    # Local day start/end
+    # Using naive combine and then attaching timezone
+    local_start = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=user_tz)
+    local_end = datetime.combine(target_date, datetime.max.time()).replace(tzinfo=user_tz)
+
+    # Convert to UTC for DB Query
+    utc_start = local_start.astimezone(timezone.utc)
+    utc_end = local_end.astimezone(timezone.utc)
 
     # Query logs + join Med to get name
     logs = db.query(
@@ -80,8 +93,8 @@ def read_medication_logs(
         models.Medication, models.MedDoseLog.med_id == models.Medication.med_id
     ).filter(
         models.MedDoseLog.user_id == current_user.user_id,
-        models.MedDoseLog.timestamp_taken >= start_of_day,
-        models.MedDoseLog.timestamp_taken <= end_of_day
+        models.MedDoseLog.timestamp_taken >= utc_start,
+        models.MedDoseLog.timestamp_taken <= utc_end
     ).order_by(models.MedDoseLog.timestamp_taken.desc()).all()
 
     from datetime import timezone
