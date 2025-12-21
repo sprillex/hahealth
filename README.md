@@ -142,6 +142,30 @@ To update the application to the latest version:
     sudo systemctl restart hahealth
     ```
 
+## Database Inspection
+
+To view the raw data in the SQLite database, you can use the included inspection script.
+
+1.  **List all tables and row counts:**
+    ```bash
+    python scripts/inspect_db.py
+    ```
+
+2.  **Dump a specific table:**
+    ```bash
+    python scripts/inspect_db.py users
+    ```
+
+3.  **Dump with limit (e.g., first 5 rows):**
+    ```bash
+    python scripts/inspect_db.py daily_logs --limit 5
+    ```
+
+4.  **Dump all tables:**
+    ```bash
+    python scripts/inspect_db.py --all
+    ```
+
 ## Home Assistant Integration
 
 To send data from Home Assistant to this application, use the `rest_command` integration or automation webhooks.
