@@ -5,14 +5,25 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from app import database, models
 from app.routers import auth, users, medication, health, webhook, prescribers, admin, nutrition, medical
 from app.version import BUILD_VERSION, BUILD_DATE
+from app import mqtt
 import os
+from contextlib import asynccontextmanager
 
 # Create DB tables
 models.Base.metadata.create_all(bind=database.engine)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start MQTT Client
+    mqtt.mqtt_client.start()
+    yield
+    # Stop MQTT Client
+    mqtt.mqtt_client.stop()
+
 app = FastAPI(
     title="Comprehensive Health Tracker",
-    docs_url=None
+    docs_url=None,
+    lifespan=lifespan
 )
 
 app.include_router(auth.router)
