@@ -43,5 +43,14 @@ def webhook_ingestion(
              raise HTTPException(status_code=400, detail=error)
         return {"status": "success", "message": "Food logged"}
 
+    elif payload.data_type == schemas.WebhookDataType.WEIGHT:
+        data = schemas.WeightPayload(**payload.payload)
+        w_kg = data.weight
+        if data.unit.lower() in ["lbs", "lb", "pound", "pounds"]:
+            w_kg = w_kg * 0.453592
+        user.weight_kg = w_kg
+        db.commit()
+        return {"status": "success", "message": "Weight logged"}
+
     else:
         raise HTTPException(status_code=400, detail="Invalid Data Type")

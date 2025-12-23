@@ -164,6 +164,16 @@ class MQTTClient:
                 else:
                     logger.info(f"Logged Food for user {user.name}")
 
+            elif data_type == schemas.WebhookDataType.WEIGHT:
+                weight_data = schemas.WeightPayload(**inner_payload)
+                w_kg = weight_data.weight
+                if weight_data.unit.lower() in ["lbs", "lb", "pound", "pounds"]:
+                    w_kg = w_kg * 0.453592
+
+                user.weight_kg = w_kg
+                db.commit()
+                logger.info(f"Logged Weight for user {user.name}")
+
             else:
                 logger.warning(f"Unknown data_type: {data_type}")
 
