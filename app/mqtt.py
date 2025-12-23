@@ -241,11 +241,6 @@ class MQTTClient:
                     "unit_of_measurement": unit,
                     "device": device_info
                 }
-                # For weight, if user prefers imperial, update unit?
-                # Keeping backend metric (kg) is safer, HA can convert if configured.
-                # Or we check user preference.
-                if key == "weight" and user.unit_system == "imperial":
-                     payload["unit_of_measurement"] = "lb"
 
                 self.client.publish(discovery_topic, json.dumps(payload), retain=True)
 
@@ -255,9 +250,6 @@ class MQTTClient:
             try:
                 # 1. Profile Stats
                 weight = user.weight_kg
-                if user.unit_system == "imperial":
-                    # Convert to lbs for display if that's what we claim in discovery
-                    weight = weight * 2.20462
 
                 # 2. Daily Log Stats (Calories)
                 local_date = services.get_user_local_date(user, None)
