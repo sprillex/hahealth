@@ -1,3 +1,8 @@
+from dotenv import load_dotenv
+import os
+# Load environment variables from .env file
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -5,14 +10,24 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from app import database, models
 from app.routers import auth, users, medication, health, webhook, prescribers, admin, nutrition, medical
 from app.version import BUILD_VERSION, BUILD_DATE
-import os
+from app import mqtt
+from contextlib import asynccontextmanager
 
 # Create DB tables
 models.Base.metadata.create_all(bind=database.engine)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start MQTT Client
+    mqtt.mqtt_client.start()
+    yield
+    # Stop MQTT Client
+    mqtt.mqtt_client.stop()
+
 app = FastAPI(
     title="Comprehensive Health Tracker",
-    docs_url=None
+    docs_url=None,
+    lifespan=lifespan
 )
 
 app.include_router(auth.router)
