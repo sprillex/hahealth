@@ -22,7 +22,7 @@ A robust, multi-user health tracking backend built with FastAPI, designed to int
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/sprillex/hahealth
+    git clone [https://github.com/sprillex/hahealth](https://github.com/sprillex/hahealth)
     cd hahealth
     ```
 
