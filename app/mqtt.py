@@ -223,7 +223,7 @@ class MQTTClient:
             }
 
             sensors = [
-                ("weight", "Weight", "mass", "kg"),
+                ("weight", "Weight", "weight", "kg"),
                 ("bp_systolic", "BP Systolic", "pressure", "mmHg"),
                 ("bp_diastolic", "BP Diastolic", "pressure", "mmHg"),
                 ("calories_in", "Calories Consumed", "energy", "kcal"),
