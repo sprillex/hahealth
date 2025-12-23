@@ -263,6 +263,73 @@ rest_command:
       }
 ```
 
+## MQTT Integration
+
+The application supports receiving health data via MQTT, useful for integration with Home Assistant's `mqtt.publish` service.
+
+### Configuration
+
+Set the following environment variables to configure the MQTT client:
+
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `MQTT_BROKER` | Hostname or IP of the MQTT broker | `localhost` |
+| `MQTT_PORT` | Port of the MQTT broker | `1883` |
+| `MQTT_USERNAME` | Username for authentication (optional) | `None` |
+| `MQTT_PASSWORD` | Password for authentication (optional) | `None` |
+| `MQTT_TOPIC_PREFIX` | Prefix for subscription (subscribes to `prefix/#`) | `hahealth/log` |
+| `HASS_DISCOVERY_PREFIX` | Prefix for Home Assistant discovery topics | `homeassistant` |
+
+### Home Assistant Auto Discovery
+
+When MQTT is configured, the application automatically publishes discovery payloads to Home Assistant. This means sensors for your health data will appear automatically in Home Assistant without manual configuration.
+
+**Sensors Created (per user):**
+- **Weight**: Displays current weight (supports Metric/Imperial based on user profile).
+- **Blood Pressure**: Two sensors for Systolic and Diastolic values.
+- **Daily Calories**: Two sensors for 'Consumed' and 'Burned' calories for the current day.
+
+The application updates these sensors every 60 seconds.
+
+### Ingestion Payload Format
+
+Send a JSON payload to `hahealth/log/any_subtopic`. The payload must include your API Key (`api_key`) and the `data_type`.
+
+**Example: Log Blood Pressure**
+```json
+{
+  "api_key": "YOUR_SECRET_API_KEY",
+  "data_type": "BLOOD_PRESSURE",
+  "payload": {
+    "systolic": 120,
+    "diastolic": 80,
+    "pulse": 72,
+    "location": "Left Arm",
+    "stress_level": 5
+  }
+}
+```
+
+**Example: Home Assistant Script**
+
+```yaml
+alias: Log BP via MQTT
+sequence:
+  - service: mqtt.publish
+    data:
+      topic: hahealth/log/bp
+      payload: >
+        {
+          "api_key": "!secret hahealth_api_key",
+          "data_type": "BLOOD_PRESSURE",
+          "payload": {
+            "systolic": {{ states('input_number.systolic') | int }},
+            "diastolic": {{ states('input_number.diastolic') | int }},
+            "pulse": {{ states('input_number.pulse') | int }}
+          }
+        }
+```
+
 ## Development
 
 **Run Tests:**
