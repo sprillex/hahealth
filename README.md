@@ -207,10 +207,13 @@ This is the recommended integration method. It supports automatic sensor discove
 ### How it Works
 1.  **Shared Broker**: The app connects to the same MQTT broker as Home Assistant.
 2.  **Auto Discovery**: The app publishes configuration messages to `homeassistant/sensor/...`.
-3.  **Sensors**: Home Assistant automatically creates sensors for:
-    - **Weight**: Current weight (kg/lb based on user setting).
-    - **Blood Pressure**: Systolic and Diastolic.
-    - **Daily Calories**: Consumed and Burned for the current day.
+3.  **Sensors**: Home Assistant automatically creates the following sensors for each user, prefixed with the user's name (e.g., "John Doe Weight"):
+    - **Weight** (kg or lb)
+    - **BP Systolic** (mmHg)
+    - **BP Diastolic** (mmHg)
+    - **Calories Consumed** (kcal)
+    - **Calories Burned** (kcal)
+
     *These sensors update every 60 seconds.*
 
 ### Logging Data via MQTT
