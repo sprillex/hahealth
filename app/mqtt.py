@@ -30,8 +30,19 @@ class MQTTClient:
         self.client.on_message = self.on_message
         self.client.on_disconnect = self.on_disconnect
 
+        self.connected = False
         self._stop_event = threading.Event()
         self._publisher_thread = None
+
+    def get_status(self):
+        return {
+            "connected": self.connected,
+            "broker": MQTT_BROKER,
+            "port": MQTT_PORT,
+            "username": MQTT_USERNAME or "None",
+            "topic_prefix": MQTT_TOPIC_PREFIX,
+            "discovery_prefix": HASS_DISCOVERY_PREFIX
+        }
 
     def start(self):
         try:
@@ -56,6 +67,7 @@ class MQTTClient:
 
     def on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
+            self.connected = True
             logger.info("Connected to MQTT Broker!")
             topic = f"{MQTT_TOPIC_PREFIX}/#"
             client.subscribe(topic)
@@ -64,9 +76,11 @@ class MQTTClient:
             # Publish discovery immediately on connect
             self._publish_discovery_task()
         else:
+            self.connected = False
             logger.error(f"Failed to connect, return code {reason_code}")
 
     def on_disconnect(self, client, userdata, disconnect_flags, reason_code=None, properties=None):
+        self.connected = False
         logger.info("Disconnected from MQTT Broker")
 
     def on_message(self, client, userdata, msg):
