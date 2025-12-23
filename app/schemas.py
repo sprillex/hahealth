@@ -134,6 +134,7 @@ class WebhookDataType(str, Enum):
     MEDICATION_TAKEN = "MEDICATION_TAKEN"
     EXERCISE_SESSION = "EXERCISE_SESSION"
     FOOD_LOG = "FOOD_LOG"
+    WEIGHT = "WEIGHT"
 
 class WebhookPayload(BaseModel):
     data_type: WebhookDataType
@@ -187,6 +188,10 @@ class FoodLogResponse(BaseModel):
     serving_size: float
     quantity: float
     timestamp: datetime
+
+class WeightPayload(BaseModel):
+    weight: float
+    unit: str = "kg"
 
 class LogUpdate(BaseModel):
     # Generic update fields, specific logic in service
