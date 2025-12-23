@@ -220,7 +220,7 @@ class MQTTClient:
                 # Keeping backend metric (kg) is safer, HA can convert if configured.
                 # Or we check user preference.
                 if key == "weight" and user.unit_system == "imperial":
-                    payload["unit_of_measurement"] = "lb"
+                     payload["unit_of_measurement"] = "lb"
 
                 self.client.publish(discovery_topic, json.dumps(payload), retain=True)
 
