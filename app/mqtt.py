@@ -222,8 +222,12 @@ class MQTTClient:
                 "model": "v1.0"
             }
 
+            weight_unit = "kg"
+            if user.unit_system == "IMPERIAL":
+                weight_unit = "lb"
+
             sensors = [
-                ("weight", "Weight", "weight", "kg"),
+                ("weight", "Weight", "weight", weight_unit),
                 ("bp_systolic", "BP Systolic", None, "mmHg"),
                 ("bp_diastolic", "BP Diastolic", None, "mmHg"),
                 ("calories_in", "Calories Consumed", "energy", "kcal"),
@@ -250,6 +254,8 @@ class MQTTClient:
             try:
                 # 1. Profile Stats
                 weight = user.weight_kg
+                if weight is not None and user.unit_system == "IMPERIAL":
+                    weight = round(weight * 2.20462, 1)
 
                 # 2. Daily Log Stats (Calories)
                 local_date = services.get_user_local_date(user, None)
