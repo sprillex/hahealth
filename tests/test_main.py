@@ -112,3 +112,75 @@ def test_webhook_invalid_key(client):
         headers={"X-Webhook-Secret": "wrong_key"}
     )
     assert response.status_code == 401
+
+def test_webhook_get_nutrition(client):
+    # Setup - insert cache item and ensure API key
+    db = TestingSessionLocal()
+    user = db.query(models.User).filter(models.User.name == "testuser").first()
+
+    # Create a unique key for this test
+    raw_key = "test_webhook_key_nutrition"
+    hashed_key = auth.hash_api_key(raw_key)
+    # Check if key exists (it shouldn't in a clean test db run, but in interactive dev it might)
+    # Since client fixture has module scope, we rely on unique key name.
+    new_key = models.APIKey(user_id=user.user_id, name="Test Key Nutrition", hashed_key=hashed_key)
+    db.add(new_key)
+
+    # Add nutrition item manually to DB to avoid external API call in test
+    cache_item = models.NutritionCache(
+        barcode="123456",
+        food_name="Test Food",
+        calories=100.0,
+        protein=10.0,
+        fat=5.0,
+        carbs=20.0,
+        fiber=2.0,
+        source="TEST"
+    )
+    db.add(cache_item)
+    db.commit()
+    db.close()
+
+    response = client.get(
+        "/api/webhook/nutrition/123456",
+        headers={"X-Webhook-Secret": raw_key}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["food_name"] == "Test Food"
+    assert data["calories"] == 100.0
+    assert data["source"] == "TEST"
+
+    # Test Not Found
+    # We need to ensure it returns 404. Since we might have internet access,
+    # we should pick a barcode that definitely doesn't exist or mock the service.
+    # However, mocking inside TestClient flow is tricky because it runs in the same process but
+    # we need to patch the module used by the app.
+
+    # Let's try to patch requests.get in app.services
+    import app.services
+    original_get = app.services.requests.get
+
+    class MockResponse:
+        def __init__(self, status_code, json_data):
+            self.status_code = status_code
+            self._json = json_data
+        def json(self):
+            return self._json
+
+    def mock_get(url):
+        if "123456" in url:
+             # Should be handled by cache, but just in case
+             return MockResponse(200, {"status": 1, "product": {"product_name": "Test Food"}})
+        return MockResponse(404, {})
+
+    app.services.requests.get = mock_get
+
+    try:
+        response_nf = client.get(
+            "/api/webhook/nutrition/99999999",
+            headers={"X-Webhook-Secret": raw_key}
+        )
+        assert response_nf.status_code == 404
+    finally:
+        app.services.requests.get = original_get

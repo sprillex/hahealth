@@ -54,3 +54,16 @@ def webhook_ingestion(
 
     else:
         raise HTTPException(status_code=400, detail="Invalid Data Type")
+
+@router.get("/nutrition/{barcode}", response_model=schemas.NutritionCacheResponse)
+def get_nutrition_info(
+    barcode: str,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(auth.verify_webhook_api_key)
+):
+    off_service = services.OpenFoodFactsService()
+    product = off_service.get_product(barcode, db)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    return product
