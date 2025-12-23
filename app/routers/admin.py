@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from app import database, models, auth, services
+from app import database, models, auth, services, mqtt
 import os
 
 router = APIRouter(
@@ -13,6 +13,10 @@ def get_current_admin(current_user: models.User = Depends(auth.get_current_user)
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Not authorized")
     return current_user
+
+@router.get("/mqtt_status")
+def get_mqtt_status(admin: models.User = Depends(get_current_admin)):
+    return mqtt.mqtt_client.get_status()
 
 @router.post("/key")
 def set_backup_key(
