@@ -6,6 +6,12 @@
 # 3. Displays the result in a Persistent Notification.
 
 # ------------------------------------------------------------------------------
+# Prerequisites: secrets.yaml
+# Add your Health App API Key to your secrets.yaml file:
+# hahealth_api_key: "your_generated_api_key_here"
+# ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # Part 1: configuration.yaml
 # Add these sections to your main configuration.yaml file.
 # ------------------------------------------------------------------------------
@@ -24,7 +30,7 @@ sensor:
     resource_template: "http://<YOUR_APP_IP>:8000/api/webhook/nutrition/{{ states('input_text.last_scanned_barcode') }}"
     method: GET
     headers:
-      # Ensure 'hahealth_api_key' is defined in your secrets.yaml, or replace this line with the actual key
+      # This uses the API key defined in secrets.yaml
       X-Webhook-Secret: !secret hahealth_api_key
       Content-Type: application/json
     scan_interval: 86400 # Update only when triggered manually
