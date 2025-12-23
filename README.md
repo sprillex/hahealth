@@ -285,7 +285,12 @@ rest_command:
           "med_window": "{{ med_window | default('evening') }}"
         }
       }
-```
+
+### Barcode Query Automation Example
+
+You can set up an automation to scan a barcode via webhook, query the Health App for nutrition info, and display the result in a notification.
+
+See [HA_AUTOMATION.yaml](HA_AUTOMATION.yaml) for the full configuration guide.
 
 ## Development
 

@@ -1,0 +1,77 @@
+# Home Assistant Automation Configuration
+# =========================================
+# This file contains the necessary configuration to create an automation that:
+# 1. Receives a barcode via a webhook.
+# 2. Queries the Health App for nutrition info.
+# 3. Displays the result in a Persistent Notification.
+
+# ------------------------------------------------------------------------------
+# Part 1: configuration.yaml
+# Add these sections to your main configuration.yaml file.
+# ------------------------------------------------------------------------------
+
+# Input Helper to store the temporary barcode
+input_text:
+  last_scanned_barcode:
+    name: Last Scanned Barcode
+    initial: "0000000000000"
+
+# REST Sensor to fetch data from the Health App
+sensor:
+  - platform: rest
+    name: Food Query Result
+    # IMPORTANT: Replace <YOUR_APP_IP> with the IP address of your Health App server
+    resource_template: "http://<YOUR_APP_IP>:8000/api/webhook/nutrition/{{ states('input_text.last_scanned_barcode') }}"
+    method: GET
+    headers:
+      # Ensure 'hahealth_api_key' is defined in your secrets.yaml, or replace this line with the actual key
+      X-Webhook-Secret: !secret hahealth_api_key
+      Content-Type: application/json
+    scan_interval: 86400 # Update only when triggered manually
+    value_template: "{{ value_json.food_name }}"
+    json_attributes:
+      - calories
+      - protein
+      - fat
+      - carbs
+      - serving_size
+      - source
+
+# ------------------------------------------------------------------------------
+# Part 2: automations.yaml
+# Copy this automation into your automations.yaml file or create a new automation via the UI.
+# ------------------------------------------------------------------------------
+
+- alias: "Query Food Barcode"
+  description: "Queries the Health App for nutrition info when a barcode is received via webhook."
+  trigger:
+    - platform: webhook
+      webhook_id: query_food_barcode
+      # Expected Payload: { "barcode": "5449000000996" }
+  action:
+    # 1. Save the barcode to the helper
+    - service: input_text.set_value
+      target:
+        entity_id: input_text.last_scanned_barcode
+      data:
+        value: "{{ trigger.json.barcode }}"
+
+    # 2. Force the REST sensor to refresh immediately
+    - service: homeassistant.update_entity
+      target:
+        entity_id: sensor.food_query_result
+
+    # 3. Wait briefly for the API request to complete
+    - delay: "00:00:02"
+
+    # 4. Show the notification with the results
+    - service: persistent_notification.create
+      data:
+        title: "Food Found: {{ states('sensor.food_query_result') }}"
+        message: >
+          **Name:** {{ states('sensor.food_query_result') }}
+          **Calories:** {{ state_attr('sensor.food_query_result', 'calories') }} kcal
+          **Protein:** {{ state_attr('sensor.food_query_result', 'protein') }} g
+          **Carbs:** {{ state_attr('sensor.food_query_result', 'carbs') }} g
+          **Fat:** {{ state_attr('sensor.food_query_result', 'fat') }} g
+          **Source:** {{ state_attr('sensor.food_query_result', 'source') }}
