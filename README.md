@@ -20,7 +20,7 @@ A robust, multi-user health tracking backend built with FastAPI, designed to int
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/sprillex/hahealth
+    git clone [https://github.com/sprillex/hahealth](https://github.com/sprillex/hahealth)
     cd hahealth
     ```
 
@@ -261,68 +261,3 @@ rest_command:
           "quantity": {{ quantity | default(1) }}
         }
       }
-```
-
-## MQTT Integration
-
-The application supports receiving health data via MQTT, useful for integration with Home Assistant's `mqtt.publish` service.
-
-### Configuration
-
-Set the following environment variables to configure the MQTT client:
-
-| Variable | Description | Default |
-| :--- | :--- | :--- |
-| `MQTT_BROKER` | Hostname or IP of the MQTT broker | `localhost` |
-| `MQTT_PORT` | Port of the MQTT broker | `1883` |
-| `MQTT_USERNAME` | Username for authentication (optional) | `None` |
-| `MQTT_PASSWORD` | Password for authentication (optional) | `None` |
-| `MQTT_TOPIC_PREFIX` | Prefix for subscription (subscribes to `prefix/#`) | `hahealth/log` |
-
-### Payload Format
-
-Send a JSON payload to `hahealth/log/any_subtopic`. The payload must include your API Key (`api_key`) and the `data_type`.
-
-**Example: Log Blood Pressure**
-```json
-{
-  "api_key": "YOUR_SECRET_API_KEY",
-  "data_type": "BLOOD_PRESSURE",
-  "payload": {
-    "systolic": 120,
-    "diastolic": 80,
-    "pulse": 72,
-    "location": "Left Arm",
-    "stress_level": 5
-  }
-}
-```
-
-**Example: Home Assistant Script**
-
-```yaml
-alias: Log BP via MQTT
-sequence:
-  - service: mqtt.publish
-    data:
-      topic: hahealth/log/bp
-      payload: >
-        {
-          "api_key": "!secret hahealth_api_key",
-          "data_type": "BLOOD_PRESSURE",
-          "payload": {
-            "systolic": {{ states('input_number.systolic') | int }},
-            "diastolic": {{ states('input_number.diastolic') | int }},
-            "pulse": {{ states('input_number.pulse') | int }}
-          }
-        }
-```
-
-## Development
-
-**Run Tests:**
-```bash
-# Ensure the current directory is in PYTHONPATH
-export PYTHONPATH=$PYTHONPATH:.
-pytest
-```
