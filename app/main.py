@@ -38,8 +38,7 @@ app.include_router(health.router)
 app.include_router(webhook.router)
 app.include_router(admin.router)
 app.include_router(nutrition.router)
-app.include_router(prescribers.router) # Was missing import? No, it was imported.
-app.include_router(medical.router) # Add Medical
+app.include_router(medical.router)
 
 # Mount Static Files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

@@ -20,7 +20,7 @@ A robust, multi-user health tracking backend built with FastAPI, designed to int
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/sprillex/hahealth
+    git clone [https://github.com/sprillex/hahealth](https://github.com/sprillex/hahealth)
     cd hahealth
     ```
 
@@ -265,98 +265,3 @@ rest_command:
           "quantity": {{ quantity | default(1) }}
         }
       }
-```
-
-## MQTT Integration
-
-The application supports receiving health data via MQTT, useful for integration with Home Assistant's `mqtt.publish` service.
-
-### Configuration
-
-You can configure the MQTT connection by creating a `.env` file in the project root (recommended) or setting environment variables.
-
-1.  **Copy the example configuration:**
-    ```bash
-    cp .env.example .env
-    ```
-
-2.  **Edit the `.env` file:**
-    ```ini
-    MQTT_BROKER=192.168.1.50
-    MQTT_USERNAME=homeassistant
-    MQTT_PASSWORD=your_password
-    ```
-
-| Variable | Description | Default |
-| :--- | :--- | :--- |
-| `MQTT_BROKER` | Hostname or IP of the MQTT broker (e.g., your HA IP) | `localhost` |
-| `MQTT_PORT` | Port of the MQTT broker | `1883` |
-| `MQTT_USERNAME` | Username for authentication (optional) | `None` |
-| `MQTT_PASSWORD` | Password for authentication (optional) | `None` |
-| `MQTT_TOPIC_PREFIX` | Prefix for subscription (subscribes to `prefix/#`) | `hahealth/log` |
-| `HASS_DISCOVERY_PREFIX` | Prefix for Home Assistant discovery topics | `homeassistant` |
-
-### How it Works with Home Assistant
-
-1.  **Shared Broker**: This application connects to the **same** MQTT Broker that Home Assistant uses. You do not need to configure a new broker; just point this app to your existing one (often the "Mosquitto broker" Add-on in Home Assistant).
-2.  **Auto Discovery**: Once connected, this app publishes "Discovery" messages to `homeassistant/sensor/...`. Home Assistant listens for these messages automatically.
-3.  **No Manual Setup**: You do **not** need to manually configure sensors in your `configuration.yaml`. If the MQTT integration is enabled in Home Assistant, the sensors (Weight, Blood Pressure, etc.) will appear automatically under "Integrations" -> "MQTT".
-
-### Home Assistant Auto Discovery
-
-When MQTT is configured, the application automatically publishes discovery payloads to Home Assistant. This means sensors for your health data will appear automatically in Home Assistant without manual configuration.
-
-**Sensors Created (per user):**
-- **Weight**: Displays current weight (supports Metric/Imperial based on user profile).
-- **Blood Pressure**: Two sensors for Systolic and Diastolic values.
-- **Daily Calories**: Two sensors for 'Consumed' and 'Burned' calories for the current day.
-
-The application updates these sensors every 60 seconds.
-
-### Ingestion Payload Format
-
-Send a JSON payload to `hahealth/log/any_subtopic`. The payload must include your API Key (`api_key`) and the `data_type`.
-
-**Example: Log Blood Pressure**
-```json
-{
-  "api_key": "YOUR_SECRET_API_KEY",
-  "data_type": "BLOOD_PRESSURE",
-  "payload": {
-    "systolic": 120,
-    "diastolic": 80,
-    "pulse": 72,
-    "location": "Left Arm",
-    "stress_level": 5
-  }
-}
-```
-
-**Example: Home Assistant Script**
-
-```yaml
-alias: Log BP via MQTT
-sequence:
-  - service: mqtt.publish
-    data:
-      topic: hahealth/log/bp
-      payload: >
-        {
-          "api_key": "!secret hahealth_api_key",
-          "data_type": "BLOOD_PRESSURE",
-          "payload": {
-            "systolic": {{ states('input_number.systolic') | int }},
-            "diastolic": {{ states('input_number.diastolic') | int }},
-            "pulse": {{ states('input_number.pulse') | int }}
-          }
-        }
-```
-
-## Development
-
-**Run Tests:**
-```bash
-# Ensure the current directory is in PYTHONPATH
-export PYTHONPATH=$PYTHONPATH:.
-pytest
-```
