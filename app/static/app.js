@@ -1765,30 +1765,6 @@ async function loadManageExerciseList() {
 
         let html = '<ul style="list-style: none; padding: 0;">';
         logs.forEach(log => {
-             // log: {log_id, activity, duration, calories}
-             // Note: summary endpoint might not return timestamp?
-             // In my patch to `get_daily_summary`, I added `log_id`.
-             // But I didn't add timestamp to the summary response list.
-             // I only added it to the HISTORY endpoint.
-             // Oh. The summary `exercises_list` construction in `health.py` iterates `daily_exercises`.
-             // I need to ensure `timestamp` is passed if I want to edit it.
-             // Let's assume for now I didn't add timestamp to summary response.
-             // I should probably fetch from `history` endpoint and filter client side?
-             // Or update summary endpoint patch.
-             // Actually, I can use the HISTORY endpoint (`/log/history/exercise`) but that is paginated and across all time.
-             // It might be better to filter the history client side if it's recent.
-             // Or rely on the summary data and default the time to "noon" if missing? No, that breaks "wrong day" fix.
-             // FIX: I will update the summary endpoint in the next patch block to include timestamp.
-             // For now, let's assume it's there or I will add it.
-
-             // Wait, I can't edit the backend patch I already applied in memory?
-             // I applied the patch to `app/routers/health.py`.
-             // Let's double check what I wrote.
-             // I wrote: `exercises_list.append({ "log_id": ex.exercise_id, ... })`
-             // I did NOT add timestamp.
-             // So I need to add timestamp to the summary endpoint response in `health.py`.
-             // I'll add a step to fix that.
-
              const safeLog = JSON.stringify(log).replace(/"/g, '&quot;');
 
              html += `
@@ -1832,9 +1808,6 @@ function editExerciseLog(log) {
     document.getElementById('edit_exercise_duration').value = log.duration;
     document.getElementById('edit_exercise_cals').value = log.calories;
 
-    // Timestamp missing? If so, default to current view date + noon?
-    // I need to patch backend to send timestamp.
-    // Assuming backend sends it (I will fix it):
     if (log.timestamp) {
         const dt = new Date(log.timestamp);
         const localIso = new Date(dt.getTime() - (dt.getTimezoneOffset() * 60000)).toISOString().slice(0, 19);
