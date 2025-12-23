@@ -2,9 +2,11 @@ import os
 import json
 import logging
 import threading
+import time
 from typing import Any, Dict
 import paho.mqtt.client as mqtt
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 from app import database, models, schemas, auth, services
 
 # Configure logging
@@ -15,6 +17,7 @@ MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_USERNAME = os.getenv("MQTT_USERNAME", None)
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", None)
 MQTT_TOPIC_PREFIX = os.getenv("MQTT_TOPIC_PREFIX", "hahealth/log")
+HASS_DISCOVERY_PREFIX = os.getenv("HASS_DISCOVERY_PREFIX", "homeassistant")
 
 class MQTTClient:
     def __init__(self):
@@ -27,15 +30,27 @@ class MQTTClient:
         self.client.on_message = self.on_message
         self.client.on_disconnect = self.on_disconnect
 
+        self._stop_event = threading.Event()
+        self._publisher_thread = None
+
     def start(self):
         try:
             logger.info(f"Connecting to MQTT Broker at {MQTT_BROKER}:{MQTT_PORT}")
             self.client.connect(MQTT_BROKER, MQTT_PORT, 60)
             self.client.loop_start()
+
+            # Start background publisher
+            self._stop_event.clear()
+            self._publisher_thread = threading.Thread(target=self._publisher_loop, daemon=True)
+            self._publisher_thread.start()
+
         except Exception as e:
             logger.error(f"Failed to connect to MQTT broker: {e}")
 
     def stop(self):
+        self._stop_event.set()
+        if self._publisher_thread:
+            self._publisher_thread.join(timeout=5)
         self.client.loop_stop()
         self.client.disconnect()
 
@@ -45,6 +60,9 @@ class MQTTClient:
             topic = f"{MQTT_TOPIC_PREFIX}/#"
             client.subscribe(topic)
             logger.info(f"Subscribed to {topic}")
+
+            # Publish discovery immediately on connect
+            self._publish_discovery_task()
         else:
             logger.error(f"Failed to connect, return code {reason_code}")
 
@@ -135,9 +153,115 @@ class MQTTClient:
             else:
                 logger.warning(f"Unknown data_type: {data_type}")
 
+            # Force a state update after logging new data
+            self.publish_periodic_stats(db)
+
         except Exception as e:
             logger.error(f"Error processing DB operation: {e}")
         finally:
             db.close()
+
+    def _publisher_loop(self):
+        while not self._stop_event.is_set():
+            try:
+                db = database.SessionLocal()
+                self.publish_periodic_stats(db)
+                db.close()
+            except Exception as e:
+                logger.error(f"Error in publisher loop: {e}")
+
+            # Sleep for 60 seconds or until stopped
+            if self._stop_event.wait(60):
+                break
+
+    def _publish_discovery_task(self):
+        threading.Thread(target=self._publish_discovery_worker, daemon=True).start()
+
+    def _publish_discovery_worker(self):
+        db = database.SessionLocal()
+        try:
+            self.publish_discovery(db)
+        except Exception as e:
+            logger.error(f"Error publishing discovery: {e}")
+        finally:
+            db.close()
+
+    def publish_discovery(self, db: Session):
+        users = db.query(models.User).all()
+        for user in users:
+            state_topic = f"hahealth/{user.user_id}/state"
+            device_info = {
+                "identifiers": [f"hahealth_{user.user_id}"],
+                "name": f"Health Tracker: {user.name}",
+                "manufacturer": "HAHealth",
+                "model": "v1.0"
+            }
+
+            sensors = [
+                ("weight", "Weight", "mass", "kg"),
+                ("bp_systolic", "BP Systolic", "pressure", "mmHg"),
+                ("bp_diastolic", "BP Diastolic", "pressure", "mmHg"),
+                ("calories_in", "Calories Consumed", "energy", "kcal"),
+                ("calories_burned", "Calories Burned", "energy", "kcal")
+            ]
+
+            for key, name, device_class, unit in sensors:
+                discovery_topic = f"{HASS_DISCOVERY_PREFIX}/sensor/hahealth_{user.user_id}/{key}/config"
+                payload = {
+                    "name": f"{user.name} {name}",
+                    "unique_id": f"hahealth_{user.user_id}_{key}",
+                    "state_topic": state_topic,
+                    "value_template": f"{{{{ value_json.{key} }}}}",
+                    "device_class": device_class,
+                    "unit_of_measurement": unit,
+                    "device": device_info
+                }
+                # For weight, if user prefers imperial, update unit?
+                # Keeping backend metric (kg) is safer, HA can convert if configured.
+                # Or we check user preference.
+                if key == "weight" and user.unit_system == "imperial":
+                      payload["unit_of_measurement"] = "lb"
+
+                self.client.publish(discovery_topic, json.dumps(payload), retain=True)
+
+    def publish_periodic_stats(self, db: Session):
+        users = db.query(models.User).all()
+        for user in users:
+            try:
+                # 1. Profile Stats
+                weight = user.weight_kg
+                if user.unit_system == "imperial":
+                    # Convert to lbs for display if that's what we claim in discovery
+                    weight = weight * 2.20462
+
+                # 2. Daily Log Stats (Calories)
+                local_date = services.get_user_local_date(user, None)
+                daily = db.query(models.DailyLog).filter(
+                    models.DailyLog.user_id == user.user_id,
+                    models.DailyLog.date == local_date
+                ).first()
+                cals_in = daily.total_calories_consumed if daily else 0
+                cals_out = daily.total_calories_burned if daily else 0
+
+                # 3. Latest BP
+                bp = db.query(models.BloodPressure).filter(
+                    models.BloodPressure.user_id == user.user_id
+                ).order_by(desc(models.BloodPressure.timestamp)).first()
+                systolic = bp.systolic if bp else 0
+                diastolic = bp.diastolic if bp else 0
+
+                payload = {
+                    "weight": round(weight, 1),
+                    "calories_in": cals_in,
+                    "calories_burned": cals_out,
+                    "bp_systolic": systolic,
+                    "bp_diastolic": diastolic
+                }
+
+                topic = f"hahealth/{user.user_id}/state"
+                self.client.publish(topic, json.dumps(payload), retain=True)
+
+            except Exception as e:
+                logger.error(f"Error publishing stats for user {user.name}: {e}")
 
 mqtt_client = MQTTClient()
