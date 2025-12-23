@@ -68,6 +68,10 @@ To ensure the application starts automatically on boot, you can create a systemd
     User=<your_user>
     Group=<your_group>
     WorkingDirectory=/path/to/hahealth
+    # Load configuration from .env file
+    EnvironmentFile=/path/to/hahealth/.env
+    # Or set variables directly here:
+    # Environment="MQTT_BROKER=192.168.1.50"
     ExecStart=/path/to/hahealth/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
     Restart=always
 

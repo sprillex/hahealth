@@ -11,3 +11,4 @@ httpx
 playwright
 cryptography
 paho-mqtt
+python-dotenv

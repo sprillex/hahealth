@@ -1,3 +1,8 @@
+from dotenv import load_dotenv
+import os
+# Load environment variables from .env file
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -6,7 +11,6 @@ from app import database, models
 from app.routers import auth, users, medication, health, webhook, prescribers, admin, nutrition, medical
 from app.version import BUILD_VERSION, BUILD_DATE
 from app import mqtt
-import os
 from contextlib import asynccontextmanager
 
 # Create DB tables
@@ -34,8 +38,7 @@ app.include_router(health.router)
 app.include_router(webhook.router)
 app.include_router(admin.router)
 app.include_router(nutrition.router)
-app.include_router(prescribers.router) # Was missing import? No, it was imported.
-app.include_router(medical.router) # Add Medical
+app.include_router(medical.router)
 
 # Mount Static Files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
