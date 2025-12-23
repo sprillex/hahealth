@@ -232,6 +232,7 @@ function showTab(tabName) {
     if (tabName === 'settings') {
         loadProfileData();
         loadAllergiesSettings();
+        refreshMQTTStatus();
     }
     if (tabName === 'health-logs') {
         console.log("Switching to Health Logs tab.");
@@ -1563,6 +1564,42 @@ async function updateThemePreference(val) {
 function printReport() {
     window.print();
 }
+
+async function refreshMQTTStatus() {
+    const card = document.getElementById('mqtt-status-card');
+    const content = document.getElementById('mqtt-status-content');
+
+    // Only show for admins (simple check, backend enforces security)
+    if (!user || !user.is_admin) {
+        card.classList.add('hidden');
+        return;
+    }
+    card.classList.remove('hidden');
+    content.innerHTML = 'Checking...';
+
+    try {
+        const res = await fetch(`${API_URL}/admin/mqtt_status`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            const status = await res.json();
+            const color = status.connected ? 'green' : 'red';
+            const text = status.connected ? 'Connected' : 'Disconnected';
+
+            content.innerHTML = `
+                <p><strong>Status:</strong> <span style="color: ${color}; font-weight: bold;">${text}</span></p>
+                <p><strong>Broker:</strong> ${status.broker}:${status.port}</p>
+                <p><strong>User:</strong> ${status.username}</p>
+                <p><strong>Topic Prefix:</strong> ${status.topic_prefix}</p>
+            `;
+        } else {
+            content.innerHTML = '<p style="color: red;">Failed to fetch status.</p>';
+        }
+    } catch (e) {
+        content.innerHTML = '<p style="color: red;">Error checking status.</p>';
+    }
+}
+
 // --- Management Functions (Appended) ---
 
 async function openManageMedsModal() {

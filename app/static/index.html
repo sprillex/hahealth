@@ -565,6 +565,15 @@
                                 </select>
                             </div>
                         </div>
+
+                        <!-- MQTT Status -->
+                        <div class="card hidden" id="mqtt-status-card">
+                            <h3>MQTT Status (Admin)</h3>
+                            <div id="mqtt-status-content">
+                                <p>Loading...</p>
+                            </div>
+                            <button class="btn-secondary" onclick="refreshMQTTStatus()">Refresh Status</button>
+                        </div>
                     </div>
                 </div>
             </div>

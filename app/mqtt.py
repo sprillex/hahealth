@@ -172,6 +172,7 @@ class MQTTClient:
 
         except Exception as e:
             logger.error(f"Error processing DB operation: {e}")
+            db.rollback()
         finally:
             db.close()
 
