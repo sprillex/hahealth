@@ -1,15 +1,17 @@
 # Comprehensive Health Tracker
 
-A robust, multi-user health tracking backend built with FastAPI, designed to integrate seamlessly with Home Assistant via webhooks.
+A robust, multi-user health tracking backend built with FastAPI, designed to integrate seamlessly with Home Assistant via webhooks or MQTT.
 
 ## Features
 
 - **Multi-User Support**: Secure data segregation for multiple users.
-- **Home Assistant Integration**: Webhooks for real-time logging of Blood Pressure, Medication, Exercise, and Food.
+- **Home Assistant Integration**: Two modes of integration:
+    - **Webhooks**: For real-time logging of Blood Pressure, Medication, Exercise, and Food via `rest_command`.
+    - **MQTT**: For auto-discovery of sensors (Weight, BP, Calories) and data ingestion via the MQTT bus.
 - **Nutrition Tracking**: Open Food Facts API integration with local caching.
 - **Medication Management**: Inventory tracking, refill alerts, and adherence logging.
 - **Exercise Analysis**: Automatic calorie calculation using MET formulas if tracker data is missing.
-- **Security**: JWT authentication for web clients and Shared Secret Keys for webhooks.
+- **Security**: JWT authentication for web clients and Shared Secret Keys for webhooks/MQTT.
 
 ## Prerequisites
 
@@ -37,6 +39,34 @@ A robust, multi-user health tracking backend built with FastAPI, designed to int
     ```bash
     pip install -r requirements.txt
     ```
+
+## Configuration
+
+You can configure the application using environment variables or a `.env` file (recommended).
+
+1.  **Copy the example configuration:**
+    ```bash
+    cp .env.example .env
+    ```
+
+2.  **Edit the `.env` file:**
+    ```ini
+    # MQTT Configuration (Optional, for Home Assistant Integration)
+    MQTT_BROKER=192.168.1.50
+    MQTT_USERNAME=homeassistant
+    MQTT_PASSWORD=your_password
+    ```
+
+### Environment Variables
+
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `MQTT_BROKER` | Hostname or IP of the MQTT broker (e.g., your HA IP) | `localhost` |
+| `MQTT_PORT` | Port of the MQTT broker | `1883` |
+| `MQTT_USERNAME` | Username for authentication (optional) | `None` |
+| `MQTT_PASSWORD` | Password for authentication (optional) | `None` |
+| `MQTT_TOPIC_PREFIX` | Prefix for subscription (subscribes to `prefix/#`) | `hahealth/log` |
+| `HASS_DISCOVERY_PREFIX` | Prefix for Home Assistant discovery topics | `homeassistant` |
 
 ## Running the Application
 
@@ -68,6 +98,10 @@ To ensure the application starts automatically on boot, you can create a systemd
     User=<your_user>
     Group=<your_group>
     WorkingDirectory=/path/to/hahealth
+    # Load configuration from .env file
+    EnvironmentFile=/path/to/hahealth/.env
+    # Or set variables directly here:
+    # Environment="MQTT_BROKER=192.168.1.50"
     ExecStart=/path/to/hahealth/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
     Restart=always
 
@@ -166,9 +200,40 @@ To view the raw data in the SQLite database, you can use the included inspection
     python scripts/inspect_db.py --all
     ```
 
-## Home Assistant Integration
+## Home Assistant Integration (Method 1: MQTT)
 
-To send data from Home Assistant to this application, use the `rest_command` integration or automation webhooks.
+This is the recommended integration method. It supports automatic sensor discovery and data logging.
+
+### How it Works
+1.  **Shared Broker**: The app connects to the same MQTT broker as Home Assistant.
+2.  **Auto Discovery**: The app publishes configuration messages to `homeassistant/sensor/...`.
+3.  **Sensors**: Home Assistant automatically creates sensors for:
+    - **Weight**: Current weight (kg/lb based on user setting).
+    - **Blood Pressure**: Systolic and Diastolic.
+    - **Daily Calories**: Consumed and Burned for the current day.
+    *These sensors update every 60 seconds.*
+
+### Logging Data via MQTT
+You can also send health data *to* the app via MQTT (e.g., from Home Assistant scripts).
+
+**Topic**: `hahealth/log/any_subtopic`
+**Format**: JSON
+
+```json
+{
+  "api_key": "YOUR_SECRET_API_KEY",
+  "data_type": "BLOOD_PRESSURE",
+  "payload": {
+    "systolic": 120,
+    "diastolic": 80,
+    "pulse": 72
+  }
+}
+```
+
+## Home Assistant Integration (Method 2: Webhooks)
+
+Alternatively, you can use HTTP webhooks if you prefer not to use MQTT.
 
 ### Webhook Endpoint
 `POST /api/webhook/health`
@@ -179,14 +244,9 @@ To send data from Home Assistant to this application, use the `rest_command` int
 
 ### Configuration Example (`configuration.yaml`)
 
-Add these blocks to your Home Assistant `configuration.yaml` file to easily call the API from automations or scripts.
-
-**Note:** Replace `!secret hahealth_api_key` with your actual API key or define it in your `secrets.yaml`.
-
 ```yaml
 rest_command:
   # Log Blood Pressure
-  # Expects variables: systolic, diastolic, pulse, stress_level (optional)
   log_blood_pressure:
     url: "http://<YOUR_APP_IP>:8000/api/webhook/health"
     method: POST
@@ -207,8 +267,6 @@ rest_command:
       }
 
   # Log Medication Taken
-  # Expects variable: med_name
-  # Optional: med_window (e.g. "morning", "evening")
   log_medication:
     url: "http://<YOUR_APP_IP>:8000/api/webhook/health"
     method: POST
@@ -222,43 +280,6 @@ rest_command:
           "med_name": "{{ med_name }}",
           "timestamp": "{{ now().isoformat() }}",
           "med_window": "{{ med_window | default('evening') }}"
-        }
-      }
-
-  # Log Exercise
-  # Expects variables: activity, duration, calories
-  log_exercise:
-    url: "http://<YOUR_APP_IP>:8000/api/webhook/health"
-    method: POST
-    headers:
-      Content-Type: "application/json"
-      X-Webhook-Secret: !secret hahealth_api_key
-    payload: >
-      {
-        "data_type": "EXERCISE_SESSION",
-        "payload": {
-          "activity_type": "{{ activity }}",
-          "duration_minutes": {{ duration | int }},
-          "calories_burned": {{ calories | int }}
-        }
-      }
-
-  # Log Food (via Barcode)
-  # Expects variables: barcode, meal, serving, quantity
-  log_food:
-    url: "http://<YOUR_APP_IP>:8000/api/webhook/health"
-    method: POST
-    headers:
-      Content-Type: "application/json"
-      X-Webhook-Secret: !secret hahealth_api_key
-    payload: >
-      {
-        "data_type": "FOOD_LOG",
-        "payload": {
-          "barcode": "{{ barcode }}",
-          "meal_id": "{{ meal }}",
-          "serving_size": {{ serving | default(1) }},
-          "quantity": {{ quantity | default(1) }}
         }
       }
 ```
