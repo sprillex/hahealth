@@ -26,8 +26,9 @@ input_text:
 sensor:
   - platform: rest
     name: Food Query Result
-    # IMPORTANT: Replace <YOUR_APP_IP> with the IP address of your Health App server
-    resource_template: "http://<YOUR_APP_IP>:8000/api/webhook/nutrition/{{ states('input_text.last_scanned_barcode') }}"
+    # Define 'hahealth_barcode_resource_url' in secrets.yaml with the full template:
+    # "http://<IP>:8000/api/webhook/nutrition/{{ states('input_text.last_scanned_barcode') }}"
+    resource_template: !secret hahealth_barcode_resource_url
     method: GET
     headers:
       # This uses the API key defined in secrets.yaml
