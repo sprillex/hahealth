@@ -18,7 +18,7 @@ def log_blood_pressure(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     service = services.HealthLogService()
-    payload = schemas.BPPayload(**bp.dict())
+    payload = schemas.BPPayload(**bp.model_dump())
     result = service.log_bp(db, current_user.user_id, payload)
     # Ensure timezone is attached for Pydantic serialization
     if result.timestamp and result.timestamp.tzinfo is None:

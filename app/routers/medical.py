@@ -16,7 +16,7 @@ def create_allergy(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    db_allergy = models.Allergy(**allergy.dict(), user_id=current_user.user_id)
+    db_allergy = models.Allergy(**allergy.model_dump(), user_id=current_user.user_id)
     db.add(db_allergy)
     db.commit()
     db.refresh(db_allergy)
@@ -71,7 +71,7 @@ def log_vaccination(
 ):
     # Check if this type already exists, if so, update or add new dose?
     # User might want history. We just log new entry.
-    db_vac = models.Vaccination(**vac.dict(), user_id=current_user.user_id)
+    db_vac = models.Vaccination(**vac.model_dump(), user_id=current_user.user_id)
     db.add(db_vac)
     db.commit()
     db.refresh(db_vac)

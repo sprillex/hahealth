@@ -14,7 +14,7 @@ def create_prescriber(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    db_prescriber = models.Prescriber(**prescriber.dict(), user_id=current_user.user_id)
+    db_prescriber = models.Prescriber(**prescriber.model_dump(), user_id=current_user.user_id)
     db.add(db_prescriber)
     db.commit()
     db.refresh(db_prescriber)
