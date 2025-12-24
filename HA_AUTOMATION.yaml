@@ -32,8 +32,9 @@ input_text:
 sensor:
   - platform: rest
     name: Food Query Result
-    # We use the Base URL helper to construct the dynamic resource URL
-    resource_template: "{{ states('input_text.hahealth_base_url') }}/api/webhook/nutrition/{{ states('input_text.last_scanned_barcode') }}"
+    # Define 'hahealth_barcode_resource_url' in secrets.yaml with the full template:
+    # "http://<IP>:8000/api/webhook/nutrition/{{ states('input_text.last_scanned_barcode') }}"
+    resource_template: !secret hahealth_barcode_resource_url
     method: GET
     headers:
       # This uses the API key defined in secrets.yaml

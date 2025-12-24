@@ -12,9 +12,8 @@
 
 rest_command:
   hahealth_log_generic:
-    # Uses the Base URL helper defined in your configuration (see HA_AUTOMATION.yaml)
     # URL structure: http://<IP>:8000/api/webhook/health
-    url: "{{ states('input_text.hahealth_base_url') }}/api/webhook/health"
+    url: !secret hahealth_webhook_url
     method: POST
     headers:
       X-Webhook-Secret: !secret hahealth_api_key
