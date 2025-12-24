@@ -216,75 +216,52 @@ This is the recommended integration method. It supports automatic sensor discove
 
     *These sensors update every 60 seconds.*
 
-### Logging Data via MQTT
-You can also send health data *to* the app via MQTT (e.g., from Home Assistant scripts).
+### Unified Logging (MQTT & Webhooks)
 
-**Topic**: `hahealth/log/any_subtopic`
-**Format**: JSON
+We provide a unified helper script (`HA_SCRIPTS.yaml`) that can log data via either MQTT or HTTP Webhooks. This simplifies your configuration by routing all logs through a single action.
 
-```json
-{
-  "api_key": "YOUR_SECRET_API_KEY",
-  "data_type": "BLOOD_PRESSURE",
-  "payload": {
-    "systolic": 120,
-    "diastolic": 80,
-    "pulse": 72
-  }
-}
+#### 1. Setup
+
+**A. Secrets (`secrets.yaml`):**
+```yaml
+hahealth_api_key: "YOUR_SECRET_KEY"
 ```
 
-## Home Assistant Integration (Method 2: Webhooks)
+**B. Configuration (`configuration.yaml`):**
+Add the contents of `HA_AUTOMATION.yaml` to define the Base URL helper (`input_text.hahealth_base_url`). You will set your App IP address here.
 
-Alternatively, you can use HTTP webhooks if you prefer not to use MQTT.
+**C. Script (`scripts.yaml`):**
+Copy the content of `HA_SCRIPTS.yaml` into your `scripts.yaml`.
 
-### Webhook Endpoint
-`POST /api/webhook/health`
+**D. REST Command (`configuration.yaml`):**
+**CRITICAL:** You must add the content of `HA_REST_COMMAND.yaml` to your `configuration.yaml`. The script relies on this configuration defined, even if you primarily use MQTT.
 
-**Headers:**
-- `Content-Type`: `application/json`
-- `X-Webhook-Secret`: `<YOUR_GENERATED_SECRET_KEY>`
+#### 2. Usage Examples
 
-### Configuration Example (`configuration.yaml`)
-
+**Option A: Log via MQTT (Default)**
 ```yaml
-rest_command:
-  # Log Blood Pressure
-  log_blood_pressure:
-    url: "http://<YOUR_APP_IP>:8000/api/webhook/health"
-    method: POST
-    headers:
-      Content-Type: "application/json"
-      X-Webhook-Secret: !secret hahealth_api_key
-    payload: >
-      {
-        "data_type": "BLOOD_PRESSURE",
-        "payload": {
-          "systolic": {{ states('input_number.systolic') | int }},
-          "diastolic": {{ states('input_number.diastolic') | int }},
-          "pulse": {{ states('input_number.pulse') | int }},
-          "location": "{{ states('input_select.bplocation') }}",
-          "stress_level": {{ states('input_number.stress_level') | int }},
-          "meds_taken_before": "NO"
-        }
-      }
+action: script.log_health_metric
+data:
+  method: "mqtt"
+  topic_suffix: "vitals"
+  data_type: "BLOOD_PRESSURE"
+  metric_data:
+    systolic: 120
+    diastolic: 80
+    pulse: 72
+```
 
-  # Log Medication Taken
-  log_medication:
-    url: "http://<YOUR_APP_IP>:8000/api/webhook/health"
-    method: POST
-    headers:
-      Content-Type: "application/json"
-      X-Webhook-Secret: !secret hahealth_api_key
-    payload: >
-      {
-        "data_type": "MEDICATION_TAKEN",
-        "payload": {
-          "med_name": "{{ med_name }}",
-          "timestamp": "{{ now().isoformat() }}",
-          "med_window": "{{ med_window | default('evening') }}"
-        }
-      }
+**Option B: Log via HTTP API**
+```yaml
+action: script.log_health_metric
+data:
+  method: "api"
+  data_type: "MEDICATION_TAKEN"
+  metric_data:
+    med_name: "Aspirin"
+    timestamp: "{{ now().isoformat() }}"
+    med_window: "morning"
+```
 
 ### Barcode Query Automation Example
 
