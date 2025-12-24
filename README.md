@@ -225,13 +225,15 @@ We provide a unified helper script (`HA_SCRIPTS.yaml`) that can log data via eit
 **A. Secrets (`secrets.yaml`):**
 ```yaml
 hahealth_api_key: "YOUR_SECRET_KEY"
-hahealth_webhook_url: "http://<YOUR_APP_IP>:8000/api/webhook/health"
 ```
 
-**B. Script (`scripts.yaml`):**
+**B. Configuration (`configuration.yaml`):**
+Add the contents of `HA_AUTOMATION.yaml` to define the Base URL helper (`input_text.hahealth_base_url`). You will set your App IP address here.
+
+**C. Script (`scripts.yaml`):**
 Copy the content of `HA_SCRIPTS.yaml` into your `scripts.yaml`.
 
-**C. REST Command (`configuration.yaml`):**
+**D. REST Command (`configuration.yaml`):**
 **CRITICAL:** You must add the content of `HA_REST_COMMAND.yaml` to your `configuration.yaml`. The script relies on this configuration defined, even if you primarily use MQTT.
 
 #### 2. Usage Examples

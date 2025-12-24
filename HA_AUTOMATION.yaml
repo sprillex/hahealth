@@ -16,8 +16,14 @@
 # Add these sections to your main configuration.yaml file.
 # ------------------------------------------------------------------------------
 
-# Input Helper to store the temporary barcode
+# Input Helpers
 input_text:
+  # Configuration: Set your Health App Base URL here (e.g., http://192.168.1.50:8000)
+  # This allows you to change the IP in one place for all scripts and sensors.
+  hahealth_base_url:
+    name: Health App Base URL
+    initial: "http://<YOUR_IP>:8000"
+
   last_scanned_barcode:
     name: Last Scanned Barcode
     initial: "0000000000000"
@@ -26,8 +32,8 @@ input_text:
 sensor:
   - platform: rest
     name: Food Query Result
-    # IMPORTANT: Replace <YOUR_APP_IP> with the IP address of your Health App server
-    resource_template: "http://<YOUR_APP_IP>:8000/api/webhook/nutrition/{{ states('input_text.last_scanned_barcode') }}"
+    # We use the Base URL helper to construct the dynamic resource URL
+    resource_template: "{{ states('input_text.hahealth_base_url') }}/api/webhook/nutrition/{{ states('input_text.last_scanned_barcode') }}"
     method: GET
     headers:
       # This uses the API key defined in secrets.yaml
