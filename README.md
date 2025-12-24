@@ -166,7 +166,7 @@ To update the application to the latest version:
     ```
 
 3.  **Run Database Migrations:**
-    If new features (like Imperial units, admin tables, etc.) were added, run the migration script:
+    This step is crucial when new features (e.g., Imperial units, admin tables, medical history) are added. The script checks your database and applies any missing columns or tables.
     ```bash
     python3 scripts/migrate_all.py
     ```
