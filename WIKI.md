@@ -2,6 +2,19 @@
 
 This wiki documents the API endpoints available in the Comprehensive Health Tracker application.
 
+## Table of Contents
+1. [Authentication](#authentication)
+2. [User Management](#user-management)
+3. [Health Logging](#health-logging)
+4. [Medications](#medications)
+5. [Prescribers](#prescribers)
+6. [Medical History](#medical-history)
+7. [Nutrition](#nutrition)
+8. [Admin Endpoints](#admin-endpoints)
+9. [Webhook & MQTT Integration](#webhook--mqtt-integration)
+
+---
+
 ## Authentication
 Most endpoints require a Bearer Token (JWT) in the `Authorization` header, or an API Key in the `X-Webhook-Secret` header for specific endpoints.
 
@@ -160,6 +173,30 @@ Most endpoints require a Bearer Token (JWT) in the `Authorization` header, or an
 
 ---
 
+## Prescribers
+
+### Create Prescriber
+*   **POST** `/api/v1/prescribers/`
+    *   **Description:** Adds a new prescriber.
+    *   **Payload:**
+        ```json
+        {
+          "name": "Dr. Smith",
+          "specialty": "Cardiology",
+          "phone": "555-0123",
+          "email": "drsmith@example.com",
+          "address": "123 Medical Way"
+        }
+        ```
+    *   **Response:** Created Prescriber JSON.
+
+### Get Prescribers
+*   **GET** `/api/v1/prescribers/`
+    *   **Description:** Lists all prescribers for the user.
+    *   **Response:** List of Prescribers.
+
+---
+
 ## Medical History
 
 ### Allergies
@@ -175,10 +212,17 @@ Most endpoints require a Bearer Token (JWT) in the `Authorization` header, or an
 ### Vaccinations
 *   **POST** `/api/v1/medical/vaccinations`
     *   **Description:** Logs a vaccination.
+    *   **Payload:**
+        ```json
+        {
+          "vaccine_type": "Influenza",
+          "date_administered": "2023-10-01"
+        }
+        ```
 *   **GET** `/api/v1/medical/vaccinations`
     *   **Description:** Lists vaccination history.
 *   **GET** `/api/v1/medical/reports/vaccinations`
-    *   **Description:** Generates a vaccination report including status (Overdue/Up to Date).
+    *   **Description:** Generates a vaccination report including status (e.g., Overdue, Up to Date) for key vaccines like Influenza and Tdap.
 
 ---
 
@@ -221,6 +265,25 @@ Most endpoints require a Bearer Token (JWT) in the `Authorization` header, or an
 
 ---
 
+## Admin Endpoints
+
+### MQTT Status
+*   **GET** `/api/v1/admin/mqtt_status`
+    *   **Description:** Checks MQTT connection status and configuration.
+
+### Backups
+*   **POST** `/api/v1/admin/key`
+    *   **Description:** Set the encryption key for backups.
+*   **POST** `/api/v1/admin/backup`
+    *   **Description:** Create a new encrypted backup of the database.
+*   **GET** `/api/v1/admin/backup/latest`
+    *   **Description:** Download the latest backup file.
+*   **POST** `/api/v1/admin/restore`
+    *   **Description:** Restore the database from an uploaded backup file.
+    *   **Note:** Server logic may require a restart after restoration.
+
+---
+
 ## Webhook & MQTT Integration
 
 The application supports data ingestion via Webhooks (HTTP POST) and MQTT.
@@ -241,7 +304,17 @@ The application supports data ingestion via Webhooks (HTTP POST) and MQTT.
 We recommend using the provided `log_health_metric` script (see `HA_SCRIPTS.yaml`) to securely log data from Home Assistant. This script supports both MQTT and HTTP API transports.
 
 **Prerequisites:**
-1.  Add the required keys (`hahealth_api_key`, `hahealth_webhook_url`, `hahealth_barcode_resource_url`) to your `secrets.yaml` (see README for details).
+1.  Add the required keys to your `secrets.yaml`:
+    ```yaml
+    # API Key
+    hahealth_api_key: "YOUR_SECRET_KEY"
+
+    # Webhook URL for Logging
+    hahealth_webhook_url: "http://<YOUR_APP_IP>:8000/api/webhook/health"
+
+    # Barcode Query URL (Must include the template exactly as shown)
+    hahealth_barcode_resource_url: "http://<YOUR_APP_IP>:8000/api/webhook/nutrition/{{ states('input_text.last_scanned_barcode') }}"
+    ```
 2.  Add the `log_health_metric` script from `HA_SCRIPTS.yaml` to your `scripts.yaml`.
 3.  **CRITICAL:** Add the generic REST command from `HA_REST_COMMAND.yaml` to your `configuration.yaml`. This is required for the script to function correctly.
 
@@ -331,17 +404,3 @@ The following structures should be passed in the `metric_data` field of the scri
     }
     ```
     *   `unit` can be "kg" (default) or "lbs"/"pound"/"pounds".
-
----
-
-## Admin Endpoints
-
-### MQTT Status
-*   **GET** `/api/v1/admin/mqtt_status`
-    *   **Description:** Checks MQTT connection status.
-
-### Backups
-*   **POST** `/api/v1/admin/key` - Set encryption key.
-*   **POST** `/api/v1/admin/backup` - Create backup.
-*   **GET** `/api/v1/admin/backup/latest` - Download latest backup.
-*   **POST** `/api/v1/admin/restore` - Restore from backup file.
