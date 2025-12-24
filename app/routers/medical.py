@@ -33,7 +33,7 @@ def update_allergy(
     if not db_allergy:
         raise HTTPException(status_code=404, detail="Allergy not found")
 
-    data = allergy.dict(exclude_unset=True)
+    data = allergy.model_dump(exclude_unset=True)
     for key, value in data.items():
         setattr(db_allergy, key, value)
 
