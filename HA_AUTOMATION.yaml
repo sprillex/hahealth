@@ -16,8 +16,14 @@
 # Add these sections to your main configuration.yaml file.
 # ------------------------------------------------------------------------------
 
-# Input Helper to store the temporary barcode
+# Input Helpers
 input_text:
+  # Configuration: Set your Health App Base URL here (e.g., http://192.168.1.50:8000)
+  # This allows you to change the IP in one place for all scripts and sensors.
+  hahealth_base_url:
+    name: Health App Base URL
+    initial: "http://<YOUR_IP>:8000"
+
   last_scanned_barcode:
     name: Last Scanned Barcode
     initial: "0000000000000"
