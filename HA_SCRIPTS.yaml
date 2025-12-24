@@ -1,14 +1,14 @@
 # Home Assistant Script Configuration
 # =====================================
-# This script simplifies logging health metrics via MQTT by encapsulating
-# the API key and topic structure.
+# This script simplifies logging health metrics via MQTT or HTTP API.
 #
 # Prerequisites:
 # 1. Add 'hahealth_api_key' to your secrets.yaml.
-# 2. Include this file in your scripts.yaml or packages configuration.
+# 2. For API method: Add the generic rest_command from HA_REST_COMMAND.yaml to configuration.yaml.
+# 3. Include this file in your scripts.yaml or packages configuration.
 
 log_health_metric:
-  alias: "Log Health Metric (MQTT)"
+  alias: "Log Health Metric"
   icon: mdi:clipboard-pulse
   mode: parallel
 
@@ -19,25 +19,52 @@ log_health_metric:
 
   fields:
     topic_suffix:
-      description: "The specific endpoint (e.g., 'vitals', 'nutrition', 'activity')"
+      description: "MQTT Only: The specific endpoint (e.g., 'vitals')"
       example: "vitals"
     data_type:
-      description: "The category string for your app"
+      description: "The category string for your app (e.g., BLOOD_PRESSURE)"
       example: "BLOOD_PRESSURE"
     metric_data:
       description: "Object containing the actual data points"
       example: { "weight": 185, "unit": "lbs" }
+    method:
+      description: "Transport method: 'mqtt' or 'api'"
+      example: "mqtt"
+      default: "mqtt"
+      selector:
+        select:
+          options:
+            - "mqtt"
+            - "api"
 
   sequence:
-    - action: mqtt.publish
-      data:
-        # Base topic is hardcoded to match the default app config
-        topic: "hahealth/log/{{ topic_suffix }}"
+    - choose:
+        # Option 1: MQTT (Default)
+        - conditions:
+            - condition: template
+              value_template: "{{ method == 'mqtt' }}"
+          sequence:
+            - action: mqtt.publish
+              data:
+                topic: "hahealth/log/{{ topic_suffix | default('general') }}"
+                payload: >-
+                  {
+                    "api_key": "{{ secret_api_key }}",
+                    "data_type": "{{ data_type }}",
+                    "payload": {{ metric_data | to_json }}
+                  }
 
-        # We construct the master JSON object
-        payload: >-
-          {
-            "api_key": "{{ secret_api_key }}",
-            "data_type": "{{ data_type }}",
-            "payload": {{ metric_data | to_json }}
-          }
+        # Option 2: API (Webhooks)
+        - conditions:
+            - condition: template
+              value_template: "{{ method == 'api' }}"
+          sequence:
+            - action: rest_command.hahealth_log_generic
+              data:
+                # For API, authentication is in the header (handled by rest_command config).
+                # We only send the data_type and the inner payload.
+                json_payload: >-
+                  {
+                    "data_type": "{{ data_type }}",
+                    "payload": {{ metric_data | to_json }}
+                  }
