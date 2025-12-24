@@ -219,19 +219,22 @@ This is the recommended integration method. It supports automatic sensor discove
 ### Logging Data via MQTT
 You can also send health data *to* the app via MQTT (e.g., from Home Assistant scripts).
 
-**Topic**: `hahealth/log/any_subtopic`
-**Format**: JSON
+To simplify this process and keep your API key secure, we provide a helper script in `HA_SCRIPTS.yaml`.
 
-```json
-{
-  "api_key": "YOUR_SECRET_API_KEY",
-  "data_type": "BLOOD_PRESSURE",
-  "payload": {
-    "systolic": 120,
-    "diastolic": 80,
-    "pulse": 72
-  }
-}
+**1. Setup:**
+   - Add your API key to `secrets.yaml`: `hahealth_api_key: "your_key"`
+   - Copy the content of `HA_SCRIPTS.yaml` into your Home Assistant `scripts.yaml`.
+
+**2. Usage (Automation/Script):**
+```yaml
+action: script.log_health_metric
+data:
+  topic_suffix: "vitals"
+  data_type: "BLOOD_PRESSURE"
+  metric_data:
+    systolic: 120
+    diastolic: 80
+    pulse: 72
 ```
 
 ## Home Assistant Integration (Method 2: Webhooks)

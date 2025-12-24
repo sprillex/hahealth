@@ -236,22 +236,28 @@ The application supports data ingestion via Webhooks (HTTP POST) and MQTT.
         }
         ```
 
-### MQTT Topic
-*   **Topic:** `hahealth/log`
-*   **Payload:**
-    ```json
-    {
-      "api_key": "<your_api_key>",
-      "data_type": "BLOOD_PRESSURE",
-      "payload": { ... }
-    }
-    ```
+### MQTT Logging (Simplified)
+
+We recommend using the provided `log_health_metric` script (see `HA_SCRIPTS.yaml`) to securely log data from Home Assistant.
+
+**Example Usage:**
+```yaml
+action: script.log_health_metric
+data:
+  topic_suffix: "vitals"
+  data_type: "BLOOD_PRESSURE"
+  metric_data:
+    systolic: 120
+    diastolic: 80
+    pulse: 70
+```
 
 ### Supported Data Types & Payloads
+The following structures should be passed in the `metric_data` field of the script (or the `payload` field of the raw JSON).
 
 #### 1. Blood Pressure
 *   **data_type:** `BLOOD_PRESSURE`
-*   **payload:**
+*   **metric_data:**
     ```json
     {
       "systolic": 120,
@@ -265,7 +271,7 @@ The application supports data ingestion via Webhooks (HTTP POST) and MQTT.
 
 #### 2. Medication Taken
 *   **data_type:** `MEDICATION_TAKEN`
-*   **payload:**
+*   **metric_data:**
     ```json
     {
       "med_name": "Aspirin",
@@ -276,7 +282,7 @@ The application supports data ingestion via Webhooks (HTTP POST) and MQTT.
 
 #### 3. Exercise Session
 *   **data_type:** `EXERCISE_SESSION`
-*   **payload:**
+*   **metric_data:**
     ```json
     {
       "activity_type": "Running",
@@ -287,7 +293,7 @@ The application supports data ingestion via Webhooks (HTTP POST) and MQTT.
 
 #### 4. Food Log
 *   **data_type:** `FOOD_LOG`
-*   **payload:**
+*   **metric_data:**
     ```json
     {
       "food_name": "Banana",
@@ -299,7 +305,7 @@ The application supports data ingestion via Webhooks (HTTP POST) and MQTT.
 
 #### 5. Weight (New)
 *   **data_type:** `WEIGHT`
-*   **payload:**
+*   **metric_data:**
     ```json
     {
       "weight": 75.5,
