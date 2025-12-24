@@ -18,12 +18,6 @@
 
 # Input Helpers
 input_text:
-  # Configuration: Set your Health App Base URL here (e.g., http://192.168.1.50:8000)
-  # This allows you to change the IP in one place for all scripts and sensors.
-  hahealth_base_url:
-    name: Health App Base URL
-    initial: "http://<YOUR_IP>:8000"
-
   last_scanned_barcode:
     name: Last Scanned Barcode
     initial: "0000000000000"
@@ -63,14 +57,14 @@ sensor:
       # Expected Payload: { "barcode": "5449000000996" }
   action:
     # 1. Save the barcode to the helper
-    - service: input_text.set_value
+    - action: input_text.set_value
       target:
         entity_id: input_text.last_scanned_barcode
       data:
         value: "{{ trigger.json.barcode }}"
 
     # 2. Force the REST sensor to refresh immediately
-    - service: homeassistant.update_entity
+    - action: homeassistant.update_entity
       target:
         entity_id: sensor.food_query_result
 
@@ -78,7 +72,7 @@ sensor:
     - delay: "00:00:02"
 
     # 4. Show the notification with the results
-    - service: persistent_notification.create
+    - action: persistent_notification.create
       data:
         title: "Food Found: {{ states('sensor.food_query_result') }}"
         message: >
