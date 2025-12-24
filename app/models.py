@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, DateTime, Boolean, Enum, Time
 from sqlalchemy.orm import relationship, declarative_base
 import datetime
+from datetime import timezone
 import enum
 
 Base = declarative_base()
@@ -124,7 +125,7 @@ class MedDoseLog(Base):
     dose_log_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.user_id"))
     med_id = Column(Integer, ForeignKey("medications.med_id"))
-    timestamp_taken = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp_taken = Column(DateTime, default=lambda: datetime.datetime.now(timezone.utc))
     target_time_drift = Column(Float)
     dose_window = Column(String, nullable=True)
 
@@ -138,7 +139,7 @@ class BloodPressure(Base):
     systolic = Column(Integer)
     diastolic = Column(Integer)
     pulse = Column(Integer)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.datetime.now(timezone.utc))
     location = Column(String)
     stress_level = Column(Integer)
     meds_taken_before = Column(String)
@@ -173,7 +174,7 @@ class FoodItemLog(Base):
     food_id = Column(Integer, ForeignKey("nutrition_cache.food_id"))
     serving_size = Column(Float)
     quantity = Column(Float)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="food_item_logs")
     nutrition_info = relationship("NutritionCache", back_populates="food_item_logs")
@@ -186,7 +187,7 @@ class ExerciseLog(Base):
     activity_type = Column(String)
     duration_minutes = Column(Float)
     calories_burned = Column(Float)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="exercise_logs")
 
@@ -197,7 +198,7 @@ class APIKey(Base):
     user_id = Column(Integer, ForeignKey("users.user_id"))
     name = Column(String)
     hashed_key = Column(String, index=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(timezone.utc))
     is_active = Column(Boolean, default=True)
 
     user = relationship("User", back_populates="api_keys")

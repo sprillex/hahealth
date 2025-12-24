@@ -15,7 +15,7 @@ def create_medication(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    db_med = models.Medication(**med.dict(), user_id=current_user.user_id)
+    db_med = models.Medication(**med.model_dump(), user_id=current_user.user_id)
     db.add(db_med)
     db.commit()
     db.refresh(db_med)

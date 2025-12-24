@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import date, datetime, time
 from enum import Enum
@@ -52,8 +52,7 @@ class UserResponse(UserBase):
     window_afternoon_start: Optional[time] = None
     window_evening_start: Optional[time] = None
     window_bedtime_start: Optional[time] = None
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Token
 class Token(BaseModel):
@@ -74,8 +73,7 @@ class PrescriberCreate(PrescriberBase):
 class PrescriberResponse(PrescriberBase):
     prescriber_id: int
     user_id: int
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Medication
 class MedicationBase(BaseModel):
@@ -103,8 +101,7 @@ class MedicationCreate(MedicationBase):
 class MedicationResponse(MedicationBase):
     med_id: int
     user_id: int
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class MedicationRefill(BaseModel):
     quantity: int
@@ -125,8 +122,7 @@ class BloodPressureResponse(BloodPressureBase):
     bp_id: int
     user_id: int
     timestamp: datetime
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Webhook Types
 class WebhookDataType(str, Enum):
@@ -224,8 +220,7 @@ class NutritionCacheCreate(NutritionCacheBase):
 class NutritionCacheResponse(NutritionCacheBase):
     food_id: int
     source: str
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Medical History
 class AllergyBase(BaseModel):
@@ -239,8 +234,7 @@ class AllergyCreate(AllergyBase):
 class AllergyResponse(AllergyBase):
     allergy_id: int
     user_id: int
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class VaccinationBase(BaseModel):
     vaccine_type: str
@@ -254,5 +248,4 @@ class VaccinationResponse(VaccinationBase):
     user_id: int
     status: Optional[str] = None # For report (Overdue, etc)
     next_due: Optional[date] = None
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
