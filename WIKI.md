@@ -236,15 +236,28 @@ The application supports data ingestion via Webhooks (HTTP POST) and MQTT.
         }
         ```
 
-### MQTT Logging (Simplified)
+### Unified Logging (MQTT & Webhooks)
 
-We recommend using the provided `log_health_metric` script (see `HA_SCRIPTS.yaml`) to securely log data from Home Assistant.
+We recommend using the provided `log_health_metric` script (see `HA_SCRIPTS.yaml`) to securely log data from Home Assistant. This script supports both MQTT and HTTP API transports.
 
-**Example Usage:**
+**Example Usage (MQTT):**
 ```yaml
 action: script.log_health_metric
 data:
+  method: "mqtt"
   topic_suffix: "vitals"
+  data_type: "BLOOD_PRESSURE"
+  metric_data:
+    systolic: 120
+    diastolic: 80
+    pulse: 70
+```
+
+**Example Usage (API):**
+```yaml
+action: script.log_health_metric
+data:
+  method: "api"
   data_type: "BLOOD_PRESSURE"
   metric_data:
     systolic: 120
