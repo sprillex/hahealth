@@ -231,8 +231,8 @@ hahealth_webhook_url: "http://<YOUR_APP_IP>:8000/api/webhook/health"
 **B. Script (`scripts.yaml`):**
 Copy the content of `HA_SCRIPTS.yaml` into your `scripts.yaml`.
 
-**C. REST Command (Required for API mode only):**
-Add the content of `HA_REST_COMMAND.yaml` to your `configuration.yaml`.
+**C. REST Command (`configuration.yaml`):**
+**CRITICAL:** You must add the content of `HA_REST_COMMAND.yaml` to your `configuration.yaml`. The script relies on this configuration defined, even if you primarily use MQTT.
 
 #### 2. Usage Examples
 

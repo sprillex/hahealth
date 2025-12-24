@@ -4,7 +4,8 @@
 #
 # Prerequisites:
 # 1. Add 'hahealth_api_key' to your secrets.yaml.
-# 2. For API method: Add the generic rest_command from HA_REST_COMMAND.yaml to configuration.yaml.
+# 2. Add the generic rest_command from HA_REST_COMMAND.yaml to configuration.yaml.
+#    (Required for the script to validate and function).
 # 3. Include this file in your scripts.yaml or packages configuration.
 
 log_health_metric:

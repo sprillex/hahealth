@@ -240,6 +240,11 @@ The application supports data ingestion via Webhooks (HTTP POST) and MQTT.
 
 We recommend using the provided `log_health_metric` script (see `HA_SCRIPTS.yaml`) to securely log data from Home Assistant. This script supports both MQTT and HTTP API transports.
 
+**Prerequisites:**
+1.  Add `hahealth_api_key` and `hahealth_webhook_url` to your `secrets.yaml`.
+2.  Add the `log_health_metric` script from `HA_SCRIPTS.yaml` to your `scripts.yaml`.
+3.  **CRITICAL:** Add the generic REST command from `HA_REST_COMMAND.yaml` to your `configuration.yaml`. This is required for the script to function correctly.
+
 **Example Usage (MQTT):**
 ```yaml
 action: script.log_health_metric
