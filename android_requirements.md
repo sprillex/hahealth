@@ -32,7 +32,8 @@ The app should **never** store the user's password locally. Instead, it should u
     ```
 
 #### Refresh Token
-*   **URL:** `POST /auth/refresh?refresh_token=<stored_refresh_token>`
+*   **URL:** `POST /auth/refresh`
+*   **Body (JSON):** `{"refresh_token": "<stored_refresh_token>"}`
 *   **Response:** Same as Login (returns new access token).
 
 ---
