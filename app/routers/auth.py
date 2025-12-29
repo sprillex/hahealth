@@ -41,4 +41,21 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     access_token = auth.create_access_token(
         data={"sub": user.name}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    refresh_token = auth.create_refresh_token(
+        data={"sub": user.name}
+    )
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+@router.post("/refresh", response_model=schemas.Token)
+def refresh_token(request: schemas.RefreshTokenRequest, db: Session = Depends(database.get_db)):
+    """
+    Exchange a valid refresh token for a new access token.
+    """
+    user = auth.verify_refresh_token(request.refresh_token, db)
+
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": user.name}, expires_delta=access_token_expires
+    )
+
+    return {"access_token": access_token, "refresh_token": request.refresh_token, "token_type": "bearer"}

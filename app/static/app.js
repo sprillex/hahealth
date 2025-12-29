@@ -101,6 +101,29 @@ async function loadVersion() {
     }
 }
 
+async function fetchWithAuth(url, options = {}) {
+    if (!options.headers) options.headers = {};
+    if (token) {
+        options.headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(url, options);
+
+    if (res.status === 401) {
+        // Token expired or invalid
+        console.warn("401 Unauthorized - Logging out");
+        // Only alert if we haven't already just logged out (debounce?)
+        // Simple approach: Alert and logout
+        if (token) {
+            alert("Session expired. Please log in again.");
+            logout();
+        }
+        throw new Error("Session expired");
+    }
+
+    return res;
+}
+
 // --- Utils ---
 
 function formatWeight(kg) {
@@ -155,9 +178,7 @@ async function handleLogin(e) {
 
 async function checkAuth() {
     try {
-        const res = await fetch(`${API_URL}/users/me`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/users/me`);
         if (res.ok) {
             user = await res.json();
             // Admin check
@@ -276,9 +297,7 @@ function getFormattedDate(dateObj) {
 async function loadSummary() {
     try {
         const dateStr = getFormattedDate(currentDashboardDate);
-        const res = await fetch(`${API_URL}/log/summary?date_str=${dateStr}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/log/summary?date_str=${dateStr}`);
         summaryData = await res.json();
 
         // Update UI
@@ -429,9 +448,7 @@ async function loadDailyMeds() {
     listEl.innerHTML = 'Loading...';
     try {
         const dateStr = getFormattedDate(currentDashboardDate);
-        const res = await fetch(`${API_URL}/medications/log?date_str=${dateStr}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/medications/log?date_str=${dateStr}`);
         const logs = await res.json();
 
         if (logs.length === 0) {
@@ -459,9 +476,7 @@ async function loadMedications() {
     listEl.innerHTML = 'Loading...';
 
     try {
-        const res = await fetch(`${API_URL}/medications/`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/medications/`);
         const meds = await res.json();
 
         listEl.innerHTML = '';
@@ -548,11 +563,10 @@ async function handleSaveMed(e) {
 
     if (!id) {
         try {
-            const res = await fetch(`${API_URL}/medications/`, {
+            const res = await fetchWithAuth(`${API_URL}/medications/`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(data)
             });
@@ -567,11 +581,10 @@ async function handleSaveMed(e) {
         }
     } else {
         try {
-            const res = await fetch(`${API_URL}/medications/${id}`, {
+            const res = await fetchWithAuth(`${API_URL}/medications/${id}`, {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(data)
             });
@@ -590,11 +603,10 @@ async function handleSaveMed(e) {
 async function refillMed(id, qty) {
     if(!confirm(`Refill received? Adding ${qty} to stock and decrementing refills left.`)) return;
     try {
-        const res = await fetch(`${API_URL}/medications/${id}/refill`, {
+        const res = await fetchWithAuth(`${API_URL}/medications/${id}/refill`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({ quantity: qty })
         });
@@ -633,11 +645,10 @@ async function handleCreateFood(e) {
     if (!data.barcode) delete data.barcode; // Send null or undefined if empty
 
     try {
-        const res = await fetch(`${API_URL}/nutrition/`, {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(data)
         });
@@ -662,9 +673,7 @@ async function handleSearchFood(query) {
     }
 
     try {
-        const res = await fetch(`${API_URL}/nutrition/search?query=${encodeURIComponent(query)}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/nutrition/search?query=${encodeURIComponent(query)}`);
         const foods = await res.json();
 
         resultsDiv.innerHTML = '';
@@ -717,11 +726,10 @@ async function handleLogFood(e) {
     }
 
     try {
-        const res = await fetch(`${API_URL}/nutrition/log`, {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/log`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(data)
         });
@@ -792,11 +800,10 @@ async function handleAddAllergy(e) {
             method = 'PUT';
         }
 
-        const res = await fetch(url, {
+        const res = await fetchWithAuth(url, {
             method: method,
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(data)
         });
@@ -815,9 +822,8 @@ async function handleAddAllergy(e) {
 async function deleteAllergy(id) {
     if (!confirm("Are you sure?")) return;
     try {
-        const res = await fetch(`${API_URL}/medical/allergies/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
+        const res = await fetchWithAuth(`${API_URL}/medical/allergies/${id}`, {
+            method: 'DELETE'
         });
         if (res.ok) {
             loadAllergiesSettings();
@@ -835,11 +841,10 @@ async function handleLogVaccination(e) {
     const data = Object.fromEntries(fd.entries());
 
     try {
-        const res = await fetch(`${API_URL}/medical/vaccinations`, {
+        const res = await fetchWithAuth(`${API_URL}/medical/vaccinations`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(data)
         });
@@ -859,9 +864,7 @@ async function loadAllergiesSettings() {
     if(!div) return;
     div.innerHTML = 'Loading...';
     try {
-        const res = await fetch(`${API_URL}/medical/allergies`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/medical/allergies`);
         const list = await res.json();
         if (list.length === 0) {
             div.innerHTML = '<em>No allergies logged.</em>';
@@ -895,9 +898,7 @@ async function loadVaccinationReport() {
     if(!div) return;
     div.innerHTML = 'Loading...';
     try {
-        const res = await fetch(`${API_URL}/medical/reports/vaccinations`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/medical/reports/vaccinations`);
         const report = await res.json();
 
         let html = '<table style="width:100%; text-align:left;"><thead><tr><th>Vaccine</th><th>Last Date</th><th>Status</th></tr></thead><tbody>';
@@ -931,9 +932,7 @@ async function loadAllergyReport() {
     const div = document.getElementById('allergy-report');
     if(!div) return;
     try {
-        const res = await fetch(`${API_URL}/medical/allergies`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/medical/allergies`);
         const list = await res.json();
         if (list.length === 0) {
             div.innerHTML = '<em>No allergies known.</em>';
@@ -959,11 +958,10 @@ async function handleLogBP(e) {
     };
 
     try {
-        const res = await fetch(`${API_URL}/log/bp`, {
+        const res = await fetchWithAuth(`${API_URL}/log/bp`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(data)
         });
@@ -989,11 +987,10 @@ async function handleLogExercise(e) {
     if (cals) data.calories_burned = parseFloat(cals);
 
     try {
-        const res = await fetch(`${API_URL}/log/exercise`, {
+        const res = await fetchWithAuth(`${API_URL}/log/exercise`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(data)
         });
@@ -1013,9 +1010,7 @@ async function handleLogExercise(e) {
 async function loadExerciseHistory() {
     const tbody = document.getElementById('exercise-history-body');
     try {
-        const res = await fetch(`${API_URL}/log/history/exercise`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/log/history/exercise`);
         const logs = await res.json();
 
         if (logs.length === 0) {
@@ -1045,9 +1040,7 @@ async function loadExerciseHistory() {
 async function loadBPHistory() {
     const tbody = document.getElementById('bp-history-body');
     try {
-        const res = await fetch(`${API_URL}/log/history/bp`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/log/history/bp`);
         const logs = await res.json();
 
         if (logs.length === 0) {
@@ -1127,11 +1120,10 @@ async function handleLogWeight(e) {
     };
 
     try {
-        const res = await fetch(`${API_URL}/users/me`, {
+        const res = await fetchWithAuth(`${API_URL}/users/me`, {
             method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(data)
         });
@@ -1179,9 +1171,7 @@ async function loadReports() {
     }
 
     try {
-        const res = await fetch(`${API_URL}/log/reports/compliance`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/log/reports/compliance`);
         const data = await res.json();
         document.getElementById('report-compliance-pct').innerText = data.compliance_percentage + '%';
         document.getElementById('report-missed-doses').innerText = data.missed_doses;
@@ -1219,11 +1209,10 @@ async function handleUpdateAdminKey(e) {
     e.preventDefault();
     const key = document.getElementById('admin-key').value;
     try {
-        const res = await fetch(`${API_URL}/admin/key`, {
+        const res = await fetchWithAuth(`${API_URL}/admin/key`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({ key: key })
         });
@@ -1241,9 +1230,8 @@ async function handleUpdateAdminKey(e) {
 
 async function createBackup() {
     try {
-        const res = await fetch(`${API_URL}/admin/backup`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
+        const res = await fetchWithAuth(`${API_URL}/admin/backup`, {
+            method: 'POST'
         });
         if (res.ok) {
             alert('Backup created successfully.');
@@ -1292,9 +1280,8 @@ async function handleRestoreBackup(e) {
     formData.append('file', fileInput.files[0]);
 
     try {
-        const res = await fetch(`${API_URL}/admin/restore`, {
+        const res = await fetchWithAuth(`${API_URL}/admin/restore`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });
         if (res.ok) {
@@ -1405,11 +1392,10 @@ async function handleUpdateProfile(e) {
     };
 
     try {
-        const res = await fetch(`${API_URL}/users/me`, {
+        const res = await fetchWithAuth(`${API_URL}/users/me`, {
             method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(data)
         });
@@ -1442,11 +1428,10 @@ async function handleUpdateWindows(e) {
     }
 
     try {
-        const res = await fetch(`${API_URL}/users/me`, {
+        const res = await fetchWithAuth(`${API_URL}/users/me`, {
             method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(data)
         });
@@ -1474,11 +1459,10 @@ async function handleChangePassword(e) {
     }
 
     try {
-        const res = await fetch(`${API_URL}/users/me/password`, {
+        const res = await fetchWithAuth(`${API_URL}/users/me/password`, {
             method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 current_password: currentPass,
@@ -1547,11 +1531,10 @@ async function updateThemePreference(val) {
 
         // Save to backend
         try {
-            await fetch(`${API_URL}/users/me`, {
+            await fetchWithAuth(`${API_URL}/users/me`, {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ theme_preference: val })
             });
@@ -1578,9 +1561,7 @@ async function refreshMQTTStatus() {
     content.innerHTML = 'Checking...';
 
     try {
-        const res = await fetch(`${API_URL}/admin/mqtt_status`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/admin/mqtt_status`);
         if (res.ok) {
             const status = await res.json();
             const color = status.connected ? 'green' : 'red';
@@ -1620,9 +1601,7 @@ async function loadManageMedsList() {
     listDiv.innerHTML = 'Loading...';
     try {
         const dateStr = getFormattedDate(currentDashboardDate);
-        const res = await fetch(`${API_URL}/medications/log?date_str=${dateStr}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/medications/log?date_str=${dateStr}`);
         const logs = await res.json();
 
         if (logs.length === 0) {
@@ -1661,9 +1640,8 @@ async function loadManageMedsList() {
 async function deleteMedLog(logId) {
     if(!confirm("Are you sure? This will increment stock.")) return;
     try {
-        const res = await fetch(`${API_URL}/medications/log/${logId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
+        const res = await fetchWithAuth(`${API_URL}/medications/log/${logId}`, {
+            method: 'DELETE'
         });
         if(res.ok) {
             loadManageMedsList();
@@ -1709,11 +1687,10 @@ document.getElementById('edit-med-form').addEventListener('submit', async (e) =>
     };
 
     try {
-        const res = await fetch(`${API_URL}/medications/log/${logId}`, {
+        const res = await fetchWithAuth(`${API_URL}/medications/log/${logId}`, {
             method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(updates)
         });
@@ -1752,9 +1729,7 @@ async function loadManageExerciseList() {
         // Let's fetch again via summary endpoint to be safe or use what I have.
         // Summary endpoint needs date_str.
         const dateStr = getFormattedDate(currentDashboardDate);
-        const res = await fetch(`${API_URL}/log/summary?date_str=${dateStr}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/log/summary?date_str=${dateStr}`);
         const data = await res.json();
         const logs = data.exercises; // These should now have log_id from my patch
 
@@ -1791,9 +1766,8 @@ async function loadManageExerciseList() {
 async function deleteExerciseLog(id) {
     if(!confirm("Are you sure?")) return;
     try {
-        const res = await fetch(`${API_URL}/log/exercise/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
+        const res = await fetchWithAuth(`${API_URL}/log/exercise/${id}`, {
+            method: 'DELETE'
         });
         if(res.ok) loadManageExerciseList();
         else alert("Delete failed");
@@ -1835,11 +1809,10 @@ document.getElementById('edit-exercise-form').addEventListener('submit', async (
     };
 
     try {
-         const res = await fetch(`${API_URL}/log/exercise/${id}`, {
+         const res = await fetchWithAuth(`${API_URL}/log/exercise/${id}`, {
             method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(updates)
         });
@@ -1869,9 +1842,7 @@ async function loadManageFoodList() {
     listDiv.innerHTML = 'Loading...';
     try {
         const dateStr = getFormattedDate(currentDashboardDate);
-        const res = await fetch(`${API_URL}/log/summary?date_str=${dateStr}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_URL}/log/summary?date_str=${dateStr}`);
         const data = await res.json();
         const logs = data.food_logs;
 
@@ -1907,9 +1878,8 @@ async function loadManageFoodList() {
 async function deleteFoodLog(id) {
     if(!confirm("Are you sure?")) return;
     try {
-        const res = await fetch(`${API_URL}/log/food/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
+        const res = await fetchWithAuth(`${API_URL}/log/food/${id}`, {
+            method: 'DELETE'
         });
         if(res.ok) loadManageFoodList();
         else alert("Delete failed");
@@ -1951,11 +1921,10 @@ document.getElementById('edit-food-form').addEventListener('submit', async (e) =
     };
 
     try {
-         const res = await fetch(`${API_URL}/log/food/${id}`, {
+         const res = await fetchWithAuth(`${API_URL}/log/food/${id}`, {
             method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(updates)
         });
