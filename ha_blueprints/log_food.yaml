@@ -1,0 +1,71 @@
+blueprint:
+  name: Log Food Item
+  description: >
+    Create a script to log a specific food item to the Health App.
+    Requires 'script.log_health_metric' to be installed and configured.
+  domain: script
+  input:
+    food_name:
+      name: Food Name
+      description: The name of the food to log.
+      selector:
+        text:
+    barcode:
+      name: Barcode (Optional)
+      description: The barcode of the food item.
+      default: ""
+      selector:
+        text:
+    serving_size:
+      name: Serving Size
+      description: "Serving size (default: 1.0)"
+      default: 1.0
+      selector:
+        number:
+          min: 0.1
+          max: 100.0
+          step: 0.1
+          mode: box
+    quantity:
+      name: Quantity
+      description: "Quantity consumed (default: 1.0)"
+      default: 1.0
+      selector:
+        number:
+          min: 0.1
+          max: 100.0
+          step: 0.1
+          mode: box
+    meal_id:
+      name: Meal
+      description: Which meal this belongs to.
+      default: "Snack"
+      selector:
+        select:
+          options:
+            - "Breakfast"
+            - "Lunch"
+            - "Dinner"
+            - "Snack"
+    method:
+      name: Logging Method
+      description: "MQTT or API"
+      default: "mqtt"
+      selector:
+        select:
+          options:
+            - "mqtt"
+            - "api"
+
+sequence:
+  - action: script.log_health_metric
+    data:
+      topic_suffix: "nutrition"
+      data_type: "FOOD_LOG"
+      method: !input method
+      metric_data:
+        food_name: !input food_name
+        barcode: !input barcode
+        serving_size: !input serving_size
+        quantity: !input quantity
+        meal_id: !input meal_id
