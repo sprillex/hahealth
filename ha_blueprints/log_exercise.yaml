@@ -1,0 +1,60 @@
+blueprint:
+  name: Log Exercise to Health App
+  description: >
+    Generates a script to log a specific exercise session to the Self-Hosted Health App via MQTT.
+
+    Prerequisites:
+    1. The Health App must be running and connected to the same MQTT broker as Home Assistant.
+    2. You need your Health App API Key.
+  domain: script
+  input:
+    api_key:
+      name: Health App API Key
+      description: "Your API Key for the Health App."
+      selector:
+        text:
+    activity_type:
+      name: Activity Type
+      description: "The name of the activity (e.g., Running, Cycling, Yoga)."
+      selector:
+        text:
+    duration:
+      name: Duration (minutes)
+      description: "The duration of the exercise in minutes."
+      selector:
+        number:
+          min: 1
+          max: 1440
+          unit_of_measurement: min
+    calories:
+      name: Calories Burned (Optional)
+      description: "Estimated calories burned. Leave as 0 if unknown/tracked automatically."
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 10000
+          unit_of_measurement: kcal
+
+mode: parallel
+
+variables:
+  input_api_key: !input api_key
+  input_activity: !input activity_type
+  input_duration: !input duration
+  input_calories: !input calories
+
+sequence:
+  - action: mqtt.publish
+    data:
+      topic: "hahealth/log/exercise"
+      payload: >-
+        {
+          "api_key": "{{ input_api_key }}",
+          "data_type": "EXERCISE_SESSION",
+          "payload": {
+            "activity_type": "{{ input_activity }}",
+            "duration_minutes": {{ input_duration }},
+            "calories_burned": {{ input_calories }}
+          }
+        }
