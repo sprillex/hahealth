@@ -1,6 +1,6 @@
 # Android App Requirements
 
-This document outlines the requirements and technical specifications for building an Android companion app for the Health Tracker.
+This document outlines the requirements and technical specifications for building an Android companion app for the Health Tracker. The app should replicate the features of the web frontend, utilizing the existing REST API.
 
 ## 1. Authentication Strategy
 
@@ -17,95 +17,155 @@ The app should **never** store the user's password locally. Instead, it should u
     *   Retry the original request.
     *   If the refresh fails (e.g., token expired), force the user to log in again.
 
-### Endpoints
-
-#### Login
-*   **URL:** `POST /auth/token`
-*   **Body (Form Data):** `username=<user>`, `password=<pass>`
-*   **Response:**
-    ```json
-    {
-      "access_token": "eyJhbG...",
-      "refresh_token": "eyJhbG...",
-      "token_type": "bearer"
-    }
-    ```
-
-#### Refresh Token
-*   **URL:** `POST /auth/refresh`
-*   **Body (JSON):** `{"refresh_token": "<stored_refresh_token>"}`
-*   **Response:** Same as Login (returns new access token).
+### Security Checklist
+1.  **Network Security Config:** Ensure cleartext traffic is disabled (only HTTPS) in production.
+2.  **Proguard/R8:** Enable obfuscation.
+3.  **Biometrics:** Optional: Use BiometricPrompt to unlock the app before retrieving tokens.
 
 ---
 
-## 2. API Integration
+## 2. Screens & Features
 
-The app should interact with the server via the REST API at `/api/v1`.
+The app should implement the following screens, corresponding to the web tabs.
 
-### Library Recommendation
-*   **Networking:** Retrofit + OkHttp.
-*   **JSON Parsing:** Moshi or Gson.
-*   **Async:** Kotlin Coroutines.
+### A. Dashboard (Home)
+*   **Date Navigation:** Allow user to switch days (Previous/Next day). Defaults to "Today".
+*   **Daily Summary Cards:**
+    *   Blood Pressure (Latest entry for selected day).
+    *   Calories In vs. Calories Out vs. Net.
+*   **Health Gauges:** Visual gauges for Daily Goals.
+    *   Calories (Goal from profile).
+    *   Macros: Protein, Fat, Carbs, Fiber (Targets calculated based on profile/gender).
+*   **Activity Log:**
+    *   **Medications Taken:** List of meds taken on selected day.
+    *   **Exercises:** List of exercises on selected day.
+    *   **Food Log:** List of food entries on selected day.
+    *   *Action:* Clicking "Manage" on these lists should open a detail view to Edit/Delete logs.
 
-### Key Endpoints
+### B. Medications
+*   **List View:** Display all medications.
+    *   Show Name, Frequency, Schedule (M/A/E/B), Type, Stock, Refills.
+    *   *Action:* "Refill Received" button (Calls `POST /api/v1/medications/{id}/refill`).
+    *   *Action:* "Edit" button (Opens Edit Modal).
+*   **Add/Edit Medication:** Form to create or update medication.
+    *   Fields: Name, Frequency, Type (RX/OTC), Inventory, Refills, Refill Quantity, Start/End Dates.
+    *   Schedule Checkboxes: Morning, Afternoon, Evening, Bedtime.
+*   **Log Dose:** (Usually handled via Webhook or implicit logic, but app can provide a manual "Take Now" button if API supports it, currently primarily tracking history).
 
-| Feature | Method | Endpoint | Description |
-| :--- | :--- | :--- | :--- |
-| **User Profile** | `GET` | `/api/v1/users/me` | Get user settings & profile. |
-| **Log BP** | `POST` | `/api/v1/log/bp` | Log a Blood Pressure reading. |
-| **BP History** | `GET` | `/api/v1/log/history/bp` | Get last 50 BP logs. |
-| **Log Meds** | `POST` | `/api/v1/webhook/health` | (Rec.) Log medication taken. |
-| **Daily Summary**| `GET` | `/api/v1/log/summary` | Get today's dashboard data (Calories, Macros, BP). |
-| **Med Logs** | `GET` | `/api/v1/medications/log` | Get logs for a specific day. |
+### C. Nutrition
+*   **Log Food:**
+    *   **Search:** Search local database (`GET /api/v1/nutrition/search`).
+    *   **Manual Entry:** If search fails, allow manual entry of Name/Calories.
+    *   **Barcode Scanner:** (Optional but recommended) Scan barcode, query `/api/v1/webhook/nutrition/{barcode}`, then pre-fill form.
+    *   **Form:** Meal (Breakfast/Lunch/Dinner/Snack), Serving Size, Quantity.
+*   **Create Custom Food:** Form to add new item to local cache (Name, Barcode, Macros).
 
-### JSON Examples
+### D. Health Logs
+*   **Log Blood Pressure:** Form for Systolic, Diastolic, Pulse.
+*   **Log Weight:** Form for Weight (respects User Unit Preference).
+*   **Log Exercise:** Form for Activity Type, Duration, Calories (optional).
+*   **Log Vaccination:** Form for Vaccine Type, Date Administered.
+*   **History Views:**
+    *   Recent Exercises (List).
+    *   Vaccination Report (List with Status).
+    *   Allergies List (List).
 
-#### Log Blood Pressure
-**POST** `/api/v1/log/bp`
-```json
-{
-  "systolic": 120,
-  "diastolic": 80,
-  "pulse": 72,
-  "location": "Left Arm",
-  "stress_level": 2,
-  "meds_taken_before": "None"
-}
-```
+### E. Reports
+*   **User Profile Summary:** Name, DOB, Weight.
+*   **Medication Compliance:**
+    *   Overall % for last 30 days.
+    *   Missed vs Taken counts.
+    *   Detailed breakdown table per medication.
+*   **Blood Pressure History:** List of last 50 readings. (Optional: Export CSV).
 
-#### Log Medication (via Webhook Endpoint)
-**POST** `/api/v1/webhook/health`
-Header: `X-Webhook-Secret: <your_api_key>` (Or use standard auth if calling internal APIs directly, though webhook is robust).
-*Better Strategy for App:* Use the internal API if authenticated as User.
-**POST** `/api/v1/medications/log` (Internal logic might need verification, currently webhook is primary for "taking" action, but internal logs exist).
-*Actually, the most robust "User Action" for taking meds is currently the Webhook or direct DB insertion via service.*
+### F. Settings
+*   **Profile:** Edit Name, Unit System (Metric/Imperial), Timezone, DOB, Gender, Height, Weight, Goals.
+*   **Schedule Windows:** Set start times for Morning, Afternoon, Evening, Bedtime.
+*   **Medical:** Manage Allergies (Add/Edit/Delete).
+*   **Security:** Change Password.
+*   **App Theme:** Light/Dark/System.
+*   **Admin (If User is Admin):**
+    *   MQTT Status.
+    *   Backup/Restore Database.
+    *   Update Encryption Key.
 
-**Recommendation:** For the app, use the `MedicationTakenPayload` structure but you might need to adapt if not using the webhook endpoint.
-*Correction:* The app can simply use the standard CRUD or Webhook. If using Webhook, it needs an API Key. If using Bearer Token, you might need to ensure an endpoint exists for "Taking" a med by ID.
-*Current API:* `POST /api/v1/webhook/health` handles `MEDICATION_TAKEN`.
-*There isn't a direct `POST /api/v1/medications/{id}/take` endpoint exposed for UI users in the routers viewed so far, except via Webhook.*
-**Action Item for App Dev:** You may want to add a direct "Take" endpoint for authenticated users, or just use the webhook endpoint with the user's API key (which can be fetched from `/api/v1/users/me` if added to the response, or generated).
+---
 
-#### Daily Summary Response
-**GET** `/api/v1/log/summary`
-```json
-{
-  "blood_pressure": "120/80",
-  "calories_consumed": 1500,
-  "calories_burned": 400,
-  "macros": {
-    "protein": 100,
-    "fat": 50,
-    "carbs": 150,
-    "fiber": 25
-  },
-  "food_logs": [],
-  "exercises": []
-}
-```
+## 3. API Reference
 
-## 3. Security Checklist for Android
+Base URL: `http://<server>:8000/api/v1` (typical).
 
-1.  **Network Security Config:** Ensure cleartext traffic is disabled (only HTTPS) in production.
-2.  **Proguard/R8:** Enable obfuscation to hide API logic.
-3.  **Biometrics:** Optional: Use BiometricPrompt to unlock the app before retrieving the tokens from storage.
+### Authentication
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/auth/token` | Login. Returns `access_token`, `refresh_token`. |
+| `POST` | `/auth/refresh` | Refresh access token. Body: `{"refresh_token": "..."}` |
+
+### Users & Profile
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/users/me` | Get current user profile & settings. |
+| `PUT` | `/api/v1/users/me` | Update profile (Weight, Units, Timezone, etc). |
+| `PUT` | `/api/v1/users/me/password` | Change password. |
+
+### Dashboard & Health Logs
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/log/summary` | **Dashboard Data.** Params: `date_str` (YYYY-MM-DD). Returns BP, Calories, Macros, Lists. |
+| `POST` | `/api/v1/log/bp` | Log Blood Pressure. |
+| `GET` | `/api/v1/log/history/bp` | Get BP History (limit 50). |
+| `POST` | `/api/v1/log/exercise` | Log Exercise. |
+| `GET` | `/api/v1/log/history/exercise` | Get Exercise History. |
+| `PUT` | `/api/v1/log/exercise/{id}` | Update Exercise Log. |
+| `DELETE`| `/api/v1/log/exercise/{id}` | Delete Exercise Log. |
+| `PUT` | `/api/v1/log/food/{id}` | Update Food Log. |
+| `DELETE`| `/api/v1/log/food/{id}` | Delete Food Log. |
+
+### Medications
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/medications/` | List all medications (definitions). |
+| `POST` | `/api/v1/medications/` | Create new medication. |
+| `PUT` | `/api/v1/medications/{id}` | Update medication. |
+| `POST` | `/api/v1/medications/{id}/refill`| Record refill (Update stock). |
+| `GET` | `/api/v1/medications/log` | Get logs for a day. Params: `date_str`. |
+| `PUT` | `/api/v1/medications/log/{id}` | Update a specific dose log (timestamp/window). |
+| `DELETE`| `/api/v1/medications/log/{id}` | Delete a dose log (Increments stock). |
+| `POST` | `/api/v1/webhook/health` | **Take Med:** Payload `data_type: "MEDICATION_TAKEN"`. |
+
+### Nutrition
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/nutrition/search` | Search local food cache. Query param: `query`. |
+| `POST` | `/api/v1/nutrition/` | Create custom food (Manual). |
+| `POST` | `/api/v1/nutrition/log` | Log food entry. |
+| `GET` | `/api/webhook/nutrition/{barcode}`| Lookup food by barcode (OpenFoodFacts). **Note:** Requires Webhook Secret in header or auth. |
+
+### Medical History
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/medical/allergies` | List allergies. |
+| `POST` | `/api/v1/medical/allergies` | Add allergy. |
+| `PUT` | `/api/v1/medical/allergies/{id}` | Update allergy. |
+| `DELETE`| `/api/v1/medical/allergies/{id}` | Delete allergy. |
+| `GET` | `/api/v1/medical/reports/vaccinations` | Get vaccination report. |
+| `POST` | `/api/v1/medical/vaccinations` | Log vaccination. |
+
+### Admin
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/admin/mqtt_status` | Check MQTT connection. |
+| `POST` | `/api/v1/admin/backup` | Create backup. |
+| `POST` | `/api/v1/admin/restore` | Restore backup (Upload file). |
+| `POST` | `/api/v1/admin/key` | Set encryption key. |
+
+## 4. Technical Notes
+
+1.  **Timezones:** The backend stores timestamps in UTC (SQLite).
+    *   **Reading:** When fetching logs (`/summary`, `/history`), convert the returned UTC ISO string to the device's Local Time for display.
+    *   **Writing:** When sending timestamps (e.g., updating a log time), convert Local Time to UTC ISO string before sending.
+2.  **Units:**
+    *   The backend stores Weight in **kg** and Height in **cm**.
+    *   Check `user.unit_system` ("METRIC" or "IMPERIAL").
+    *   **Imperial:** Display Weight as `lbs` (kg * 2.20462) and Height as `ft/in`. Convert inputs back to metric before sending to API.
+3.  **Offline Support:** Not strictly required for V1, but network error handling (Retry/Alert) is essential.
