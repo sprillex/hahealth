@@ -45,10 +45,22 @@ def search_food(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    # Simple search
-    results = db.query(models.NutritionCache).filter(
+    results = []
+    # Check if query looks like a barcode
+    if query.isdigit() and len(query) > 3:
+        service = services.OpenFoodFactsService()
+        product = service.get_product(query, db)
+        if product:
+            results.append(product)
+            return results
+
+    # Name search fallback
+    name_results = db.query(models.NutritionCache).filter(
         models.NutritionCache.food_name.ilike(f"%{query}%")
     ).limit(20).all()
+
+    results.extend(name_results)
+
     return results
 
 @router.post("/log", response_model=schemas.FoodLogPayload) # Return type might need adjustment
