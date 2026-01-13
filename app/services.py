@@ -162,6 +162,11 @@ class HealthLogService:
     def log_food(self, db: Session, user: models.User, data: schemas.FoodLogPayload):
         off_service = OpenFoodFactsService()
         food_item = None
+
+        # Fallback: if barcode is not explicitly provided but food_name looks like one
+        if not data.barcode and data.food_name and data.food_name.isdigit() and len(data.food_name) > 3:
+            data.barcode = data.food_name
+
         if data.barcode: food_item = off_service.get_product(data.barcode, db)
         if not food_item and data.food_name:
             food_item = db.query(models.NutritionCache).filter(models.NutritionCache.food_name == data.food_name).first()
