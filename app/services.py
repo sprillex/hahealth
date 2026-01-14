@@ -38,9 +38,10 @@ class OpenFoodFactsService:
                 fat = get_nutriment("fat_100g")
                 carbs = get_nutriment("carbohydrates_100g")
                 fiber = get_nutriment("fiber_100g")
+                sodium = get_nutriment("sodium_100g")
                 new_cache = models.NutritionCache(
                     barcode=barcode, food_name=food_name, calories=calories,
-                    protein=protein, fat=fat, carbs=carbs, fiber=fiber, source="OFF"
+                    protein=protein, fat=fat, carbs=carbs, fiber=fiber, sodium=sodium, source="OFF"
                 )
                 db.add(new_cache)
                 db.commit()
@@ -170,11 +171,40 @@ class HealthLogService:
         if data.barcode: food_item = off_service.get_product(data.barcode, db)
         if not food_item and data.food_name:
             food_item = db.query(models.NutritionCache).filter(models.NutritionCache.food_name == data.food_name).first()
+
+            # If manual entry matches existing cache, update it with latest macros
+            if food_item and not data.barcode:
+                has_macros = any(x is not None for x in [data.calories, data.protein, data.fat, data.carbs, data.fiber, data.sodium])
+                if has_macros:
+                     divisor = (data.quantity * data.serving_size) if (data.quantity * data.serving_size) > 0 else 1.0
+                     if data.calories is not None: food_item.calories = (data.calories / divisor)
+                     if data.protein is not None: food_item.protein = (data.protein / divisor)
+                     if data.fat is not None: food_item.fat = (data.fat / divisor)
+                     if data.carbs is not None: food_item.carbs = (data.carbs / divisor)
+                     if data.fiber is not None: food_item.fiber = (data.fiber / divisor)
+                     if data.sodium is not None: food_item.sodium = (data.sodium / divisor)
+                     db.commit()
+                     db.refresh(food_item)
+
         if not food_item:
             if data.food_name:
+                # Calculate per-unit values if provided (User sends Total, Cache stores Per Unit)
+                divisor = (data.quantity * data.serving_size) if (data.quantity * data.serving_size) > 0 else 1.0
+
+                # Visibility logic: Defaults to False if flag is missing/0 for MANUAL entry
+                is_visible = bool(data.save_food) if data.save_food is not None else False
+
                 food_item = models.NutritionCache(
-                    barcode=data.barcode, food_name=data.food_name, calories=0,
-                    protein=0, fat=0, carbs=0, fiber=0, source="MANUAL"
+                    barcode=data.barcode,
+                    food_name=data.food_name,
+                    calories=(data.calories or 0) / divisor,
+                    protein=(data.protein or 0) / divisor,
+                    fat=(data.fat or 0) / divisor,
+                    carbs=(data.carbs or 0) / divisor,
+                    fiber=(data.fiber or 0) / divisor,
+                    sodium=(data.sodium or 0) / divisor,
+                    source="MANUAL",
+                    is_user_visible=is_visible
                 )
                 db.add(food_item)
                 db.commit()

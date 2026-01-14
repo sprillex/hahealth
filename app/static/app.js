@@ -146,6 +146,16 @@ function formatHeight(cm) {
     return `${cm.toFixed(1)} cm`;
 }
 
+function escapeHtml(text) {
+    if (!text) return text;
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 // --- Auth ---
 
 async function handleLogin(e) {
@@ -360,7 +370,8 @@ function calculateTargets() {
         protein: { min: Math.round((targetCals * 0.15) / 4), max: Math.round((targetCals * 0.25) / 4) },
         fat: { min: Math.round((targetCals * 0.20) / 9), max: Math.round((targetCals * 0.35) / 9) },
         carbs: { min: Math.round((targetCals * 0.45) / 4), max: Math.round((targetCals * 0.65) / 4) },
-        fiber: { min: Math.round((targetCals / 1000) * 14) } // Just min
+        fiber: { min: Math.round((targetCals / 1000) * 14) }, // Just min
+        sodium: { max: 2300 } // Recommended max
     };
 }
 
@@ -374,7 +385,8 @@ function updateRecommendations(targets) {
     html += `<strong>Protein:</strong> ${targets.protein.min}-${targets.protein.max}g<br>`;
     html += `<strong>Fat:</strong> ${targets.fat.min}-${targets.fat.max}g<br>`;
     html += `<strong>Carbs:</strong> ${targets.carbs.min}-${targets.carbs.max}g<br>`;
-    html += `<strong>Fiber:</strong> > ${targets.fiber.min}g`;
+    html += `<strong>Fiber:</strong> > ${targets.fiber.min}g<br>`;
+    html += `<strong>Sodium:</strong> < ${targets.sodium.max}mg`;
 
     document.getElementById('recommendation-text').innerHTML = html;
 }
@@ -399,7 +411,8 @@ function renderGauges(data, targets) {
         { key: 'protein', label: 'Protein', val: Math.round(data.macros.protein), unit: 'g' },
         { key: 'fat', label: 'Fat', val: Math.round(data.macros.fat), unit: 'g' },
         { key: 'carbs', label: 'Carbs', val: Math.round(data.macros.carbs), unit: 'g' },
-        { key: 'fiber', label: 'Fiber', val: Math.round(data.macros.fiber), unit: 'g' }
+        { key: 'fiber', label: 'Fiber', val: Math.round(data.macros.fiber), unit: 'g' },
+        { key: 'sodium', label: 'Sodium', val: Math.round(data.macros.sodium || 0), unit: 'mg' }
     ];
 
     macros.forEach(m => {
@@ -637,7 +650,7 @@ async function handleCreateFood(e) {
     const data = Object.fromEntries(fd.entries());
 
     // Parse numbers
-    ['calories', 'protein', 'fat', 'carbs', 'fiber'].forEach(k => {
+    ['calories', 'protein', 'fat', 'carbs', 'fiber', 'sodium'].forEach(k => {
         data[k] = parseFloat(data[k]) || 0;
     });
 
@@ -679,6 +692,10 @@ async function handleSearchFood(query) {
         resultsDiv.innerHTML = '';
         if (foods.length > 0) {
             resultsDiv.classList.remove('hidden');
+            // Force styles as belt-and-suspenders against caching
+            resultsDiv.style.backgroundColor = 'var(--card-bg)';
+            resultsDiv.style.color = 'var(--text-color)';
+
             foods.forEach(food => {
                 const div = document.createElement('div');
                 div.className = 'search-item';
@@ -1823,7 +1840,153 @@ document.getElementById('edit-exercise-form').addEventListener('submit', async (
     } catch(e) { alert("Update failed"); }
 });
 
-// --- Manage Food ---
+// --- Manage Food Library ---
+
+function openManageLibrary() {
+    const modal = document.getElementById('manage-library-modal');
+    modal.classList.remove('hidden');
+    // Clear list
+    document.getElementById('library-list').innerHTML = 'Loading...';
+    // Defaults
+    document.getElementById('lib-show-hidden').checked = false;
+    document.getElementById('lib-search-input').value = '';
+    document.getElementById('edit-library-form-container').classList.add('hidden');
+    loadLibraryFoods();
+}
+
+function closeManageLibrary() {
+    document.getElementById('manage-library-modal').classList.add('hidden');
+    document.getElementById('edit-library-form-container').classList.add('hidden');
+}
+
+let libSearchDebounce;
+function debounceLibrarySearch() {
+    clearTimeout(libSearchDebounce);
+    libSearchDebounce = setTimeout(loadLibraryFoods, 300);
+}
+
+async function loadLibraryFoods() {
+    const listDiv = document.getElementById('library-list');
+    listDiv.innerHTML = 'Loading...';
+    const showHidden = document.getElementById('lib-show-hidden').checked;
+    const query = document.getElementById('lib-search-input').value;
+
+    try {
+        let url = `${API_URL}/nutrition/list?include_hidden=${showHidden}&limit=100`;
+        if (query) {
+            url += `&search=${encodeURIComponent(query)}`;
+        }
+        const res = await fetchWithAuth(url);
+        const foods = await res.json();
+
+        if (foods.length === 0) {
+            listDiv.innerHTML = '<em>No foods found.</em>';
+            return;
+        }
+
+        let html = '<ul style="list-style: none; padding: 0; max-height: 400px; overflow-y: auto;">';
+        foods.forEach(food => {
+             const safeFood = JSON.stringify(food).replace(/"/g, '&quot;');
+             const visibility = food.is_user_visible ? '<span style="color: green;">Visible</span>' : '<span style="color: gray;">Hidden</span>';
+             const safeName = escapeHtml(food.food_name);
+             const safeSource = escapeHtml(food.source);
+
+             html += `
+             <li style="border-bottom: 1px solid #eee; padding: 8px 0; display: flex; justify-content: space-between; align-items: center;">
+                <span>
+                    <strong>${safeName}</strong> <small>(${safeSource})</small><br>
+                    <small>${Math.round(food.calories)} kcal | ${visibility}</small>
+                </span>
+                <div>
+                    <button onclick="editLibraryFood(${safeFood})" class="btn-secondary" style="font-size: 0.8em; padding: 2px 5px;">Edit</button>
+                    <button onclick="deleteLibraryFood(${food.food_id})" class="btn-warning" style="font-size: 0.8em; padding: 2px 5px; background-color: #dc3545;">Del</button>
+                </div>
+             </li>
+             `;
+        });
+        html += '</ul>';
+        listDiv.innerHTML = html;
+
+    } catch (err) {
+        listDiv.innerHTML = 'Error loading library.';
+    }
+}
+
+function editLibraryFood(food) {
+    const container = document.getElementById('edit-library-form-container');
+    container.classList.remove('hidden');
+
+    document.getElementById('edit_lib_id').value = food.food_id;
+    document.getElementById('edit_lib_name').value = food.food_name;
+    document.getElementById('edit_lib_barcode').value = food.barcode || '';
+    document.getElementById('edit_lib_cals').value = food.calories;
+    document.getElementById('edit_lib_protein').value = food.protein;
+    document.getElementById('edit_lib_fat').value = food.fat;
+    document.getElementById('edit_lib_carbs').value = food.carbs;
+    document.getElementById('edit_lib_fiber').value = food.fiber;
+    document.getElementById('edit_lib_visible').checked = food.is_user_visible;
+}
+
+document.getElementById('edit-library-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit_lib_id').value;
+    const data = {
+        food_name: document.getElementById('edit_lib_name').value,
+        barcode: document.getElementById('edit_lib_barcode').value || null,
+        calories: parseFloat(document.getElementById('edit_lib_cals').value),
+        protein: parseFloat(document.getElementById('edit_lib_protein').value),
+        fat: parseFloat(document.getElementById('edit_lib_fat').value),
+        carbs: parseFloat(document.getElementById('edit_lib_carbs').value),
+        fiber: parseFloat(document.getElementById('edit_lib_fiber').value),
+        is_user_visible: document.getElementById('edit_lib_visible').checked
+    };
+
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        if(res.ok) {
+            alert('Food updated');
+            document.getElementById('edit-library-form-container').classList.add('hidden');
+            loadLibraryFoods();
+        } else {
+            alert('Update failed');
+        }
+    } catch(err) {
+        alert('Update failed');
+    }
+});
+
+async function deleteLibraryFood(id) {
+    if(!confirm("Are you sure you want to delete this food? If it is used in logs, this might fail or be restricted.")) return;
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/${id}`, {
+            method: 'DELETE'
+        });
+        if(res.ok) {
+            alert('Food deleted');
+            loadLibraryFoods();
+            document.getElementById('edit-library-form-container').classList.add('hidden');
+        } else {
+            const err = await res.json();
+            alert(err.detail || 'Delete failed');
+        }
+    } catch(err) {
+        alert('Delete failed');
+    }
+}
+
+function deleteLibraryFoodCurrent() {
+    const id = document.getElementById('edit_lib_id').value;
+    if(id) deleteLibraryFood(id);
+}
+
+
+// --- Manage Food Logs ---
 
 async function openManageFoodModal() {
     const modal = document.getElementById('manage-food-modal');

@@ -231,7 +231,12 @@ class MQTTClient:
                 ("bp_systolic", "BP Systolic", None, "mmHg"),
                 ("bp_diastolic", "BP Diastolic", None, "mmHg"),
                 ("calories_in", "Calories Consumed", "energy", "kcal"),
-                ("calories_burned", "Calories Burned", "energy", "kcal")
+                ("calories_burned", "Calories Burned", "energy", "kcal"),
+                ("protein", "Protein", None, "g"),
+                ("fat", "Fat", None, "g"),
+                ("carbs", "Carbs", None, "g"),
+                ("fiber", "Fiber", None, "g"),
+                ("sodium", "Sodium", None, "mg")
             ]
 
             for key, name, device_class, unit in sensors:
@@ -246,6 +251,13 @@ class MQTTClient:
                     "device": device_info
                 }
 
+                # Add icon for specific nutrients if needed, or rely on device_class (none for macros)
+                if key == "sodium": payload["icon"] = "mdi:shaker"
+                elif key == "protein": payload["icon"] = "mdi:food-steak"
+                elif key == "carbs": payload["icon"] = "mdi:pasta"
+                elif key == "fat": payload["icon"] = "mdi:oil"
+                elif key == "fiber": payload["icon"] = "mdi:barley"
+
                 self.client.publish(discovery_topic, json.dumps(payload), retain=True)
 
     def publish_periodic_stats(self, db: Session):
@@ -257,7 +269,7 @@ class MQTTClient:
                 if weight is not None and user.unit_system == "IMPERIAL":
                     weight = round(weight * 2.20462, 1)
 
-                # 2. Daily Log Stats (Calories)
+                # 2. Daily Log Stats (Calories & Macros)
                 local_date = services.get_user_local_date(user, None)
                 daily = db.query(models.DailyLog).filter(
                     models.DailyLog.user_id == user.user_id,
@@ -265,6 +277,38 @@ class MQTTClient:
                 ).first()
                 cals_in = daily.total_calories_consumed if daily else 0
                 cals_out = daily.total_calories_burned if daily else 0
+
+                # Calculate Macros dynamically for today
+                # Note: We query the DB for today's logs and sum them up.
+                # This assumes 'local_date' logic matches how logs are stored/queried.
+                # FoodItemLog timestamps are UTC, so we need a range query.
+                # But 'services.get_user_local_date' is just a date.
+                # We need start/end of day in UTC.
+
+                # Simplified approach: Query FoodItemLogs for the user, filter in Python by local date
+                # to reuse the exact logic from 'get_user_local_date'.
+                # For performance on large datasets, this should be optimized to SQL ranges.
+                # Given current scale, Python filtering is acceptable.
+
+                food_logs = db.query(models.FoodItemLog).filter(
+                    models.FoodItemLog.user_id == user.user_id
+                ).all() # We could limit by timestamp > today - 1 day to optimize
+
+                protein = 0.0
+                fat = 0.0
+                carbs = 0.0
+                fiber = 0.0
+                sodium = 0.0
+
+                for log in food_logs:
+                    log_date = services.get_user_local_date(user, log.timestamp)
+                    if log_date == local_date:
+                        mult = log.quantity * log.serving_size
+                        protein += log.nutrition_info.protein * mult
+                        fat += log.nutrition_info.fat * mult
+                        carbs += log.nutrition_info.carbs * mult
+                        fiber += log.nutrition_info.fiber * mult
+                        sodium += log.nutrition_info.sodium * mult
 
                 # 3. Latest BP
                 bp = db.query(models.BloodPressure).filter(
@@ -275,10 +319,15 @@ class MQTTClient:
 
                 payload = {
                     "weight": round(weight, 1),
-                    "calories_in": cals_in,
-                    "calories_burned": cals_out,
+                    "calories_in": round(cals_in, 1),
+                    "calories_burned": round(cals_out, 1),
                     "bp_systolic": systolic,
-                    "bp_diastolic": diastolic
+                    "bp_diastolic": diastolic,
+                    "protein": round(protein, 1),
+                    "fat": round(fat, 1),
+                    "carbs": round(carbs, 1),
+                    "fiber": round(fiber, 1),
+                    "sodium": round(sodium, 1)
                 }
 
                 topic = f"hahealth/{user.user_id}/state"
