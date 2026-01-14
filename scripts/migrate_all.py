@@ -190,6 +190,13 @@ def migrate_all():
     except sqlite3.OperationalError:
         pass
 
+    # 13. Sodium
+    try:
+        cursor.execute("ALTER TABLE nutrition_cache ADD COLUMN sodium FLOAT DEFAULT 0.0")
+        print(" - Added sodium to nutrition_cache.")
+    except sqlite3.OperationalError:
+        pass
+
     conn.commit()
     conn.close()
     print("All migrations complete.")

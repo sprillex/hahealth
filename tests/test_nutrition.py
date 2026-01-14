@@ -29,6 +29,7 @@ def test_search_by_barcode_feature(client, session):
         fat=5.0,
         carbs=10.0,
         fiber=2.0,
+        sodium=10.0,
         source="OFF",
         is_user_visible=True
     )
@@ -55,6 +56,7 @@ def test_log_food_with_barcode_as_name(client, session):
         fat=0.0,
         carbs=0.0,
         fiber=0.0,
+        sodium=0.0,
         source="OFF",
         is_user_visible=True
     )
@@ -130,7 +132,8 @@ def test_webhook_food_log_manual_macros(client, session):
             "protein": 30.0,
             "fat": 20.0,
             "carbs": 50.0,
-            "fiber": 5.0
+            "fiber": 5.0,
+            "sodium": 150.0
         }
     }
 
@@ -149,6 +152,7 @@ def test_webhook_food_log_manual_macros(client, session):
     assert cache.fat == 20.0
     assert cache.carbs == 50.0
     assert cache.fiber == 5.0
+    assert cache.sodium == 150.0
     # Default (missing save_food) should be Hidden (False)
     assert cache.is_user_visible == False
 

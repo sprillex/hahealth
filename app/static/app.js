@@ -370,7 +370,8 @@ function calculateTargets() {
         protein: { min: Math.round((targetCals * 0.15) / 4), max: Math.round((targetCals * 0.25) / 4) },
         fat: { min: Math.round((targetCals * 0.20) / 9), max: Math.round((targetCals * 0.35) / 9) },
         carbs: { min: Math.round((targetCals * 0.45) / 4), max: Math.round((targetCals * 0.65) / 4) },
-        fiber: { min: Math.round((targetCals / 1000) * 14) } // Just min
+        fiber: { min: Math.round((targetCals / 1000) * 14) }, // Just min
+        sodium: { max: 2300 } // Recommended max
     };
 }
 
@@ -384,7 +385,8 @@ function updateRecommendations(targets) {
     html += `<strong>Protein:</strong> ${targets.protein.min}-${targets.protein.max}g<br>`;
     html += `<strong>Fat:</strong> ${targets.fat.min}-${targets.fat.max}g<br>`;
     html += `<strong>Carbs:</strong> ${targets.carbs.min}-${targets.carbs.max}g<br>`;
-    html += `<strong>Fiber:</strong> > ${targets.fiber.min}g`;
+    html += `<strong>Fiber:</strong> > ${targets.fiber.min}g<br>`;
+    html += `<strong>Sodium:</strong> < ${targets.sodium.max}mg`;
 
     document.getElementById('recommendation-text').innerHTML = html;
 }
@@ -409,7 +411,8 @@ function renderGauges(data, targets) {
         { key: 'protein', label: 'Protein', val: Math.round(data.macros.protein), unit: 'g' },
         { key: 'fat', label: 'Fat', val: Math.round(data.macros.fat), unit: 'g' },
         { key: 'carbs', label: 'Carbs', val: Math.round(data.macros.carbs), unit: 'g' },
-        { key: 'fiber', label: 'Fiber', val: Math.round(data.macros.fiber), unit: 'g' }
+        { key: 'fiber', label: 'Fiber', val: Math.round(data.macros.fiber), unit: 'g' },
+        { key: 'sodium', label: 'Sodium', val: Math.round(data.macros.sodium || 0), unit: 'mg' }
     ];
 
     macros.forEach(m => {
@@ -647,7 +650,7 @@ async function handleCreateFood(e) {
     const data = Object.fromEntries(fd.entries());
 
     // Parse numbers
-    ['calories', 'protein', 'fat', 'carbs', 'fiber'].forEach(k => {
+    ['calories', 'protein', 'fat', 'carbs', 'fiber', 'sodium'].forEach(k => {
         data[k] = parseFloat(data[k]) || 0;
     });
 

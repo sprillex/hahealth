@@ -38,9 +38,10 @@ class OpenFoodFactsService:
                 fat = get_nutriment("fat_100g")
                 carbs = get_nutriment("carbohydrates_100g")
                 fiber = get_nutriment("fiber_100g")
+                sodium = get_nutriment("sodium_100g")
                 new_cache = models.NutritionCache(
                     barcode=barcode, food_name=food_name, calories=calories,
-                    protein=protein, fat=fat, carbs=carbs, fiber=fiber, source="OFF"
+                    protein=protein, fat=fat, carbs=carbs, fiber=fiber, sodium=sodium, source="OFF"
                 )
                 db.add(new_cache)
                 db.commit()
@@ -186,6 +187,7 @@ class HealthLogService:
                     fat=(data.fat or 0) / divisor,
                     carbs=(data.carbs or 0) / divisor,
                     fiber=(data.fiber or 0) / divisor,
+                    sodium=(data.sodium or 0) / divisor,
                     source="MANUAL",
                     is_user_visible=is_visible
                 )

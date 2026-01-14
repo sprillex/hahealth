@@ -27,6 +27,7 @@
         .macro-segment.p { background-color: #e74c3c; } /* Protein */
         .macro-segment.f { background-color: #f1c40f; } /* Fat */
         .macro-segment.c { background-color: #2ecc71; } /* Carbs */
+        .macro-segment.s { background-color: #9b59b6; } /* Sodium */
         .macro-legend { display: flex; justify-content: center; gap: 15px; font-size: 0.8em; margin-top: 5px; }
         .checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .stat-card { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
@@ -612,6 +613,10 @@
                          <input type="number" step="0.1" id="edit_lib_fiber">
                      </div>
                      <div class="form-group">
+                         <label>Sodium (mg)</label>
+                         <input type="number" step="0.1" id="edit_lib_sodium">
+                     </div>
+                     <div class="form-group">
                          <label>Visible in Search</label>
                          <input type="checkbox" id="edit_lib_visible">
                      </div>
@@ -785,6 +790,10 @@
                 <div class="form-group">
                     <label>Fiber (g)</label>
                     <input type="number" step="0.1" name="fiber" value="0">
+                </div>
+                <div class="form-group">
+                    <label>Sodium (mg)</label>
+                    <input type="number" step="0.1" name="sodium" value="0">
                 </div>
                 <div class="form-actions">
                     <button type="button" onclick="closeFoodModal()">Cancel</button>

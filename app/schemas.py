@@ -184,6 +184,7 @@ class FoodLogPayload(BaseModel):
     fat: Optional[float] = None
     carbs: Optional[float] = None
     fiber: Optional[float] = None
+    sodium: Optional[float] = None
     save_food: Optional[int] = 0
 
 class FoodLogResponse(BaseModel):
@@ -223,6 +224,7 @@ class NutritionCacheBase(BaseModel):
     fat: float = 0.0
     carbs: float = 0.0
     fiber: float = 0.0
+    sodium: float = 0.0
 
 class NutritionCacheCreate(NutritionCacheBase):
     pass
@@ -235,6 +237,7 @@ class NutritionCacheUpdate(BaseModel):
     fat: Optional[float] = None
     carbs: Optional[float] = None
     fiber: Optional[float] = None
+    sodium: Optional[float] = None
     is_user_visible: Optional[bool] = None
 
 class NutritionCacheResponse(NutritionCacheBase):
