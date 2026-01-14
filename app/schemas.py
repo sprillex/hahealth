@@ -179,6 +179,11 @@ class FoodLogPayload(BaseModel):
     serving_size: float = 1.0
     quantity: float = 1.0
     meal_id: str = "Snack"
+    calories: Optional[float] = None
+    protein: Optional[float] = None
+    fat: Optional[float] = None
+    carbs: Optional[float] = None
+    fiber: Optional[float] = None
 
 class FoodLogResponse(BaseModel):
     log_id: int
