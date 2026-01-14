@@ -575,6 +575,7 @@
             <span class="close" onclick="closeManageLibrary()">&times;</span>
             <h2>Manage Food Library</h2>
             <div style="margin-bottom: 15px;">
+                <input type="text" id="lib-search-input" placeholder="Search library..." style="width: 100%; margin-bottom: 10px;" oninput="debounceLibrarySearch()">
                 <label><input type="checkbox" id="lib-show-hidden" onchange="loadLibraryFoods()"> Show Hidden Foods</label>
             </div>
             <div id="library-list">Loading...</div>
@@ -615,6 +616,7 @@
                          <input type="checkbox" id="edit_lib_visible">
                      </div>
                      <button type="submit" class="btn-primary">Update Food</button>
+                     <button type="button" onclick="deleteLibraryFoodCurrent()" class="btn-warning">Delete</button>
                      <button type="button" onclick="document.getElementById('edit-library-form-container').classList.add('hidden')">Cancel</button>
                  </form>
             </div>

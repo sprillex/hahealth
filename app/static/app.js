@@ -1846,6 +1846,7 @@ function openManageLibrary() {
     document.getElementById('library-list').innerHTML = 'Loading...';
     // Defaults
     document.getElementById('lib-show-hidden').checked = false;
+    document.getElementById('lib-search-input').value = '';
     document.getElementById('edit-library-form-container').classList.add('hidden');
     loadLibraryFoods();
 }
@@ -1855,13 +1856,24 @@ function closeManageLibrary() {
     document.getElementById('edit-library-form-container').classList.add('hidden');
 }
 
+let libSearchDebounce;
+function debounceLibrarySearch() {
+    clearTimeout(libSearchDebounce);
+    libSearchDebounce = setTimeout(loadLibraryFoods, 300);
+}
+
 async function loadLibraryFoods() {
     const listDiv = document.getElementById('library-list');
     listDiv.innerHTML = 'Loading...';
     const showHidden = document.getElementById('lib-show-hidden').checked;
+    const query = document.getElementById('lib-search-input').value;
 
     try {
-        const res = await fetchWithAuth(`${API_URL}/nutrition/list?include_hidden=${showHidden}&limit=100`);
+        let url = `${API_URL}/nutrition/list?include_hidden=${showHidden}&limit=100`;
+        if (query) {
+            url += `&search=${encodeURIComponent(query)}`;
+        }
+        const res = await fetchWithAuth(url);
         const foods = await res.json();
 
         if (foods.length === 0) {
@@ -1884,6 +1896,7 @@ async function loadLibraryFoods() {
                 </span>
                 <div>
                     <button onclick="editLibraryFood(${safeFood})" class="btn-secondary" style="font-size: 0.8em; padding: 2px 5px;">Edit</button>
+                    <button onclick="deleteLibraryFood(${food.food_id})" class="btn-warning" style="font-size: 0.8em; padding: 2px 5px; background-color: #dc3545;">Del</button>
                 </div>
              </li>
              `;
@@ -1944,6 +1957,30 @@ document.getElementById('edit-library-form').addEventListener('submit', async (e
         alert('Update failed');
     }
 });
+
+async function deleteLibraryFood(id) {
+    if(!confirm("Are you sure you want to delete this food? If it is used in logs, this might fail or be restricted.")) return;
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/${id}`, {
+            method: 'DELETE'
+        });
+        if(res.ok) {
+            alert('Food deleted');
+            loadLibraryFoods();
+            document.getElementById('edit-library-form-container').classList.add('hidden');
+        } else {
+            const err = await res.json();
+            alert(err.detail || 'Delete failed');
+        }
+    } catch(err) {
+        alert('Delete failed');
+    }
+}
+
+function deleteLibraryFoodCurrent() {
+    const id = document.getElementById('edit_lib_id').value;
+    if(id) deleteLibraryFood(id);
+}
 
 
 // --- Manage Food Logs ---

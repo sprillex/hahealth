@@ -254,3 +254,54 @@ def test_manage_food_library(client, session):
     res = client.get("/api/v1/nutrition/list?include_hidden=true", headers=headers)
     names = [x["food_name"] for x in res.json()]
     assert "UpdatedName" in names
+
+def test_delete_food_logic(client, session):
+    token = get_auth_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 1. Create unused food
+    unused = models.NutritionCache(food_name="DeleteMe", calories=10, is_user_visible=True, source="MANUAL")
+    session.add(unused)
+    session.commit()
+    uid = unused.food_id
+
+    # 2. Delete unused -> Should succeed
+    res = client.delete(f"/api/v1/nutrition/{uid}", headers=headers)
+    assert res.status_code == 200
+    assert session.query(models.NutritionCache).filter_by(food_id=uid).first() is None
+
+    # 3. Create used food
+    used = models.NutritionCache(food_name="KeepMe", calories=10, is_user_visible=True, source="MANUAL")
+    session.add(used)
+    session.commit()
+    # Log it (creates dependency)
+    # We need a user ID. auth helper ensures user exists.
+    # We need to get the user ID from the token or just assume 1 if fresh db.
+    # Let's fetch /users/me to be safe.
+    me = client.get("/api/v1/users/me", headers=headers).json()
+    user_id = me["user_id"]
+
+    log = models.FoodItemLog(user_id=user_id, food_id=used.food_id, meal_id="Snack", serving_size=1, quantity=1)
+    session.add(log)
+    session.commit()
+
+    # 4. Delete used -> Should fail 400
+    res = client.delete(f"/api/v1/nutrition/{used.food_id}", headers=headers)
+    assert res.status_code == 400
+    assert "Cannot delete" in res.json()["detail"]
+
+def test_list_search_filter(client, session):
+    token = get_auth_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    f1 = models.NutritionCache(food_name="Apple Pie", calories=1, is_user_visible=True, source="MANUAL")
+    f2 = models.NutritionCache(food_name="Banana Bread", calories=1, is_user_visible=True, source="MANUAL")
+    session.add_all([f1, f2])
+    session.commit()
+
+    # Search "Apple"
+    res = client.get("/api/v1/nutrition/list?search=Apple", headers=headers)
+    data = res.json()
+    names = [x["food_name"] for x in data]
+    assert "Apple Pie" in names
+    assert "Banana Bread" not in names

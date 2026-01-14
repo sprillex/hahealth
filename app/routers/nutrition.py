@@ -89,11 +89,15 @@ def log_food_entry(
 def list_foods(
     skip: int = 0,
     limit: int = 50,
+    search: Optional[str] = None,
     include_hidden: bool = False,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     query = db.query(models.NutritionCache)
+    if search:
+        query = query.filter(models.NutritionCache.food_name.ilike(f"%{search}%"))
+
     if not include_hidden:
         query = query.filter(models.NutritionCache.is_user_visible == True)
 
@@ -128,3 +132,27 @@ def update_food(
     db.commit()
     db.refresh(food)
     return food
+
+@router.delete("/{food_id}")
+def delete_food(
+    food_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # Check usage first
+    usage = db.query(models.FoodItemLog).filter(models.FoodItemLog.food_id == food_id).first()
+    if usage:
+        # We can't easily delete because logs depend on it.
+        # Options:
+        # 1. Block delete (Safest)
+        # 2. Hide it (is_user_visible=False) - but endpoint says DELETE.
+        # Let's block it for now with a clear message.
+        raise HTTPException(status_code=400, detail="Cannot delete food that is used in logs. Please hide it instead or delete logs first.")
+
+    food = db.query(models.NutritionCache).filter(models.NutritionCache.food_id == food_id).first()
+    if not food:
+        raise HTTPException(status_code=404, detail="Food not found")
+
+    db.delete(food)
+    db.commit()
+    return {"status": "success"}
