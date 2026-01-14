@@ -179,6 +179,13 @@ class FoodLogPayload(BaseModel):
     serving_size: float = 1.0
     quantity: float = 1.0
     meal_id: str = "Snack"
+    calories: Optional[float] = None
+    protein: Optional[float] = None
+    fat: Optional[float] = None
+    carbs: Optional[float] = None
+    fiber: Optional[float] = None
+    sodium: Optional[float] = None
+    save_food: Optional[int] = 0
 
 class FoodLogResponse(BaseModel):
     log_id: int
@@ -217,13 +224,26 @@ class NutritionCacheBase(BaseModel):
     fat: float = 0.0
     carbs: float = 0.0
     fiber: float = 0.0
+    sodium: float = 0.0
 
 class NutritionCacheCreate(NutritionCacheBase):
     pass
 
+class NutritionCacheUpdate(BaseModel):
+    food_name: Optional[str] = None
+    barcode: Optional[str] = None
+    calories: Optional[float] = None
+    protein: Optional[float] = None
+    fat: Optional[float] = None
+    carbs: Optional[float] = None
+    fiber: Optional[float] = None
+    sodium: Optional[float] = None
+    is_user_visible: Optional[bool] = None
+
 class NutritionCacheResponse(NutritionCacheBase):
     food_id: int
     source: str
+    is_user_visible: bool
     model_config = ConfigDict(from_attributes=True)
 
 # Medical History
