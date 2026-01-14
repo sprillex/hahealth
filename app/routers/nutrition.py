@@ -32,6 +32,7 @@ def create_custom_food(
         fat=food.fat,
         carbs=food.carbs,
         fiber=food.fiber,
+        sodium=food.sodium,
         source="MANUAL"
     )
     db.add(new_food)

@@ -340,3 +340,34 @@ def test_list_search_filter(client, session):
     names = [x["food_name"] for x in data]
     assert "Apple Pie" in names
     assert "Banana Bread" not in names
+
+from app.services import OpenFoodFactsService
+
+def test_sodium_unit_conversion(session):
+    # Mock Response
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "status": 1,
+        "product": {
+            "product_name": "Test Sodium Product",
+            "nutriments": {
+                "energy-kcal_100g": 100,
+                "proteins_100g": 10,
+                "fat_100g": 5,
+                "carbohydrates_100g": 20,
+                "fiber_100g": 2,
+                "sodium_100g": 0.5 # 0.5 grams
+            }
+        }
+    }
+
+    with patch("requests.get", return_value=mock_response):
+        service = OpenFoodFactsService()
+        barcode = "123456789"
+        product = service.get_product(barcode, session)
+
+        assert product is not None
+        assert product.food_name == "Test Sodium Product"
+        # 0.5 grams * 1000 = 500 mg
+        assert product.sodium == 500.0

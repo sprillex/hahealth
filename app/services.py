@@ -38,7 +38,8 @@ class OpenFoodFactsService:
                 fat = get_nutriment("fat_100g")
                 carbs = get_nutriment("carbohydrates_100g")
                 fiber = get_nutriment("fiber_100g")
-                sodium = get_nutriment("sodium_100g")
+                # OFF provides sodium in grams, we store in mg
+                sodium = get_nutriment("sodium_100g") * 1000
                 new_cache = models.NutritionCache(
                     barcode=barcode, food_name=food_name, calories=calories,
                     protein=protein, fat=fat, carbs=carbs, fiber=fiber, sodium=sodium, source="OFF"
