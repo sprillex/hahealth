@@ -171,6 +171,21 @@ class HealthLogService:
         if data.barcode: food_item = off_service.get_product(data.barcode, db)
         if not food_item and data.food_name:
             food_item = db.query(models.NutritionCache).filter(models.NutritionCache.food_name == data.food_name).first()
+
+            # If manual entry matches existing cache, update it with latest macros
+            if food_item and not data.barcode:
+                has_macros = any(x is not None for x in [data.calories, data.protein, data.fat, data.carbs, data.fiber, data.sodium])
+                if has_macros:
+                     divisor = (data.quantity * data.serving_size) if (data.quantity * data.serving_size) > 0 else 1.0
+                     if data.calories is not None: food_item.calories = (data.calories / divisor)
+                     if data.protein is not None: food_item.protein = (data.protein / divisor)
+                     if data.fat is not None: food_item.fat = (data.fat / divisor)
+                     if data.carbs is not None: food_item.carbs = (data.carbs / divisor)
+                     if data.fiber is not None: food_item.fiber = (data.fiber / divisor)
+                     if data.sodium is not None: food_item.sodium = (data.sodium / divisor)
+                     db.commit()
+                     db.refresh(food_item)
+
         if not food_item:
             if data.food_name:
                 # Calculate per-unit values if provided (User sends Total, Cache stores Per Unit)
