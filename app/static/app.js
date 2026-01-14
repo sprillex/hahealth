@@ -689,6 +689,10 @@ async function handleSearchFood(query) {
         resultsDiv.innerHTML = '';
         if (foods.length > 0) {
             resultsDiv.classList.remove('hidden');
+            // Force styles as belt-and-suspenders against caching
+            resultsDiv.style.backgroundColor = 'var(--card-bg)';
+            resultsDiv.style.color = 'var(--text-color)';
+
             foods.forEach(food => {
                 const div = document.createElement('div');
                 div.className = 'search-item';

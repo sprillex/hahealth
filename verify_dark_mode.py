@@ -19,28 +19,23 @@ def verify_dark_mode_search():
         # 2. Go to Settings and Switch to Dark Mode
         page.get_by_role("button", name="Settings").click()
         page.locator("#theme-select").select_option("DARK")
-        # Need to trigger change event? The select_option usually does.
-        # But app.js logic: onchange="updateThemePreference(this.value)"
 
         # 3. Go to Nutrition Tab
         page.get_by_role("button", name="Nutrition").click()
 
         # 4. Search for "Playwright" (created in previous test, should exist)
-        # Or create it if needed. Previous verification script created "Playwright Apple".
-        # It's in the DB file if we are using the same running instance (which uses health_app.db).
-        # We need to make sure the app created it.
-        # The previous verification script ran against localhost:8000 which writes to health_app.db.
-        # So it should be there.
-
         page.locator("#food-search-input").fill("Playwright")
 
         # Wait for results
         results = page.locator("#food-search-results")
         expect(results).to_be_visible()
-        expect(results).to_contain_text("Playwright Apple")
 
-        # Take screenshot to verify text visibility against dark background
-        page.screenshot(path="/home/jules/verification/dark_mode_search.png")
+        # Use first() to avoid strict mode violation if multiple items match
+        # Verify text is present
+        expect(results.get_by_text("Playwright Apple").first).to_be_visible()
+
+        # Take screenshot to verify styling
+        page.screenshot(path="/home/jules/verification/dark_mode_search_fixed.png")
         print("Screenshot taken")
 
         browser.close()
