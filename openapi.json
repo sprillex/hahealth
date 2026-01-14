@@ -1518,9 +1518,16 @@
           {
             "name": "query",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
-              "type": "string",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "title": "Query"
             }
           }
@@ -1597,6 +1604,239 @@
             "OAuth2PasswordBearer": []
           }
         ]
+      }
+    },
+    "/api/v1/nutrition/list": {
+      "get": {
+        "tags": [
+          "nutrition"
+        ],
+        "summary": "List Foods",
+        "operationId": "list_foods_api_v1_nutrition_list_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "include_hidden",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Hidden"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NutritionCacheResponse"
+                  },
+                  "title": "Response List Foods Api V1 Nutrition List Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nutrition/{food_id}": {
+      "get": {
+        "tags": [
+          "nutrition"
+        ],
+        "summary": "Get Food",
+        "operationId": "get_food_api_v1_nutrition__food_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "food_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Food Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NutritionCacheResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "nutrition"
+        ],
+        "summary": "Update Food",
+        "operationId": "update_food_api_v1_nutrition__food_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "food_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Food Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NutritionCacheUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NutritionCacheResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "nutrition"
+        ],
+        "summary": "Delete Food",
+        "operationId": "delete_food_api_v1_nutrition__food_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "food_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Food Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/medical/allergies": {
@@ -2247,6 +2487,84 @@
             "type": "string",
             "title": "Meal Id",
             "default": "Snack"
+          },
+          "calories": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calories"
+          },
+          "protein": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protein"
+          },
+          "fat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fat"
+          },
+          "carbs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carbs"
+          },
+          "fiber": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fiber"
+          },
+          "sodium": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sodium"
+          },
+          "save_food": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Save Food",
+            "default": 0
           }
         },
         "type": "object",
@@ -2728,6 +3046,11 @@
             "type": "number",
             "title": "Fiber",
             "default": 0.0
+          },
+          "sodium": {
+            "type": "number",
+            "title": "Sodium",
+            "default": 0.0
           }
         },
         "type": "object",
@@ -2778,6 +3101,11 @@
             "title": "Fiber",
             "default": 0.0
           },
+          "sodium": {
+            "type": "number",
+            "title": "Sodium",
+            "default": 0.0
+          },
           "food_id": {
             "type": "integer",
             "title": "Food Id"
@@ -2785,6 +3113,10 @@
           "source": {
             "type": "string",
             "title": "Source"
+          },
+          "is_user_visible": {
+            "type": "boolean",
+            "title": "Is User Visible"
           }
         },
         "type": "object",
@@ -2792,9 +3124,115 @@
           "food_name",
           "calories",
           "food_id",
-          "source"
+          "source",
+          "is_user_visible"
         ],
         "title": "NutritionCacheResponse"
+      },
+      "NutritionCacheUpdate": {
+        "properties": {
+          "food_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Food Name"
+          },
+          "barcode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Barcode"
+          },
+          "calories": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calories"
+          },
+          "protein": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protein"
+          },
+          "fat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fat"
+          },
+          "carbs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carbs"
+          },
+          "fiber": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fiber"
+          },
+          "sodium": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sodium"
+          },
+          "is_user_visible": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is User Visible"
+          }
+        },
+        "type": "object",
+        "title": "NutritionCacheUpdate"
       },
       "PasswordUpdate": {
         "properties": {
