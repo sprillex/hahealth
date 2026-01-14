@@ -1924,6 +1924,7 @@ function editLibraryFood(food) {
     document.getElementById('edit_lib_fat').value = food.fat;
     document.getElementById('edit_lib_carbs').value = food.carbs;
     document.getElementById('edit_lib_fiber').value = food.fiber;
+    document.getElementById('edit_lib_sodium').value = food.sodium || 0;
     document.getElementById('edit_lib_visible').checked = food.is_user_visible;
 }
 
@@ -1938,6 +1939,7 @@ document.getElementById('edit-library-form').addEventListener('submit', async (e
         fat: parseFloat(document.getElementById('edit_lib_fat').value),
         carbs: parseFloat(document.getElementById('edit_lib_carbs').value),
         fiber: parseFloat(document.getElementById('edit_lib_fiber').value),
+        sodium: parseFloat(document.getElementById('edit_lib_sodium').value),
         is_user_visible: document.getElementById('edit_lib_visible').checked
     };
 

@@ -37,8 +37,8 @@ def test_mqtt_discovery_payload_generation():
     client.publish_discovery(mock_db)
 
     # 5. Verify calls
-    # We expect 5 sensors: Weight, BP Systolic, BP Diastolic, Cals In, Cals Out
-    assert client.client.publish.call_count == 5
+    # We expect 10 sensors: Weight, BP Systolic, BP Diastolic, Cals In, Cals Out, Protein, Fat, Carbs, Fiber, Sodium
+    assert client.client.publish.call_count == 10
 
     # Check one payload specifically (Weight)
     call_args_list = client.client.publish.call_args_list
