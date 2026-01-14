@@ -184,6 +184,7 @@ class FoodLogPayload(BaseModel):
     fat: Optional[float] = None
     carbs: Optional[float] = None
     fiber: Optional[float] = None
+    save_food: Optional[int] = 0
 
 class FoodLogResponse(BaseModel):
     log_id: int

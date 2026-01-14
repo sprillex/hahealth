@@ -56,7 +56,8 @@ def search_food(
 
     # Name search fallback
     name_results = db.query(models.NutritionCache).filter(
-        models.NutritionCache.food_name.ilike(f"%{query}%")
+        models.NutritionCache.food_name.ilike(f"%{query}%"),
+        models.NutritionCache.is_user_visible == True
     ).limit(20).all()
 
     results.extend(name_results)

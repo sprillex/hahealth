@@ -143,3 +143,59 @@ def test_webhook_food_log_manual_macros(client, session):
     assert cache.fat == 20.0
     assert cache.carbs == 50.0
     assert cache.fiber == 5.0
+    # Default (missing save_food) should be Hidden (False)
+    assert cache.is_user_visible == False
+
+def test_webhook_food_log_manual_macros_saved(client, session):
+    token = get_auth_token(client)
+    # We use webhook key though
+    # Create User/Key again? Or reuse logic?
+    # Simpler to create new
+    user = models.User(name="save_test_user", weight_kg=70, height_cm=170, password_hash="pw")
+    session.add(user)
+    session.commit()
+    raw_key = "save_test_key"
+    api_key = models.APIKey(user_id=user.user_id, name="K", hashed_key=auth.hash_api_key(raw_key), is_active=True)
+    session.add(api_key)
+    session.commit()
+    headers = {"X-Webhook-Secret": raw_key}
+
+    food_name = "Saved Food"
+    payload = {
+        "data_type": "FOOD_LOG",
+        "payload": {
+            "food_name": food_name,
+            "quantity": 1.0,
+            "serving_size": 1.0,
+            "meal_id": "Lunch",
+            "calories": 100.0,
+            "save_food": 1
+        }
+    }
+    client.post("/api/webhook/health", json=payload, headers=headers)
+    cache = session.query(models.NutritionCache).filter(models.NutritionCache.food_name == food_name).first()
+    assert cache is not None
+    assert cache.is_user_visible == True
+
+def test_search_hides_invisible_foods(client, session):
+    # Create visible and invisible foods
+    visible = models.NutritionCache(
+        food_name="Visible Apple", calories=50.0, protein=0.0, fat=0.0, carbs=0.0, fiber=0.0,
+        is_user_visible=True, source="MANUAL"
+    )
+    hidden = models.NutritionCache(
+        food_name="Hidden Apple", calories=50.0, protein=0.0, fat=0.0, carbs=0.0, fiber=0.0,
+        is_user_visible=False, source="MANUAL"
+    )
+    session.add(visible)
+    session.add(hidden)
+    session.commit()
+
+    token = get_auth_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.get("/api/v1/nutrition/search?query=Apple", headers=headers)
+    results = response.json()
+    names = [r["food_name"] for r in results]
+    assert "Visible Apple" in names
+    assert "Hidden Apple" not in names

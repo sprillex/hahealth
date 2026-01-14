@@ -175,6 +175,9 @@ class HealthLogService:
                 # Calculate per-unit values if provided (User sends Total, Cache stores Per Unit)
                 divisor = (data.quantity * data.serving_size) if (data.quantity * data.serving_size) > 0 else 1.0
 
+                # Visibility logic: Defaults to False if flag is missing/0 for MANUAL entry
+                is_visible = bool(data.save_food) if data.save_food is not None else False
+
                 food_item = models.NutritionCache(
                     barcode=data.barcode,
                     food_name=data.food_name,
@@ -183,7 +186,8 @@ class HealthLogService:
                     fat=(data.fat or 0) / divisor,
                     carbs=(data.carbs or 0) / divisor,
                     fiber=(data.fiber or 0) / divisor,
-                    source="MANUAL"
+                    source="MANUAL",
+                    is_user_visible=is_visible
                 )
                 db.add(food_item)
                 db.commit()
