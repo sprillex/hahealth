@@ -2543,6 +2543,17 @@
             ],
             "title": "Fiber"
           },
+          "sodium": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sodium"
+          },
           "save_food": {
             "anyOf": [
               {
@@ -3035,6 +3046,11 @@
             "type": "number",
             "title": "Fiber",
             "default": 0.0
+          },
+          "sodium": {
+            "type": "number",
+            "title": "Sodium",
+            "default": 0.0
           }
         },
         "type": "object",
@@ -3083,6 +3099,11 @@
           "fiber": {
             "type": "number",
             "title": "Fiber",
+            "default": 0.0
+          },
+          "sodium": {
+            "type": "number",
+            "title": "Sodium",
             "default": 0.0
           },
           "food_id": {
@@ -3186,6 +3207,17 @@
               }
             ],
             "title": "Fiber"
+          },
+          "sodium": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sodium"
           },
           "is_user_visible": {
             "anyOf": [
