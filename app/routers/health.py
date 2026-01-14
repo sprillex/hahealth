@@ -134,7 +134,7 @@ def get_daily_summary(
         models.FoodItemLog.timestamp <= utc_end
     ).all()
 
-    macros = {"protein": 0, "fat": 0, "carbs": 0, "fiber": 0}
+    macros = {"protein": 0, "fat": 0, "carbs": 0, "fiber": 0, "sodium": 0}
     food_list = []
     for log in food_logs:
         multiplier = log.serving_size * log.quantity
@@ -142,6 +142,7 @@ def get_daily_summary(
         macros["fat"] += (log.nutrition_info.fat or 0) * multiplier
         macros["carbs"] += (log.nutrition_info.carbs or 0) * multiplier
         macros["fiber"] += (log.nutrition_info.fiber or 0) * multiplier
+        macros["sodium"] += (log.nutrition_info.sodium or 0) * multiplier
 
         ts = log.timestamp
         if ts and ts.tzinfo is None:
