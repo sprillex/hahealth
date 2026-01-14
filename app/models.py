@@ -157,11 +157,13 @@ class NutritionCache(Base):
     barcode = Column(String, unique=True, index=True, nullable=True)
     food_name = Column(String)
     calories = Column(Float)
-    protein = Column(Float)
+    protein = Column(Float, default=0.0)
     fat = Column(Float, default=0.0)
     carbs = Column(Float, default=0.0)
     fiber = Column(Float, default=0.0)
+    sodium = Column(Float, default=0.0) # mg
     source = Column(String) # OFF/MANUAL
+    is_user_visible = Column(Boolean, default=True)
 
     food_item_logs = relationship("FoodItemLog", back_populates="nutrition_info")
 

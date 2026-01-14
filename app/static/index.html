@@ -27,24 +27,12 @@
         .macro-segment.p { background-color: #e74c3c; } /* Protein */
         .macro-segment.f { background-color: #f1c40f; } /* Fat */
         .macro-segment.c { background-color: #2ecc71; } /* Carbs */
+        .macro-segment.s { background-color: #9b59b6; } /* Sodium */
         .macro-legend { display: flex; justify-content: center; gap: 15px; font-size: 0.8em; margin-top: 5px; }
         .checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .stat-card { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
         .stat-val { font-size: 2em; font-weight: bold; color: var(--primary-color); }
         .stat-label { color: #666; }
-
-        /* Search Results */
-        .search-results {
-            border: 1px solid #ccc;
-            max-height: 150px;
-            overflow-y: auto;
-            background: white;
-            position: absolute;
-            z-index: 1000;
-            width: 100%;
-        }
-        .search-item { padding: 8px; cursor: pointer; border-bottom: 1px solid #eee; }
-        .search-item:hover { background-color: #f0f0f0; }
 
         /* Admin Styles */
         .admin-section { border-top: 2px solid #eee; margin-top: 20px; padding-top: 20px; }
@@ -157,7 +145,10 @@
                 <div id="tab-nutrition" class="tab-content hidden">
                     <div class="header-actions">
                         <h2>Nutrition</h2>
-                        <button class="btn-primary" onclick="openFoodModal()">+ Create Custom Food</button>
+                        <div>
+                            <button class="btn-secondary" onclick="openManageLibrary()">Manage Library</button>
+                            <button class="btn-primary" onclick="openFoodModal()">+ Create Custom Food</button>
+                        </div>
                     </div>
 
                     <div class="grid-list">
@@ -580,6 +571,63 @@
         </div>
     </div>
 
+    <div id="manage-library-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeManageLibrary()">&times;</span>
+            <h2>Manage Food Library</h2>
+            <div style="margin-bottom: 15px;">
+                <input type="text" id="lib-search-input" placeholder="Search library..." style="width: 100%; margin-bottom: 10px;" oninput="debounceLibrarySearch()">
+                <label><input type="checkbox" id="lib-show-hidden" onchange="loadLibraryFoods()"> Show Hidden Foods</label>
+            </div>
+            <div id="library-list">Loading...</div>
+            <div id="edit-library-form-container" class="hidden" style="margin-top:20px; border-top:1px solid #ccc; padding-top:10px;">
+                 <h3>Edit Food Item</h3>
+                 <form id="edit-library-form">
+                     <input type="hidden" id="edit_lib_id">
+                     <div class="form-group">
+                         <label>Name</label>
+                         <input type="text" id="edit_lib_name" required>
+                     </div>
+                     <div class="form-group">
+                         <label>Barcode</label>
+                         <input type="text" id="edit_lib_barcode">
+                     </div>
+                     <div class="form-group">
+                         <label>Calories</label>
+                         <input type="number" step="0.1" id="edit_lib_cals" required>
+                     </div>
+                     <div class="form-group">
+                         <label>Protein</label>
+                         <input type="number" step="0.1" id="edit_lib_protein">
+                     </div>
+                     <div class="form-group">
+                         <label>Fat</label>
+                         <input type="number" step="0.1" id="edit_lib_fat">
+                     </div>
+                     <div class="form-group">
+                         <label>Carbs</label>
+                         <input type="number" step="0.1" id="edit_lib_carbs">
+                     </div>
+                     <div class="form-group">
+                         <label>Fiber</label>
+                         <input type="number" step="0.1" id="edit_lib_fiber">
+                     </div>
+                     <div class="form-group">
+                         <label>Sodium (mg)</label>
+                         <input type="number" step="0.1" id="edit_lib_sodium">
+                     </div>
+                     <div class="form-group">
+                         <label>Visible in Search</label>
+                         <input type="checkbox" id="edit_lib_visible">
+                     </div>
+                     <button type="submit" class="btn-primary">Update Food</button>
+                     <button type="button" onclick="deleteLibraryFoodCurrent()" class="btn-warning">Delete</button>
+                     <button type="button" onclick="document.getElementById('edit-library-form-container').classList.add('hidden')">Cancel</button>
+                 </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Modals -->
     <div id="allergy-modal" class="modal hidden">
         <div class="modal-content">
@@ -743,6 +791,10 @@
                     <label>Fiber (g)</label>
                     <input type="number" step="0.1" name="fiber" value="0">
                 </div>
+                <div class="form-group">
+                    <label>Sodium (mg)</label>
+                    <input type="number" step="0.1" name="sodium" value="0">
+                </div>
                 <div class="form-actions">
                     <button type="button" onclick="closeFoodModal()">Cancel</button>
                     <button type="submit" class="btn-primary">Create Food</button>
@@ -815,6 +867,6 @@
         <span id="app-version">Loading version...</span>
     </footer>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=1.5.1"></script>
 </body>
 </html>
