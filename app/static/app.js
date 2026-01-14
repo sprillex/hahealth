@@ -146,6 +146,16 @@ function formatHeight(cm) {
     return `${cm.toFixed(1)} cm`;
 }
 
+function escapeHtml(text) {
+    if (!text) return text;
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 // --- Auth ---
 
 async function handleLogin(e) {
@@ -679,6 +689,10 @@ async function handleSearchFood(query) {
         resultsDiv.innerHTML = '';
         if (foods.length > 0) {
             resultsDiv.classList.remove('hidden');
+            // Force styles as belt-and-suspenders against caching
+            resultsDiv.style.backgroundColor = 'var(--card-bg)';
+            resultsDiv.style.color = 'var(--text-color)';
+
             foods.forEach(food => {
                 const div = document.createElement('div');
                 div.className = 'search-item';
@@ -1823,7 +1837,116 @@ document.getElementById('edit-exercise-form').addEventListener('submit', async (
     } catch(e) { alert("Update failed"); }
 });
 
-// --- Manage Food ---
+// --- Manage Food Library ---
+
+function openManageLibrary() {
+    const modal = document.getElementById('manage-library-modal');
+    modal.classList.remove('hidden');
+    // Clear list
+    document.getElementById('library-list').innerHTML = 'Loading...';
+    // Defaults
+    document.getElementById('lib-show-hidden').checked = false;
+    document.getElementById('edit-library-form-container').classList.add('hidden');
+    loadLibraryFoods();
+}
+
+function closeManageLibrary() {
+    document.getElementById('manage-library-modal').classList.add('hidden');
+    document.getElementById('edit-library-form-container').classList.add('hidden');
+}
+
+async function loadLibraryFoods() {
+    const listDiv = document.getElementById('library-list');
+    listDiv.innerHTML = 'Loading...';
+    const showHidden = document.getElementById('lib-show-hidden').checked;
+
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/list?include_hidden=${showHidden}&limit=100`);
+        const foods = await res.json();
+
+        if (foods.length === 0) {
+            listDiv.innerHTML = '<em>No foods found.</em>';
+            return;
+        }
+
+        let html = '<ul style="list-style: none; padding: 0; max-height: 400px; overflow-y: auto;">';
+        foods.forEach(food => {
+             const safeFood = JSON.stringify(food).replace(/"/g, '&quot;');
+             const visibility = food.is_user_visible ? '<span style="color: green;">Visible</span>' : '<span style="color: gray;">Hidden</span>';
+             const safeName = escapeHtml(food.food_name);
+             const safeSource = escapeHtml(food.source);
+
+             html += `
+             <li style="border-bottom: 1px solid #eee; padding: 8px 0; display: flex; justify-content: space-between; align-items: center;">
+                <span>
+                    <strong>${safeName}</strong> <small>(${safeSource})</small><br>
+                    <small>${Math.round(food.calories)} kcal | ${visibility}</small>
+                </span>
+                <div>
+                    <button onclick="editLibraryFood(${safeFood})" class="btn-secondary" style="font-size: 0.8em; padding: 2px 5px;">Edit</button>
+                </div>
+             </li>
+             `;
+        });
+        html += '</ul>';
+        listDiv.innerHTML = html;
+
+    } catch (err) {
+        listDiv.innerHTML = 'Error loading library.';
+    }
+}
+
+function editLibraryFood(food) {
+    const container = document.getElementById('edit-library-form-container');
+    container.classList.remove('hidden');
+
+    document.getElementById('edit_lib_id').value = food.food_id;
+    document.getElementById('edit_lib_name').value = food.food_name;
+    document.getElementById('edit_lib_barcode').value = food.barcode || '';
+    document.getElementById('edit_lib_cals').value = food.calories;
+    document.getElementById('edit_lib_protein').value = food.protein;
+    document.getElementById('edit_lib_fat').value = food.fat;
+    document.getElementById('edit_lib_carbs').value = food.carbs;
+    document.getElementById('edit_lib_fiber').value = food.fiber;
+    document.getElementById('edit_lib_visible').checked = food.is_user_visible;
+}
+
+document.getElementById('edit-library-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit_lib_id').value;
+    const data = {
+        food_name: document.getElementById('edit_lib_name').value,
+        barcode: document.getElementById('edit_lib_barcode').value || null,
+        calories: parseFloat(document.getElementById('edit_lib_cals').value),
+        protein: parseFloat(document.getElementById('edit_lib_protein').value),
+        fat: parseFloat(document.getElementById('edit_lib_fat').value),
+        carbs: parseFloat(document.getElementById('edit_lib_carbs').value),
+        fiber: parseFloat(document.getElementById('edit_lib_fiber').value),
+        is_user_visible: document.getElementById('edit_lib_visible').checked
+    };
+
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        if(res.ok) {
+            alert('Food updated');
+            document.getElementById('edit-library-form-container').classList.add('hidden');
+            loadLibraryFoods();
+        } else {
+            alert('Update failed');
+        }
+    } catch(err) {
+        alert('Update failed');
+    }
+});
+
+
+// --- Manage Food Logs ---
 
 async function openManageFoodModal() {
     const modal = document.getElementById('manage-food-modal');
