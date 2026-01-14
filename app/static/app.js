@@ -146,6 +146,16 @@ function formatHeight(cm) {
     return `${cm.toFixed(1)} cm`;
 }
 
+function escapeHtml(text) {
+    if (!text) return text;
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 // --- Auth ---
 
 async function handleLogin(e) {
@@ -1859,11 +1869,13 @@ async function loadLibraryFoods() {
         foods.forEach(food => {
              const safeFood = JSON.stringify(food).replace(/"/g, '&quot;');
              const visibility = food.is_user_visible ? '<span style="color: green;">Visible</span>' : '<span style="color: gray;">Hidden</span>';
+             const safeName = escapeHtml(food.food_name);
+             const safeSource = escapeHtml(food.source);
 
              html += `
              <li style="border-bottom: 1px solid #eee; padding: 8px 0; display: flex; justify-content: space-between; align-items: center;">
                 <span>
-                    <strong>${food.food_name}</strong> <small>(${food.source})</small><br>
+                    <strong>${safeName}</strong> <small>(${safeSource})</small><br>
                     <small>${Math.round(food.calories)} kcal | ${visibility}</small>
                 </span>
                 <div>
