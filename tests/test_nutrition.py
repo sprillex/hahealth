@@ -156,6 +156,37 @@ def test_webhook_food_log_manual_macros(client, session):
     # Default (missing save_food) should be Hidden (False)
     assert cache.is_user_visible == False
 
+def test_webhook_food_log_missing_sodium(client, session):
+    # Verify backward compatibility (no sodium in payload)
+    token = get_auth_token(client)
+    # create dedicated user/key
+    user = models.User(name="no_sodium_user", weight_kg=70, height_cm=170, password_hash="pw")
+    session.add(user)
+    session.commit()
+    raw_key = "no_sodium_key"
+    api_key = models.APIKey(user_id=user.user_id, name="K", hashed_key=auth.hash_api_key(raw_key), is_active=True)
+    session.add(api_key)
+    session.commit()
+    headers = {"X-Webhook-Secret": raw_key}
+
+    payload = {
+        "data_type": "FOOD_LOG",
+        "payload": {
+            "food_name": "No Sodium Food",
+            "quantity": 1.0,
+            "serving_size": 1.0,
+            "meal_id": "Snack",
+            "calories": 100.0
+            # sodium missing
+        }
+    }
+    res = client.post("/api/webhook/health", json=payload, headers=headers)
+    assert res.status_code == 200
+
+    cache = session.query(models.NutritionCache).filter(models.NutritionCache.food_name == "No Sodium Food").first()
+    assert cache is not None
+    assert cache.sodium == 0.0
+
 def test_webhook_food_log_manual_macros_saved(client, session):
     token = get_auth_token(client)
     # We use webhook key though
