@@ -183,6 +183,13 @@ def migrate_all():
     except sqlite3.OperationalError:
         pass
 
+    # 12. Nutrition Cache Visibility
+    try:
+        cursor.execute("ALTER TABLE nutrition_cache ADD COLUMN is_user_visible BOOLEAN DEFAULT 1")
+        print(" - Added is_user_visible to nutrition_cache.")
+    except sqlite3.OperationalError:
+        pass
+
     conn.commit()
     conn.close()
     print("All migrations complete.")
