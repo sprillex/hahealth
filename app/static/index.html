@@ -157,7 +157,10 @@
                 <div id="tab-nutrition" class="tab-content hidden">
                     <div class="header-actions">
                         <h2>Nutrition</h2>
-                        <button class="btn-primary" onclick="openFoodModal()">+ Create Custom Food</button>
+                        <div>
+                            <button class="btn-secondary" onclick="openManageLibrary()">Manage Library</button>
+                            <button class="btn-primary" onclick="openFoodModal()">+ Create Custom Food</button>
+                        </div>
                     </div>
 
                     <div class="grid-list">
@@ -576,6 +579,57 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="manage-library-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeManageLibrary()">&times;</span>
+            <h2>Manage Food Library</h2>
+            <div style="margin-bottom: 15px;">
+                <label><input type="checkbox" id="lib-show-hidden" onchange="loadLibraryFoods()"> Show Hidden Foods</label>
+            </div>
+            <div id="library-list">Loading...</div>
+            <div id="edit-library-form-container" class="hidden" style="margin-top:20px; border-top:1px solid #ccc; padding-top:10px;">
+                 <h3>Edit Food Item</h3>
+                 <form id="edit-library-form">
+                     <input type="hidden" id="edit_lib_id">
+                     <div class="form-group">
+                         <label>Name</label>
+                         <input type="text" id="edit_lib_name" required>
+                     </div>
+                     <div class="form-group">
+                         <label>Barcode</label>
+                         <input type="text" id="edit_lib_barcode">
+                     </div>
+                     <div class="form-group">
+                         <label>Calories</label>
+                         <input type="number" step="0.1" id="edit_lib_cals" required>
+                     </div>
+                     <div class="form-group">
+                         <label>Protein</label>
+                         <input type="number" step="0.1" id="edit_lib_protein">
+                     </div>
+                     <div class="form-group">
+                         <label>Fat</label>
+                         <input type="number" step="0.1" id="edit_lib_fat">
+                     </div>
+                     <div class="form-group">
+                         <label>Carbs</label>
+                         <input type="number" step="0.1" id="edit_lib_carbs">
+                     </div>
+                     <div class="form-group">
+                         <label>Fiber</label>
+                         <input type="number" step="0.1" id="edit_lib_fiber">
+                     </div>
+                     <div class="form-group">
+                         <label>Visible in Search</label>
+                         <input type="checkbox" id="edit_lib_visible">
+                     </div>
+                     <button type="submit" class="btn-primary">Update Food</button>
+                     <button type="button" onclick="document.getElementById('edit-library-form-container').classList.add('hidden')">Cancel</button>
+                 </form>
             </div>
         </div>
     </div>

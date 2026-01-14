@@ -157,7 +157,7 @@ class NutritionCache(Base):
     barcode = Column(String, unique=True, index=True, nullable=True)
     food_name = Column(String)
     calories = Column(Float)
-    protein = Column(Float)
+    protein = Column(Float, default=0.0)
     fat = Column(Float, default=0.0)
     carbs = Column(Float, default=0.0)
     fiber = Column(Float, default=0.0)

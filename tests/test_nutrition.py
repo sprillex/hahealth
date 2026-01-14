@@ -29,7 +29,8 @@ def test_search_by_barcode_feature(client, session):
         fat=5.0,
         carbs=10.0,
         fiber=2.0,
-        source="OFF"
+        source="OFF",
+        is_user_visible=True
     )
 
     with patch("app.services.OpenFoodFactsService.get_product", return_value=fake_product) as mock_get:
@@ -50,7 +51,12 @@ def test_log_food_with_barcode_as_name(client, session):
         barcode="1234567890",
         food_name="Tasty Barcode Food",
         calories=250.0,
-        source="OFF"
+        protein=0.0,
+        fat=0.0,
+        carbs=0.0,
+        fiber=0.0,
+        source="OFF",
+        is_user_visible=True
     )
 
     with patch("app.services.OpenFoodFactsService.get_product", return_value=fake_product) as mock_get:
@@ -199,3 +205,52 @@ def test_search_hides_invisible_foods(client, session):
     names = [r["food_name"] for r in results]
     assert "Visible Apple" in names
     assert "Hidden Apple" not in names
+
+def test_manage_food_library(client, session):
+    # Setup user
+    token = get_auth_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 1. Create a food
+    f = models.NutritionCache(food_name="UpdateMe", calories=100.0, is_user_visible=True, source="MANUAL")
+    session.add(f)
+    session.commit()
+    fid = f.food_id
+
+    # 2. Get List
+    res = client.get("/api/v1/nutrition/list", headers=headers)
+    assert res.status_code == 200
+    assert len(res.json()) >= 1
+
+    # 3. Get Detail
+    res = client.get(f"/api/v1/nutrition/{fid}", headers=headers)
+    assert res.status_code == 200
+    assert res.json()["food_name"] == "UpdateMe"
+
+    # 4. Update
+    payload = {
+        "food_name": "UpdatedName",
+        "calories": 200.0,
+        "is_user_visible": False
+    }
+    res = client.put(f"/api/v1/nutrition/{fid}", json=payload, headers=headers)
+    assert res.status_code == 200
+    assert res.json()["food_name"] == "UpdatedName"
+    assert res.json()["is_user_visible"] == False
+
+    # 5. Verify persistence
+    session.expire_all()
+    db_obj = session.query(models.NutritionCache).filter(models.NutritionCache.food_id == fid).first()
+    assert db_obj.food_name == "UpdatedName"
+    assert db_obj.calories == 200.0
+    assert db_obj.is_user_visible == False
+
+    # 6. Verify List Filter (hidden should be excluded by default)
+    res = client.get("/api/v1/nutrition/list", headers=headers)
+    names = [x["food_name"] for x in res.json()]
+    assert "UpdatedName" not in names
+
+    # 7. Verify List Filter (include_hidden=True)
+    res = client.get("/api/v1/nutrition/list?include_hidden=true", headers=headers)
+    names = [x["food_name"] for x in res.json()]
+    assert "UpdatedName" in names
