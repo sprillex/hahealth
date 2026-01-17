@@ -81,7 +81,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         # Allow missing type for backward compatibility (old tokens),
         # but if type is present, it MUST NOT be "refresh".
         if token_type == "refresh":
-             raise credentials_exception
+             raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token used as access token. Please use the /auth/refresh endpoint to get an access token.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
     except JWTError:
         raise credentials_exception
     user = db.query(models.User).filter(models.User.name == username).first()
