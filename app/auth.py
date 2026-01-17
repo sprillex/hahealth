@@ -86,12 +86,20 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
                 detail="Refresh token used as access token. Please use the /auth/refresh endpoint to get an access token.",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
+        user = db.query(models.User).filter(models.User.name == username).first()
+        if user is None:
+            raise credentials_exception
+        return user
+
     except JWTError:
+        # Not a valid JWT, check if it's an API Key
+        hashed = hash_api_key(token)
+        key_record = db.query(models.APIKey).filter(models.APIKey.hashed_key == hashed, models.APIKey.is_active == True).first()
+        if key_record:
+            return key_record.user
+
         raise credentials_exception
-    user = db.query(models.User).filter(models.User.name == username).first()
-    if user is None:
-        raise credentials_exception
-    return user
 
 def generate_api_key():
     raw_key = secrets.token_urlsafe(32)
