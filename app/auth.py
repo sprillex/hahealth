@@ -81,9 +81,21 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         # Allow missing type for backward compatibility (old tokens),
         # but if type is present, it MUST NOT be "refresh".
         if token_type == "refresh":
-             raise credentials_exception
+             raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token used as access token. Please use the /auth/refresh endpoint to get an access token.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
     except JWTError:
+        # Fallback: Check if the token is a valid API Key
+        # This allows Home Assistant or other tools to use "Bearer <API_KEY>"
+        hashed = hash_api_key(token)
+        api_key_record = db.query(models.APIKey).filter(models.APIKey.hashed_key == hashed, models.APIKey.is_active == True).first()
+        if api_key_record:
+            return api_key_record.user
+
         raise credentials_exception
+
     user = db.query(models.User).filter(models.User.name == username).first()
     if user is None:
         raise credentials_exception
