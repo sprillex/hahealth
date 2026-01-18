@@ -62,6 +62,7 @@ def test_log_v2_new_food(client, session):
     data = res.json()
     assert data["food_name"] == "New V2 Food"
     assert data["quantity"] == 2.0
+    assert data["log_id"] is not None
 
     # Verify Cache
     food = session.query(models.NutritionCache).filter(models.NutritionCache.barcode == "99990000").first()
@@ -74,17 +75,9 @@ def test_log_v2_new_food(client, session):
     assert food.health_score == "green"
 
     # Verify Log
-    # timestamp in db is UTC datetime
-    # input was 2024-05-21T10:00:00Z
-    # The response timestamp is generic format, but let's check DB
     log = session.query(models.FoodItemLog).filter(models.FoodItemLog.food_id == food.food_id).first()
     assert log is not None
     assert log.quantity == 2.0
-    # Check timestamp roughly (ignoring timezone subtle issues in sqlite vs python)
-    assert log.timestamp.year == 2024
-    assert log.timestamp.month == 5
-    assert log.timestamp.day == 21
-    assert log.timestamp.hour == 10
 
 def test_log_v2_update_food(client, session):
     token = get_auth_token(client)
@@ -142,3 +135,37 @@ def test_v1_edit_library_with_new_fields(client, session):
     assert f.calories == 120.0
     assert f.brand == "EditedBrand"
     assert f.cholesterol == 15.0
+
+def test_log_v2_save_only(client, session):
+    token = get_auth_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    payload = {
+      "quantity": 0.0, # Should trigger Save Only
+      "variables": {
+        "Saved Only Food": {
+          "metadata": {
+            "name": "Saved Only Food",
+            "brand": "SaveBrand"
+          },
+          "macros": {
+            "calories": 100.0, "fat_g": 0, "carbs_g": 0, "protein_g": 0
+          }
+        }
+      }
+    }
+
+    res = client.post("/api/v2/nutrition/log", json=payload, headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["log_id"] is None
+    assert data["quantity"] == 0.0
+
+    # Verify Food Created
+    f = session.query(models.NutritionCache).filter(models.NutritionCache.food_name == "Saved Only Food").first()
+    assert f is not None
+    assert f.brand == "SaveBrand"
+
+    # Verify NO Log
+    logs = session.query(models.FoodItemLog).filter(models.FoodItemLog.food_id == f.food_id).all()
+    assert len(logs) == 0

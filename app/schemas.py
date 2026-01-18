@@ -188,13 +188,13 @@ class FoodLogPayload(BaseModel):
     save_food: Optional[int] = 0
 
 class FoodLogResponse(BaseModel):
-    log_id: int
+    log_id: Optional[int] = None
     food_name: str
     meal_id: str
     calories: float
     serving_size: float
     quantity: float
-    timestamp: datetime
+    timestamp: Optional[datetime] = None
 
 class WeightPayload(BaseModel):
     weight: float

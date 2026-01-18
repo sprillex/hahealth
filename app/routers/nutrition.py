@@ -254,43 +254,55 @@ def log_food_v2(
     db.commit()
     db.refresh(food_item)
 
-    # 4. Create Log
-    ts = payload.timestamp
-    if not ts:
-        ts = datetime.now(timezone.utc)
+    # 4. Create Log if quantity > 0
+    if payload.quantity > 0:
+        ts = payload.timestamp
+        if not ts:
+            ts = datetime.now(timezone.utc)
+        else:
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+
+        item_log = models.FoodItemLog(
+            user_id=current_user.user_id,
+            meal_id=payload.meal,
+            food_id=food_item.food_id,
+            serving_size=1.0,
+            quantity=payload.quantity,
+            timestamp=ts
+        )
+        db.add(item_log)
+
+        # Update Daily Log
+        local_date = services.get_user_local_date(current_user, ts)
+        daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == current_user.user_id, models.DailyLog.date == local_date).first()
+        if not daily_log:
+            daily_log = models.DailyLog(user_id=current_user.user_id, date=local_date, total_calories_burned=0, total_calories_consumed=0)
+            db.add(daily_log)
+
+        total_cals = food_item.calories * item_log.quantity
+        daily_log.total_calories_consumed += total_cals
+
+        db.commit()
+        db.refresh(item_log)
+
+        return schemas.FoodLogResponse(
+            log_id=item_log.item_log_id,
+            food_name=food_item.food_name,
+            meal_id=item_log.meal_id,
+            calories=total_cals,
+            serving_size=item_log.serving_size,
+            quantity=item_log.quantity,
+            timestamp=item_log.timestamp
+        )
     else:
-        if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=timezone.utc)
-
-    item_log = models.FoodItemLog(
-        user_id=current_user.user_id,
-        meal_id=payload.meal,
-        food_id=food_item.food_id,
-        serving_size=1.0,
-        quantity=payload.quantity,
-        timestamp=ts
-    )
-    db.add(item_log)
-
-    # Update Daily Log
-    local_date = services.get_user_local_date(current_user, ts)
-    daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == current_user.user_id, models.DailyLog.date == local_date).first()
-    if not daily_log:
-        daily_log = models.DailyLog(user_id=current_user.user_id, date=local_date, total_calories_burned=0, total_calories_consumed=0)
-        db.add(daily_log)
-
-    total_cals = food_item.calories * item_log.quantity
-    daily_log.total_calories_consumed += total_cals
-
-    db.commit()
-    db.refresh(item_log)
-
-    return schemas.FoodLogResponse(
-        log_id=item_log.item_log_id,
-        food_name=food_item.food_name,
-        meal_id=item_log.meal_id,
-        calories=total_cals,
-        serving_size=item_log.serving_size,
-        quantity=item_log.quantity,
-        timestamp=item_log.timestamp
-    )
+        # Save Only
+        return schemas.FoodLogResponse(
+            log_id=None,
+            food_name=food_item.food_name,
+            meal_id=payload.meal,
+            calories=0.0,
+            serving_size=1.0,
+            quantity=0.0,
+            timestamp=None
+        )
