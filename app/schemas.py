@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import date, datetime, time
 from enum import Enum
 
@@ -188,13 +188,13 @@ class FoodLogPayload(BaseModel):
     save_food: Optional[int] = 0
 
 class FoodLogResponse(BaseModel):
-    log_id: int
+    log_id: Optional[int] = None
     food_name: str
     meal_id: str
     calories: float
     serving_size: float
     quantity: float
-    timestamp: datetime
+    timestamp: Optional[datetime] = None
 
 class WeightPayload(BaseModel):
     weight: float
@@ -225,6 +225,19 @@ class NutritionCacheBase(BaseModel):
     carbs: float = 0.0
     fiber: float = 0.0
     sodium: float = 0.0
+    # New Fields (Base, optional for creation to support old API if needed, but good to include)
+    brand: Optional[str] = None
+    serving_size_unit: Optional[str] = None
+    cholesterol: Optional[float] = 0.0
+    total_sugars: Optional[float] = 0.0
+    added_sugars: Optional[float] = 0.0
+    vitamin_d: Optional[float] = 0.0
+    calcium: Optional[float] = 0.0
+    iron: Optional[float] = 0.0
+    potassium: Optional[float] = 0.0
+    health_score: Optional[str] = None
+    health_insight: Optional[str] = None
+    pairing_tip: Optional[str] = None
 
 class NutritionCacheCreate(NutritionCacheBase):
     pass
@@ -239,12 +252,71 @@ class NutritionCacheUpdate(BaseModel):
     fiber: Optional[float] = None
     sodium: Optional[float] = None
     is_user_visible: Optional[bool] = None
+    # New Fields
+    brand: Optional[str] = None
+    serving_size_unit: Optional[str] = None
+    cholesterol: Optional[float] = None
+    total_sugars: Optional[float] = None
+    added_sugars: Optional[float] = None
+    vitamin_d: Optional[float] = None
+    calcium: Optional[float] = None
+    iron: Optional[float] = None
+    potassium: Optional[float] = None
+    health_score: Optional[str] = None
+    health_insight: Optional[str] = None
+    pairing_tip: Optional[str] = None
 
 class NutritionCacheResponse(NutritionCacheBase):
     food_id: int
     source: str
     is_user_visible: bool
     model_config = ConfigDict(from_attributes=True)
+
+# V2 API Schemas
+
+class V2Metadata(BaseModel):
+    name: str
+    brand: Optional[str] = None
+    upc: Optional[str] = None
+    srv_per_cont: Optional[float] = None
+
+class V2Macros(BaseModel):
+    calories: float
+    fat_g: float
+    cholesterol_mg: Optional[float] = 0.0
+    sodium_mg: Optional[float] = 0.0
+    carbs_g: float
+    fiber_g: Optional[float] = 0.0
+    total_sugars_g: Optional[float] = 0.0
+    added_sugars_g: Optional[float] = 0.0
+    protein_g: float
+
+class V2Micros(BaseModel):
+    vit_d_mcg: Optional[float] = 0.0
+    calcium_mg: Optional[float] = 0.0
+    iron_mg: Optional[float] = 0.0
+    potassium_mg: Optional[float] = 0.0
+
+class V2ServingInfo(BaseModel):
+    size: Optional[str] = None
+
+class V2Analysis(BaseModel):
+    score_color: Optional[str] = None
+    health_insight: Optional[str] = None
+    pairing_tip: Optional[str] = None
+
+class V2FoodItem(BaseModel):
+    metadata: V2Metadata
+    macros: V2Macros
+    micros: Optional[V2Micros] = None
+    serving_info: Optional[V2ServingInfo] = None
+    analysis: Optional[V2Analysis] = None
+
+class NutritionLogV2(BaseModel):
+    quantity: Optional[float] = 1.0
+    timestamp: Optional[datetime] = None
+    meal: Optional[str] = "Snack"
+    variables: Dict[str, V2FoodItem]
 
 # Medical History
 class AllergyBase(BaseModel):
