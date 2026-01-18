@@ -156,12 +156,35 @@ class NutritionCache(Base):
     food_id = Column(Integer, primary_key=True, index=True)
     barcode = Column(String, unique=True, index=True, nullable=True)
     food_name = Column(String)
+
+    # Base Macros
     calories = Column(Float)
     protein = Column(Float, default=0.0)
     fat = Column(Float, default=0.0)
     carbs = Column(Float, default=0.0)
     fiber = Column(Float, default=0.0)
     sodium = Column(Float, default=0.0) # mg
+
+    # Extended Metadata (V2)
+    brand = Column(String, nullable=True)
+    serving_size_unit = Column(String, nullable=True) # e.g., "1 bar", "100g"
+
+    # Extended Macros (V2)
+    cholesterol = Column(Float, default=0.0) # mg
+    total_sugars = Column(Float, default=0.0) # g
+    added_sugars = Column(Float, default=0.0) # g
+
+    # Micros (V2)
+    vitamin_d = Column(Float, default=0.0) # mcg
+    calcium = Column(Float, default=0.0) # mg
+    iron = Column(Float, default=0.0) # mg
+    potassium = Column(Float, default=0.0) # mg
+
+    # Analysis (V2)
+    health_score = Column(String, nullable=True) # color
+    health_insight = Column(String, nullable=True)
+    pairing_tip = Column(String, nullable=True)
+
     source = Column(String) # OFF/MANUAL
     is_user_visible = Column(Boolean, default=True)
 

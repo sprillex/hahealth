@@ -2,10 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app import database, models, schemas, auth, services
+from datetime import datetime, timezone
 
 router = APIRouter(
     prefix="/api/v1/nutrition",
     tags=["nutrition"]
+)
+
+router_v2 = APIRouter(
+    prefix="/api/v2/nutrition",
+    tags=["nutrition_v2"]
 )
 
 @router.post("/", response_model=schemas.NutritionCacheResponse)
@@ -33,6 +39,19 @@ def create_custom_food(
         carbs=food.carbs,
         fiber=food.fiber,
         sodium=food.sodium,
+        # New fields defaults
+        brand=food.brand,
+        serving_size_unit=food.serving_size_unit,
+        cholesterol=food.cholesterol,
+        total_sugars=food.total_sugars,
+        added_sugars=food.added_sugars,
+        vitamin_d=food.vitamin_d,
+        calcium=food.calcium,
+        iron=food.iron,
+        potassium=food.potassium,
+        health_score=food.health_score,
+        health_insight=food.health_insight,
+        pairing_tip=food.pairing_tip,
         source="MANUAL"
     )
     db.add(new_food)
@@ -157,3 +176,121 @@ def delete_food(
     db.delete(food)
     db.commit()
     return {"status": "success"}
+
+# V2 Implementation
+@router_v2.post("/log", response_model=schemas.FoodLogResponse)
+def log_food_v2(
+    payload: schemas.NutritionLogV2,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # 1. Extract Food Data
+    if not payload.variables:
+         raise HTTPException(status_code=400, detail="No food variables provided")
+
+    # Take the first key
+    food_name_key = next(iter(payload.variables))
+    food_data = payload.variables[food_name_key]
+
+    # Resolve Name: use metadata.name if present, else key
+    final_name = food_data.metadata.name or food_name_key
+
+    # 2. Check existence
+    # Try UPC
+    food_item = None
+    if food_data.metadata.upc:
+        food_item = db.query(models.NutritionCache).filter(models.NutritionCache.barcode == food_data.metadata.upc).first()
+
+    # Try Name
+    if not food_item:
+        food_item = db.query(models.NutritionCache).filter(models.NutritionCache.food_name == final_name).first()
+
+    # 3. Prepare Attributes
+    def sf(val): return val if val is not None else 0.0
+
+    attrs = {
+        "food_name": final_name,
+        "barcode": food_data.metadata.upc,
+        "brand": food_data.metadata.brand,
+        "serving_size_unit": food_data.serving_info.size if food_data.serving_info else None,
+
+        # Base Macros
+        "calories": sf(food_data.macros.calories),
+        "protein": sf(food_data.macros.protein_g),
+        "fat": sf(food_data.macros.fat_g),
+        "carbs": sf(food_data.macros.carbs_g),
+        "fiber": sf(food_data.macros.fiber_g),
+        "sodium": sf(food_data.macros.sodium_mg),
+
+        # Extended
+        "cholesterol": sf(food_data.macros.cholesterol_mg),
+        "total_sugars": sf(food_data.macros.total_sugars_g),
+        "added_sugars": sf(food_data.macros.added_sugars_g),
+
+        # Micros
+        "vitamin_d": sf(food_data.micros.vit_d_mcg) if food_data.micros else 0.0,
+        "calcium": sf(food_data.micros.calcium_mg) if food_data.micros else 0.0,
+        "iron": sf(food_data.micros.iron_mg) if food_data.micros else 0.0,
+        "potassium": sf(food_data.micros.potassium_mg) if food_data.micros else 0.0,
+
+        # Analysis
+        "health_score": food_data.analysis.score_color if food_data.analysis else None,
+        "health_insight": food_data.analysis.health_insight if food_data.analysis else None,
+        "pairing_tip": food_data.analysis.pairing_tip if food_data.analysis else None,
+
+        "source": "MANUAL",
+        "is_user_visible": True
+    }
+
+    if food_item:
+        # Update
+        for k, v in attrs.items():
+            setattr(food_item, k, v)
+    else:
+        # Create
+        food_item = models.NutritionCache(**attrs)
+        db.add(food_item)
+
+    db.commit()
+    db.refresh(food_item)
+
+    # 4. Create Log
+    ts = payload.timestamp
+    if not ts:
+        ts = datetime.now(timezone.utc)
+    else:
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+
+    item_log = models.FoodItemLog(
+        user_id=current_user.user_id,
+        meal_id=payload.meal,
+        food_id=food_item.food_id,
+        serving_size=1.0,
+        quantity=payload.quantity,
+        timestamp=ts
+    )
+    db.add(item_log)
+
+    # Update Daily Log
+    local_date = services.get_user_local_date(current_user, ts)
+    daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == current_user.user_id, models.DailyLog.date == local_date).first()
+    if not daily_log:
+        daily_log = models.DailyLog(user_id=current_user.user_id, date=local_date, total_calories_burned=0, total_calories_consumed=0)
+        db.add(daily_log)
+
+    total_cals = food_item.calories * item_log.quantity
+    daily_log.total_calories_consumed += total_cals
+
+    db.commit()
+    db.refresh(item_log)
+
+    return schemas.FoodLogResponse(
+        log_id=item_log.item_log_id,
+        food_name=food_item.food_name,
+        meal_id=item_log.meal_id,
+        calories=total_cals,
+        serving_size=item_log.serving_size,
+        quantity=item_log.quantity,
+        timestamp=item_log.timestamp
+    )
