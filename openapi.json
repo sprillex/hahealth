@@ -1839,6 +1839,52 @@
         }
       }
     },
+    "/api/v2/nutrition/log": {
+      "post": {
+        "tags": [
+          "nutrition_v2"
+        ],
+        "summary": "Log Food V2",
+        "operationId": "log_food_v2_api_v2_nutrition_log_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NutritionLogV2"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoodLogResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/medical/allergies": {
       "get": {
         "tags": [
@@ -2573,7 +2619,14 @@
       "FoodLogResponse": {
         "properties": {
           "log_id": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Log Id"
           },
           "food_name": {
@@ -2597,20 +2650,25 @@
             "title": "Quantity"
           },
           "timestamp": {
-            "type": "string",
-            "format": "date-time",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Timestamp"
           }
         },
         "type": "object",
         "required": [
-          "log_id",
           "food_name",
           "meal_id",
           "calories",
           "serving_size",
-          "quantity",
-          "timestamp"
+          "quantity"
         ],
         "title": "FoodLogResponse"
       },
@@ -3051,6 +3109,145 @@
             "type": "number",
             "title": "Sodium",
             "default": 0.0
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "serving_size_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Size Unit"
+          },
+          "cholesterol": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cholesterol",
+            "default": 0.0
+          },
+          "total_sugars": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Sugars",
+            "default": 0.0
+          },
+          "added_sugars": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added Sugars",
+            "default": 0.0
+          },
+          "vitamin_d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vitamin D",
+            "default": 0.0
+          },
+          "calcium": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calcium",
+            "default": 0.0
+          },
+          "iron": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iron",
+            "default": 0.0
+          },
+          "potassium": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Potassium",
+            "default": 0.0
+          },
+          "health_score": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Score"
+          },
+          "health_insight": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Insight"
+          },
+          "pairing_tip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pairing Tip"
           }
         },
         "type": "object",
@@ -3105,6 +3302,145 @@
             "type": "number",
             "title": "Sodium",
             "default": 0.0
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "serving_size_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Size Unit"
+          },
+          "cholesterol": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cholesterol",
+            "default": 0.0
+          },
+          "total_sugars": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Sugars",
+            "default": 0.0
+          },
+          "added_sugars": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added Sugars",
+            "default": 0.0
+          },
+          "vitamin_d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vitamin D",
+            "default": 0.0
+          },
+          "calcium": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calcium",
+            "default": 0.0
+          },
+          "iron": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iron",
+            "default": 0.0
+          },
+          "potassium": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Potassium",
+            "default": 0.0
+          },
+          "health_score": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Score"
+          },
+          "health_insight": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Insight"
+          },
+          "pairing_tip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pairing Tip"
           },
           "food_id": {
             "type": "integer",
@@ -3229,10 +3565,194 @@
               }
             ],
             "title": "Is User Visible"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "serving_size_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Size Unit"
+          },
+          "cholesterol": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cholesterol"
+          },
+          "total_sugars": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Sugars"
+          },
+          "added_sugars": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added Sugars"
+          },
+          "vitamin_d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vitamin D"
+          },
+          "calcium": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calcium"
+          },
+          "iron": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iron"
+          },
+          "potassium": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Potassium"
+          },
+          "health_score": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Score"
+          },
+          "health_insight": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Insight"
+          },
+          "pairing_tip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pairing Tip"
           }
         },
         "type": "object",
         "title": "NutritionCacheUpdate"
+      },
+      "NutritionLogV2": {
+        "properties": {
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity",
+            "default": 1.0
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          },
+          "meal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal",
+            "default": "Snack"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/V2FoodItem"
+            },
+            "type": "object",
+            "title": "Variables"
+          }
+        },
+        "type": "object",
+        "required": [
+          "variables"
+        ],
+        "title": "NutritionLogV2"
       },
       "PasswordUpdate": {
         "properties": {
@@ -3760,6 +4280,296 @@
         },
         "type": "object",
         "title": "UserUpdate"
+      },
+      "V2Analysis": {
+        "properties": {
+          "score_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Color"
+          },
+          "health_insight": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Insight"
+          },
+          "pairing_tip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pairing Tip"
+          }
+        },
+        "type": "object",
+        "title": "V2Analysis"
+      },
+      "V2FoodItem": {
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/V2Metadata"
+          },
+          "macros": {
+            "$ref": "#/components/schemas/V2Macros"
+          },
+          "micros": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/V2Micros"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "serving_info": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/V2ServingInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/V2Analysis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "metadata",
+          "macros"
+        ],
+        "title": "V2FoodItem"
+      },
+      "V2Macros": {
+        "properties": {
+          "calories": {
+            "type": "number",
+            "title": "Calories"
+          },
+          "fat_g": {
+            "type": "number",
+            "title": "Fat G"
+          },
+          "cholesterol_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cholesterol Mg",
+            "default": 0.0
+          },
+          "sodium_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sodium Mg",
+            "default": 0.0
+          },
+          "carbs_g": {
+            "type": "number",
+            "title": "Carbs G"
+          },
+          "fiber_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fiber G",
+            "default": 0.0
+          },
+          "total_sugars_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Sugars G",
+            "default": 0.0
+          },
+          "added_sugars_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added Sugars G",
+            "default": 0.0
+          },
+          "protein_g": {
+            "type": "number",
+            "title": "Protein G"
+          }
+        },
+        "type": "object",
+        "required": [
+          "calories",
+          "fat_g",
+          "carbs_g",
+          "protein_g"
+        ],
+        "title": "V2Macros"
+      },
+      "V2Metadata": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "upc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upc"
+          },
+          "srv_per_cont": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Srv Per Cont"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "V2Metadata"
+      },
+      "V2Micros": {
+        "properties": {
+          "vit_d_mcg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vit D Mcg",
+            "default": 0.0
+          },
+          "calcium_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calcium Mg",
+            "default": 0.0
+          },
+          "iron_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iron Mg",
+            "default": 0.0
+          },
+          "potassium_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Potassium Mg",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "title": "V2Micros"
+      },
+      "V2ServingInfo": {
+        "properties": {
+          "size": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          }
+        },
+        "type": "object",
+        "title": "V2ServingInfo"
       },
       "VaccinationCreate": {
         "properties": {
