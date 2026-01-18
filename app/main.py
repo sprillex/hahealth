@@ -14,7 +14,7 @@ from app import mqtt
 from contextlib import asynccontextmanager
 
 # Create DB tables
-models.Base.metadata.create_all(bind=database.engine)
+database.init_db()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -38,6 +38,7 @@ app.include_router(health.router)
 app.include_router(webhook.router)
 app.include_router(admin.router)
 app.include_router(nutrition.router)
+app.include_router(nutrition.router_v2)
 app.include_router(medical.router)
 
 # Mount Static Files

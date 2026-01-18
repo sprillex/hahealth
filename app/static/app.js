@@ -1925,6 +1925,21 @@ function editLibraryFood(food) {
     document.getElementById('edit_lib_carbs').value = food.carbs;
     document.getElementById('edit_lib_fiber').value = food.fiber;
     document.getElementById('edit_lib_sodium').value = food.sodium || 0;
+
+    // Extended
+    document.getElementById('edit_lib_brand').value = food.brand || '';
+    document.getElementById('edit_lib_serving_unit').value = food.serving_size_unit || '';
+    document.getElementById('edit_lib_cholesterol').value = food.cholesterol || 0;
+    document.getElementById('edit_lib_total_sugars').value = food.total_sugars || 0;
+    document.getElementById('edit_lib_added_sugars').value = food.added_sugars || 0;
+    document.getElementById('edit_lib_vit_d').value = food.vitamin_d || 0;
+    document.getElementById('edit_lib_calcium').value = food.calcium || 0;
+    document.getElementById('edit_lib_iron').value = food.iron || 0;
+    document.getElementById('edit_lib_potassium').value = food.potassium || 0;
+    document.getElementById('edit_lib_score').value = food.health_score || '';
+    document.getElementById('edit_lib_insight').value = food.health_insight || '';
+    document.getElementById('edit_lib_tip').value = food.pairing_tip || '';
+
     document.getElementById('edit_lib_visible').checked = food.is_user_visible;
 }
 
@@ -1940,6 +1955,21 @@ document.getElementById('edit-library-form').addEventListener('submit', async (e
         carbs: parseFloat(document.getElementById('edit_lib_carbs').value),
         fiber: parseFloat(document.getElementById('edit_lib_fiber').value),
         sodium: parseFloat(document.getElementById('edit_lib_sodium').value),
+
+        // Extended
+        brand: document.getElementById('edit_lib_brand').value || null,
+        serving_size_unit: document.getElementById('edit_lib_serving_unit').value || null,
+        cholesterol: parseFloat(document.getElementById('edit_lib_cholesterol').value) || 0,
+        total_sugars: parseFloat(document.getElementById('edit_lib_total_sugars').value) || 0,
+        added_sugars: parseFloat(document.getElementById('edit_lib_added_sugars').value) || 0,
+        vitamin_d: parseFloat(document.getElementById('edit_lib_vit_d').value) || 0,
+        calcium: parseFloat(document.getElementById('edit_lib_calcium').value) || 0,
+        iron: parseFloat(document.getElementById('edit_lib_iron').value) || 0,
+        potassium: parseFloat(document.getElementById('edit_lib_potassium').value) || 0,
+        health_score: document.getElementById('edit_lib_score').value || null,
+        health_insight: document.getElementById('edit_lib_insight').value || null,
+        pairing_tip: document.getElementById('edit_lib_tip').value || null,
+
         is_user_visible: document.getElementById('edit_lib_visible').checked
     };
 
