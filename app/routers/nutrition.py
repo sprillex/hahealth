@@ -75,7 +75,7 @@ def search_food(
 
     # Check if query looks like a barcode
     if query.isdigit() and len(query) > 3:
-        service = services.OpenFoodFactsService()
+        service = services.CustomNutritionService()
         product = service.get_product(query, db)
         if product:
             results.append(product)
