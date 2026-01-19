@@ -30,11 +30,11 @@ def test_search_by_barcode_feature(client, session):
         carbs=10.0,
         fiber=2.0,
         sodium=10.0,
-        source="OFF",
+        source="MANUAL",
         is_user_visible=True
     )
 
-    with patch("app.services.OpenFoodFactsService.get_product", return_value=fake_product) as mock_get:
+    with patch("app.services.CustomNutritionService.get_product", return_value=fake_product) as mock_get:
         response = client.get("/api/v1/nutrition/search?query=987654321", headers=headers)
         assert response.status_code == 200
         data = response.json()
@@ -46,7 +46,7 @@ def test_log_food_with_barcode_as_name(client, session):
     token = get_auth_token(client)
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Simulate OFF finding the product
+    # Simulate Custom Service finding the product
     fake_product = models.NutritionCache(
         food_id=888,
         barcode="1234567890",
@@ -57,11 +57,11 @@ def test_log_food_with_barcode_as_name(client, session):
         carbs=0.0,
         fiber=0.0,
         sodium=0.0,
-        source="OFF",
+        source="MANUAL",
         is_user_visible=True
     )
 
-    with patch("app.services.OpenFoodFactsService.get_product", return_value=fake_product) as mock_get:
+    with patch("app.services.CustomNutritionService.get_product", return_value=fake_product) as mock_get:
         # User submits "1234567890" as name, no barcode
         payload = {
             "food_name": "1234567890",
@@ -76,21 +76,6 @@ def test_log_food_with_barcode_as_name(client, session):
 
         # Verify get_product was called with the "name" as barcode
         mock_get.assert_called_with("1234567890", ANY)
-
-        # Check DB log
-        # We need to query the FoodLog to see if it linked to "Tasty Barcode Food" (id 888)
-        # But response returns payload entry.
-
-        # Let's check the database directly using session
-        # We need to wait for transaction? TestClient runs in same thread/process usually, but db session might be separate.
-        # But 'fake_product' is a model instance not attached to session if returned by mock.
-        # Services code does: if data.barcode: food_item = off_service.get_product(...)
-        # get_product (mocked) returns fake_product.
-        # Then: item_log = models.FoodItemLog(..., food_id=food_item.food_id, ...)
-        # db.add(item_log)
-
-        # So it should try to add item_log with food_id=888.
-        pass
 
 def test_webhook_food_log_manual_macros(client, session):
     # 1. Create a user
@@ -341,33 +326,34 @@ def test_list_search_filter(client, session):
     assert "Apple Pie" in names
     assert "Banana Bread" not in names
 
-from app.services import OpenFoodFactsService
+from app.services import CustomNutritionService
 
-def test_sodium_unit_conversion(session):
+def test_custom_nutrition_parsing(session):
     # Mock Response
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
-        "status": 1,
-        "product": {
-            "product_name": "Test Sodium Product",
-            "nutriments": {
-                "energy-kcal_100g": 100,
-                "proteins_100g": 10,
-                "fat_100g": 5,
-                "carbohydrates_100g": 20,
-                "fiber_100g": 2,
-                "sodium_100g": 0.5 # 0.5 grams
-            }
-        }
+        "status": "found",
+        "data": {
+            "upc": "123456789",
+            "item_name": "Test Custom Product",
+            "brand_name": "BrandX",
+            "calories": 100.0,
+            "protein_g": 10.0,
+            "fat_g": 5.0,
+            "carbs_g": 20.0,
+            "fiber_g": 2.0,
+            "sodium_mg": 500.0 # 500 mg
+        },
+        "source": "External"
     }
 
     with patch("requests.get", return_value=mock_response):
-        service = OpenFoodFactsService()
+        service = CustomNutritionService()
         barcode = "123456789"
         product = service.get_product(barcode, session)
 
         assert product is not None
-        assert product.food_name == "Test Sodium Product"
-        # 0.5 grams * 1000 = 500 mg
+        assert product.food_name == "Test Custom Product"
+        # Check explicit value - no multiplier applied
         assert product.sodium == 500.0

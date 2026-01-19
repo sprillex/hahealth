@@ -10,44 +10,78 @@ import hashlib
 from datetime import timezone
 import zoneinfo
 
-class OpenFoodFactsService:
-    BASE_URL = "https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
-
+class CustomNutritionService:
     def get_product(self, barcode: str, db: Session):
         cached = db.query(models.NutritionCache).filter(models.NutritionCache.barcode == barcode).first()
         if cached:
             return cached
 
-        response = requests.get(self.BASE_URL.format(barcode=barcode))
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("status") == 1 or data.get("product"):
-                product = data["product"]
-                nutriments = product.get("nutriments", {})
-                food_name = product.get("product_name", "Unknown")
-                def get_nutriment(key):
-                    val = nutriments.get(key)
-                    if val is None: return 0.0
-                    try: return float(val)
-                    except (ValueError, TypeError): return 0.0
-                calories = get_nutriment("energy-kcal_100g")
-                if calories == 0:
-                    kj = get_nutriment("energy-kj_100g")
-                    if kj > 0: calories = kj / 4.184
-                protein = get_nutriment("proteins_100g")
-                fat = get_nutriment("fat_100g")
-                carbs = get_nutriment("carbohydrates_100g")
-                fiber = get_nutriment("fiber_100g")
-                # OFF provides sodium in grams, we store in mg
-                sodium = get_nutriment("sodium_100g") * 1000
-                new_cache = models.NutritionCache(
-                    barcode=barcode, food_name=food_name, calories=calories,
-                    protein=protein, fat=fat, carbs=carbs, fiber=fiber, sodium=sodium, source="OFF"
-                )
-                db.add(new_cache)
-                db.commit()
-                db.refresh(new_cache)
-                return new_cache
+        base_url = os.getenv("CUSTOM_NUTRITION_URL", "http://localhost:8000")
+        # Ensure base_url doesn't end with slash if we append /product/...
+        if base_url.endswith("/"):
+            base_url = base_url[:-1]
+
+        url = f"{base_url}/product/{barcode}"
+
+        try:
+            response = requests.get(url, timeout=10) # Good practice to add timeout
+            if response.status_code == 200:
+                resp_json = response.json()
+                if resp_json.get("status") == "found" and "data" in resp_json:
+                    data = resp_json["data"]
+
+                    # Helper to safely get float values
+                    def get_float(val):
+                        if val is None: return 0.0
+                        try: return float(val)
+                        except (ValueError, TypeError): return 0.0
+
+                    # Map fields
+                    # JSON: upc, item_name, brand_name, srv_per_cont, serving_size
+                    # Model: barcode, food_name, brand, serving_size_unit
+
+                    new_cache = models.NutritionCache(
+                        barcode=data.get("upc", barcode),
+                        food_name=data.get("item_name", "Unknown"),
+                        brand=data.get("brand_name"),
+                        serving_size_unit=data.get("serving_size"),
+
+                        # Base Macros
+                        calories=get_float(data.get("calories")),
+                        protein=get_float(data.get("protein_g")),
+                        fat=get_float(data.get("fat_g")),
+                        carbs=get_float(data.get("carbs_g")),
+                        fiber=get_float(data.get("fiber_g")),
+                        sodium=get_float(data.get("sodium_mg")), # Stored as mg
+
+                        # Extended Macros
+                        cholesterol=get_float(data.get("cholesterol_mg")),
+                        total_sugars=get_float(data.get("total_sugars_g")),
+                        added_sugars=get_float(data.get("added_sugars_g")),
+
+                        # Micros
+                        vitamin_d=get_float(data.get("vit_d_mcg")),
+                        calcium=get_float(data.get("calcium_mg")),
+                        iron=get_float(data.get("iron_mg")),
+                        potassium=get_float(data.get("potassium_mg")),
+
+                        # Analysis
+                        health_score=data.get("score_color"),
+                        health_insight=data.get("health_insight"),
+                        pairing_tip=data.get("pairing_tip"),
+
+                        source=resp_json.get("source", "MANUAL"),
+                        is_user_visible=True
+                    )
+
+                    db.add(new_cache)
+                    db.commit()
+                    db.refresh(new_cache)
+                    return new_cache
+        except requests.RequestException:
+            # Handle connection errors gracefully
+            return None
+
         return None
 
 class METCalculator:
@@ -162,14 +196,14 @@ class HealthLogService:
         return exercise_log # Return the ExerciseLog, not DailyLog
 
     def log_food(self, db: Session, user: models.User, data: schemas.FoodLogPayload):
-        off_service = OpenFoodFactsService()
+        nut_service = CustomNutritionService()
         food_item = None
 
         # Fallback: if barcode is not explicitly provided but food_name looks like one
         if not data.barcode and data.food_name and data.food_name.isdigit() and len(data.food_name) > 3:
             data.barcode = data.food_name
 
-        if data.barcode: food_item = off_service.get_product(data.barcode, db)
+        if data.barcode: food_item = nut_service.get_product(data.barcode, db)
         if not food_item and data.food_name:
             food_item = db.query(models.NutritionCache).filter(models.NutritionCache.food_name == data.food_name).first()
 
