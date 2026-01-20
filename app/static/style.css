@@ -305,3 +305,21 @@ body.dark-theme .status-warning { color: #ef4444; } /* Lighter Red */
     font-weight: bold;
     color: var(--primary-color);
 }
+
+.preview-header-box {
+    margin: -20px -20px 20px -20px; /* Counteract modal-content padding */
+    padding: 20px;
+    border-radius: 8px 8px 0 0; /* Match modal border radius */
+    color: var(--text-color); /* Default, might be overridden by inline style if we want contrast */
+    position: relative;
+    transition: background-color 0.3s;
+}
+
+/* Ensure close button is visible on colored background */
+.preview-header-box .close {
+    color: inherit;
+    opacity: 0.7;
+}
+.preview-header-box .close:hover {
+    opacity: 1;
+}

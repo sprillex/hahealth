@@ -799,14 +799,30 @@ function openPreviewModal(food, formData) {
     document.getElementById('preview-brand').innerText = food.brand || 'Generic';
     document.getElementById('preview-unit').innerText = food.serving_size_unit || '1 serving';
 
-    // Score
+    // Score & Header Color
     const dot = document.getElementById('preview-score-dot');
-    const score = food.health_score; // Expecting "green", "red", etc. or Hex
+    const headerBox = document.getElementById('preview-color-header');
+    const score = food.health_score;
+
     if (score) {
-        dot.style.backgroundColor = getScoreColor(score);
+        const color = getScoreColor(score);
+        dot.style.backgroundColor = color;
         dot.style.display = 'inline-block';
+        headerBox.style.backgroundColor = color;
+
+        // Simple contrast check for text color (White text on dark/saturated backgrounds)
+        // Adjust based on specific colors if needed. For now, white looks good on Green/Red/Orange.
+        // Yellow is tricky.
+        if (['yellow', 'c'].includes(score.toLowerCase()) || color === '#f1c40f') {
+             headerBox.style.color = '#333'; // Dark text for yellow
+        } else {
+             headerBox.style.color = '#fff'; // White text for others
+        }
+
     } else {
         dot.style.display = 'none';
+        headerBox.style.backgroundColor = 'transparent'; // Or default
+        headerBox.style.color = 'var(--text-color)';
     }
 
     // Insights
