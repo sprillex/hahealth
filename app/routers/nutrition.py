@@ -62,19 +62,29 @@ def create_custom_food(
 @router.get("/search", response_model=List[schemas.NutritionCacheResponse])
 def search_food(
     query: Optional[str] = None,
+    scope: str = "food", # food, recipe
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     results = []
 
+    # Base query for source filtering
+    base_query = db.query(models.NutritionCache).filter(
+        models.NutritionCache.is_user_visible == True
+    )
+
+    if scope == "recipe":
+        base_query = base_query.filter(models.NutritionCache.source == "RECIPE")
+    else:
+        # Exclude recipes if scope is food
+        base_query = base_query.filter(models.NutritionCache.source != "RECIPE")
+
     # If no query, return recent or all (limit 50)
     if not query:
-        return db.query(models.NutritionCache).filter(
-            models.NutritionCache.is_user_visible == True
-        ).limit(50).all()
+        return base_query.limit(50).all()
 
-    # Check if query looks like a barcode
-    if query.isdigit() and len(query) > 3:
+    # Check if query looks like a barcode (Only for foods)
+    if scope != "recipe" and query.isdigit() and len(query) > 3:
         service = services.CustomNutritionService()
         product = service.get_product(query, db)
         if product:
@@ -82,9 +92,8 @@ def search_food(
             return results
 
     # Name search fallback
-    name_results = db.query(models.NutritionCache).filter(
-        models.NutritionCache.food_name.ilike(f"%{query}%"),
-        models.NutritionCache.is_user_visible == True
+    name_results = base_query.filter(
+        models.NutritionCache.food_name.ilike(f"%{query}%")
     ).limit(20).all()
 
     results.extend(name_results)
