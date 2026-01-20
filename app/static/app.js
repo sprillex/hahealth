@@ -6,6 +6,7 @@ let token = localStorage.getItem('access_token');
 let user = null;
 let summaryData = null;
 let currentDashboardDate = new Date(); // Defaults to today
+let selectedFoodItem = null; // Store selected food for preview
 
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
@@ -686,6 +687,7 @@ async function handleSearchFood(query) {
     const resultsDiv = document.getElementById('food-search-results');
     if (!query || query.length < 2) {
         resultsDiv.classList.add('hidden');
+        selectedFoodItem = null;
         return;
     }
 
@@ -717,6 +719,7 @@ async function handleSearchFood(query) {
 }
 
 function selectFood(food) {
+    selectedFoodItem = food;
     document.getElementById('food-search-input').value = food.food_name;
     document.getElementById('selected-food-name').value = food.food_name;
     document.getElementById('selected-food-barcode').value = food.barcode || '';
@@ -734,9 +737,6 @@ async function handleLogFood(e) {
         quantity: parseFloat(fd.get('quantity'))
     };
 
-    // If user typed a name but didn't select from dropdown, use that name.
-    // The backend will create a manual entry with 0 calories if not found.
-    // Or we could prompt them to create it.
     if (!data.food_name && document.getElementById('food-search-input').value) {
         data.food_name = document.getElementById('food-search-input').value;
     }
@@ -746,6 +746,18 @@ async function handleLogFood(e) {
         return;
     }
 
+    // Check if we can show preview
+    // Strict check: selectedFoodItem must exist and name must match what is currently in the form/input
+    if (selectedFoodItem && selectedFoodItem.food_name === data.food_name) {
+        openPreviewModal(selectedFoodItem, data);
+        return;
+    }
+
+    // Manual/Fallback Log
+    submitLog(data, e.target);
+}
+
+async function submitLog(data, formElement) {
     try {
         const res = await fetchWithAuth(`${API_URL}/nutrition/log`, {
             method: 'POST',
@@ -757,11 +769,11 @@ async function handleLogFood(e) {
 
         if (res.ok) {
             alert('Food logged successfully');
-            e.target.reset();
+            if(formElement) formElement.reset();
             document.getElementById('food-search-results').classList.add('hidden');
+            selectedFoodItem = null;
         } else {
             const err = await res.json();
-            // If 404/Food not found, maybe prompt to create?
             if (res.status === 404) {
                 if (confirm("Food not found. Create it now?")) {
                     openFoodModal();
@@ -774,6 +786,133 @@ async function handleLogFood(e) {
     } catch(err) {
         alert('Error logging food');
     }
+}
+
+// --- Preview Modal Logic ---
+
+function openPreviewModal(food, formData) {
+    const modal = document.getElementById('food-preview-modal');
+    modal.classList.remove('hidden');
+
+    // Header
+    document.getElementById('preview-food-name').innerText = food.food_name;
+    document.getElementById('preview-brand').innerText = food.brand || 'Generic';
+    document.getElementById('preview-unit').innerText = food.serving_size_unit || '1 serving';
+
+    // Score & Header Color
+    const dot = document.getElementById('preview-score-dot');
+    const headerBox = document.getElementById('preview-color-header');
+    const score = food.health_score;
+
+    if (score) {
+        const color = getScoreColor(score);
+        dot.style.backgroundColor = color;
+        dot.style.display = 'inline-block';
+        headerBox.style.backgroundColor = color;
+
+        // Simple contrast check for text color (White text on dark/saturated backgrounds)
+        // Adjust based on specific colors if needed. For now, white looks good on Green/Red/Orange.
+        // Yellow is tricky.
+        if (['yellow', 'c'].includes(score.toLowerCase()) || color === '#f1c40f') {
+             headerBox.style.color = '#333'; // Dark text for yellow
+        } else {
+             headerBox.style.color = '#fff'; // White text for others
+        }
+
+    } else {
+        dot.style.display = 'none';
+        headerBox.style.backgroundColor = 'transparent'; // Or default
+        headerBox.style.color = 'var(--text-color)';
+    }
+
+    // Insights
+    document.getElementById('preview-insight').innerText = food.health_insight || '--';
+    document.getElementById('preview-tip').innerText = food.pairing_tip || '--';
+
+    // Inputs
+    document.getElementById('preview-serving-size').value = formData.serving_size || 1;
+    document.getElementById('preview-quantity').value = formData.quantity || 1;
+
+    // Store meal_id for confirmation
+    modal.dataset.mealId = formData.meal_id;
+
+    updatePreviewTotals();
+}
+
+function closePreviewModal() {
+    document.getElementById('food-preview-modal').classList.add('hidden');
+}
+
+function updatePreviewTotals() {
+    if (!selectedFoodItem) return;
+
+    const s = parseFloat(document.getElementById('preview-serving-size').value) || 0;
+    const q = parseFloat(document.getElementById('preview-quantity').value) || 0;
+    const m = s * q;
+
+    const f = selectedFoodItem;
+
+    // Helper
+    const set = (id, val, unit='', fixed=1) => {
+        const el = document.getElementById(id);
+        if(el) el.innerText = (val * m).toFixed(fixed) + unit;
+    };
+    const setInt = (id, val, unit='') => {
+        const el = document.getElementById(id);
+        if(el) el.innerText = Math.round(val * m) + unit;
+    };
+
+    setInt('preview-cal', f.calories);
+    set('preview-fat', f.fat, 'g');
+    setInt('preview-chol', f.cholesterol || 0, 'mg');
+    setInt('preview-sod', f.sodium || 0, 'mg');
+    set('preview-carb', f.carbs, 'g');
+    set('preview-fib', f.fiber, 'g');
+    set('preview-sugar', f.total_sugars || 0, 'g');
+    set('preview-added-sugar', f.added_sugars || 0, '', 1);
+    set('preview-prot', f.protein, 'g');
+
+    // Micros
+    setInt('preview-vitd', f.vitamin_d || 0);
+    setInt('preview-calc', f.calcium || 0);
+    setInt('preview-iron', f.iron || 0);
+    setInt('preview-pot', f.potassium || 0);
+}
+
+function getScoreColor(score) {
+    if (!score) return '#ccc';
+    const s = score.toLowerCase();
+    if (s === 'green' || s === 'a') return '#2ecc71';
+    if (s === 'yellow' || s === 'c') return '#f1c40f';
+    if (s === 'red' || s === 'e') return '#e74c3c';
+    if (s === 'orange' || s === 'd') return '#e67e22';
+    if (s === 'lightgreen' || s === 'b') return '#82e0aa';
+    // Return as is (assuming hex)
+    return score;
+}
+
+async function confirmLogFood() {
+    if (!selectedFoodItem) return;
+
+    const s = parseFloat(document.getElementById('preview-serving-size').value);
+    const q = parseFloat(document.getElementById('preview-quantity').value);
+    const mealId = document.getElementById('food-preview-modal').dataset.mealId;
+
+    const data = {
+        food_name: selectedFoodItem.food_name,
+        barcode: selectedFoodItem.barcode,
+        meal_id: mealId,
+        serving_size: s,
+        quantity: q
+    };
+
+    // Close modal first
+    closePreviewModal();
+
+    // Use shared submit logic
+    // Pass form element if we want it reset. We can find it.
+    const form = document.getElementById('food-log-form');
+    submitLog(data, form);
 }
 
 // --- Medical (Allergies & Vaccinations) ---
