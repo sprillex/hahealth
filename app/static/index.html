@@ -146,6 +146,7 @@
                     <div class="header-actions">
                         <h2>Nutrition</h2>
                         <div>
+                            <button class="btn-secondary hidden" id="btn-import-json" onclick="openImportJsonModal()">Import JSON</button>
                             <button class="btn-secondary" onclick="openManageLibrary()">Manage Library</button>
                             <button class="btn-primary" onclick="openFoodModal()">+ Create Custom Food</button>
                         </div>
@@ -920,6 +921,26 @@
                     <button type="submit" class="btn-primary">Save</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <div id="import-json-modal" class="modal hidden">
+        <div class="modal-content" style="min-width: 600px;">
+            <span class="close" onclick="closeImportJsonModal()">&times;</span>
+            <h2>Import Food JSON</h2>
+            <p>Paste the JSON payload below. Quantity will be forced to 0 (Library Update Only).</p>
+            <textarea id="import-json-text" rows="10" style="width: 100%; font-family: monospace;" placeholder='{"quantity": 1.0, ...}'></textarea>
+
+            <div id="import-preview" class="hidden" style="margin-top: 20px; border: 1px solid #ccc; padding: 10px; background: var(--card-bg);">
+                <h3>Preview</h3>
+                <div id="import-preview-content"></div>
+            </div>
+
+            <div class="form-actions" style="margin-top: 15px;">
+                <button type="button" onclick="handlePreviewJson()" class="btn-secondary">Preview</button>
+                <button type="button" id="btn-import-submit" onclick="handleImportJson()" class="btn-primary hidden">Import / Update</button>
+                <button type="button" onclick="closeImportJsonModal()">Cancel</button>
+            </div>
         </div>
     </div>
 
