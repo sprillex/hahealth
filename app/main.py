@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from app import database, models
-from app.routers import auth, users, medication, health, webhook, prescribers, admin, nutrition, medical
+from app.routers import auth, users, medication, health, webhook, prescribers, admin, nutrition, medical, recipes
 from app.version import BUILD_VERSION, BUILD_DATE
 from app import mqtt
 from contextlib import asynccontextmanager
@@ -40,6 +40,7 @@ app.include_router(admin.router)
 app.include_router(nutrition.router)
 app.include_router(nutrition.router_v2)
 app.include_router(medical.router)
+app.include_router(recipes.router)
 
 # Mount Static Files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

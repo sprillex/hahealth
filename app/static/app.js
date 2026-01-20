@@ -7,6 +7,9 @@ let user = null;
 let summaryData = null;
 let currentDashboardDate = new Date(); // Defaults to today
 let selectedFoodItem = null; // Store selected food for preview
+// Globals for Recipes
+let currentScope = 'food';
+let currentRecipeIngredients = [];
 
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
@@ -43,6 +46,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Nutrition Listeners
     document.getElementById('create-food-form').addEventListener('submit', handleCreateFood);
     document.getElementById('food-log-form').addEventListener('submit', handleLogFood);
+    document.getElementById('recipe-form').addEventListener('submit', handleSaveRecipe);
+
+    const recipeIngInput = document.getElementById('recipe-ing-search');
+    if(recipeIngInput) {
+        let debounceIng;
+        recipeIngInput.addEventListener('input', (e) => {
+             clearTimeout(debounceIng);
+             debounceIng = setTimeout(() => handleSearchRecipeIngredient(e.target.value), 300);
+        });
+    }
 
     // Profile Listeners
     document.getElementById('profile-units').addEventListener('change', updateProfileUnitLabels);
@@ -692,7 +705,7 @@ async function handleSearchFood(query) {
     }
 
     try {
-        const res = await fetchWithAuth(`${API_URL}/nutrition/search?query=${encodeURIComponent(query)}`);
+        const res = await fetchWithAuth(`${API_URL}/nutrition/search?query=${encodeURIComponent(query)}&scope=${currentScope}`);
         const foods = await res.json();
 
         resultsDiv.innerHTML = '';
@@ -2364,3 +2377,396 @@ document.getElementById('edit-food-form').addEventListener('submit', async (e) =
         } else alert("Update failed");
     } catch(e) { alert("Update failed"); }
 });
+
+// --- Recipes Logic ---
+
+function handleScopeChange(val) {
+    currentScope = val;
+    const input = document.getElementById('food-search-input');
+    if (val === 'recipe') {
+        input.placeholder = "Type to search recipes...";
+    } else {
+        input.placeholder = "Type to search foods...";
+    }
+    document.getElementById('food-search-results').classList.add('hidden');
+    input.value = '';
+}
+
+function showNutritionView(view) {
+    document.getElementById('nutrition-view-log').classList.add('hidden');
+    document.getElementById('nutrition-view-recipes').classList.add('hidden');
+
+    if (view === 'log') {
+        document.getElementById('nutrition-view-log').classList.remove('hidden');
+    } else if (view === 'recipes') {
+        document.getElementById('nutrition-view-recipes').classList.remove('hidden');
+        loadRecipes();
+    }
+}
+
+async function loadRecipes() {
+    const div = document.getElementById('recipe-list');
+    div.innerHTML = 'Loading...';
+    try {
+        const res = await fetchWithAuth(`${API_URL}/recipes/`);
+        const recipes = await res.json();
+
+        if (recipes.length === 0) {
+            div.innerHTML = '<em>No recipes found.</em>';
+            return;
+        }
+
+        div.innerHTML = '';
+        recipes.forEach(r => {
+             // Safe JSON for onclick
+             const safeR = JSON.stringify(r).replace(/"/g, '&quot;');
+             const card = document.createElement('div');
+             card.className = 'card';
+             card.style.marginBottom = '10px';
+
+             // current_food might be loaded if schema includes it
+             const cals = r.current_food ? Math.round(r.current_food.calories) : '?';
+
+             card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3>${escapeHtml(r.name)}</h3>
+                    <div>
+                        <button class="btn-secondary" onclick="printRecipe(${r.recipe_id})">Print</button>
+                        <button class="btn-secondary" onclick="openRecipeModal(${safeR})">Edit</button>
+                        <button class="btn-warning" onclick="deleteRecipe(${r.recipe_id})" style="background-color: #dc3545;">Delete</button>
+                    </div>
+                </div>
+                <p>
+                    <strong>Servings:</strong> ${r.total_servings} |
+                    <strong>Calories:</strong> ${cals} / serving
+                </p>
+                <p><em>${escapeHtml(r.instructions) || 'No instructions'}</em></p>
+             `;
+             div.appendChild(card);
+        });
+
+    } catch(e) {
+        div.innerHTML = 'Error loading recipes';
+        console.error(e);
+    }
+}
+
+async function deleteRecipe(id) {
+    if(!confirm("Are you sure? This will hide the recipe from your list, but history remains.")) return;
+    try {
+        const res = await fetchWithAuth(`${API_URL}/recipes/${id}`, { method: 'DELETE' });
+        if(res.ok) loadRecipes();
+        else alert("Delete failed");
+    } catch(e) { alert("Delete failed"); }
+}
+
+function openRecipeModal(recipe = null) {
+    document.getElementById('recipe-modal').classList.remove('hidden');
+    const form = document.getElementById('recipe-form');
+    form.reset();
+    document.getElementById('recipe-ing-results').classList.add('hidden');
+
+    currentRecipeIngredients = [];
+
+    if(recipe) {
+        document.getElementById('recipe-modal-title').innerText = 'Edit Recipe';
+        document.getElementById('recipe_id').value = recipe.recipe_id;
+        document.getElementById('recipe_name').value = recipe.name;
+        document.getElementById('recipe_servings').value = recipe.total_servings;
+        document.getElementById('recipe_instructions').value = recipe.instructions || '';
+        document.getElementById('recipe_prep_time').value = recipe.prep_time_minutes || '';
+        document.getElementById('recipe_cook_time').value = recipe.cook_time_minutes || '';
+
+        // Populate overrides from current_food if available
+        if(recipe.current_food) {
+            document.getElementById('recipe_score').value = recipe.current_food.health_score || '';
+            document.getElementById('recipe_insight').value = recipe.current_food.health_insight || '';
+            document.getElementById('recipe_tip').value = recipe.current_food.pairing_tip || '';
+        }
+
+        // Load Ingredients
+        if(recipe.ingredients) {
+            recipe.ingredients.forEach(ing => {
+                // Flatten for internal use
+                currentRecipeIngredients.push({
+                    food_id: ing.food.food_id,
+                    food_name: ing.food.food_name,
+                    calories: ing.food.calories,
+                    quantity: ing.quantity
+                });
+            });
+        }
+    } else {
+        document.getElementById('recipe-modal-title').innerText = 'Create Recipe';
+        document.getElementById('recipe_id').value = '';
+        document.getElementById('recipe_servings').value = 1;
+    }
+    renderRecipeIngredients();
+}
+
+function closeRecipeModal() {
+    document.getElementById('recipe-modal').classList.add('hidden');
+}
+
+async function handleSearchRecipeIngredient(query) {
+    const resultsDiv = document.getElementById('recipe-ing-results');
+    if (!query || query.length < 2) {
+        resultsDiv.classList.add('hidden');
+        return;
+    }
+
+    try {
+        // Always search Scope=Food here (ingredients)
+        const res = await fetchWithAuth(`${API_URL}/nutrition/search?query=${encodeURIComponent(query)}&scope=food`);
+        const foods = await res.json();
+
+        resultsDiv.innerHTML = '';
+        if (foods.length > 0) {
+            resultsDiv.classList.remove('hidden');
+            resultsDiv.style.backgroundColor = '#fff';
+            resultsDiv.style.border = '1px solid #ccc';
+            resultsDiv.style.maxHeight = '200px';
+            resultsDiv.style.overflowY = 'auto';
+
+            foods.forEach(food => {
+                const div = document.createElement('div');
+                div.style.padding = '5px';
+                div.style.cursor = 'pointer';
+                div.style.borderBottom = '1px solid #eee';
+                div.className = 'search-item'; // reuse class
+                div.innerText = `${food.food_name} (${Math.round(food.calories)} kcal)`;
+                div.onclick = () => addIngredientToRecipe(food);
+                resultsDiv.appendChild(div);
+            });
+        } else {
+            resultsDiv.classList.add('hidden');
+        }
+
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+function addIngredientToRecipe(food) {
+    // Check if exists? Maybe allow dupes? Let's allow dupes, users might add same item twice.
+    currentRecipeIngredients.push({
+        food_id: food.food_id,
+        food_name: food.food_name,
+        calories: food.calories,
+        quantity: 1.0 // Default
+    });
+
+    document.getElementById('recipe-ing-search').value = '';
+    document.getElementById('recipe-ing-results').classList.add('hidden');
+    renderRecipeIngredients();
+}
+
+function removeIngredient(index) {
+    currentRecipeIngredients.splice(index, 1);
+    renderRecipeIngredients();
+}
+
+function updateIngredientQty(index, val) {
+    const qty = parseFloat(val) || 0;
+    currentRecipeIngredients[index].quantity = qty;
+    renderRecipeIngredients(); // Re-calc totals
+}
+
+function renderRecipeIngredients() {
+    const tbody = document.getElementById('recipe-ing-body');
+    tbody.innerHTML = '';
+
+    let totalCals = 0;
+
+    currentRecipeIngredients.forEach((ing, idx) => {
+        totalCals += ing.calories * ing.quantity;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${escapeHtml(ing.food_name)}</td>
+            <td>
+                <input type="number" step="0.1" value="${ing.quantity}" style="width: 60px;" onchange="updateIngredientQty(${idx}, this.value)">
+            </td>
+            <td>${Math.round(ing.calories * ing.quantity)}</td>
+            <td>
+                <button type="button" onclick="removeIngredient(${idx})" style="color: red; border: none; background: none; cursor: pointer;">&times;</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    const servings = parseFloat(document.getElementById('recipe_servings').value) || 1;
+    document.getElementById('recipe-total-cals').innerText = Math.round(totalCals);
+    document.getElementById('recipe-serving-cals').innerText = Math.round(totalCals / servings);
+}
+
+function calculateRecipeTotals() {
+    // Just trigger render to update numbers based on servings change
+    renderRecipeIngredients();
+}
+
+async function handleSaveRecipe(e) {
+    e.preventDefault();
+
+    const id = document.getElementById('recipe_id').value;
+    const data = {
+        name: document.getElementById('recipe_name').value,
+        total_servings: parseFloat(document.getElementById('recipe_servings').value),
+        instructions: document.getElementById('recipe_instructions').value,
+        prep_time_minutes: parseInt(document.getElementById('recipe_prep_time').value) || null,
+        cook_time_minutes: parseInt(document.getElementById('recipe_cook_time').value) || null,
+
+        ingredients: currentRecipeIngredients.map(ing => ({
+            food_id: ing.food_id,
+            quantity: ing.quantity
+        })),
+
+        health_score: document.getElementById('recipe_score').value || null,
+        health_insight: document.getElementById('recipe_insight').value || null,
+        pairing_tip: document.getElementById('recipe_tip').value || null
+    };
+
+    if (data.ingredients.length === 0) {
+        alert("Please add at least one ingredient.");
+        return;
+    }
+
+    try {
+        let url = `${API_URL}/recipes/`;
+        let method = 'POST';
+        if (id) {
+            url = `${API_URL}/recipes/${id}`;
+            method = 'PUT';
+        }
+
+        const res = await fetchWithAuth(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            alert('Recipe saved!');
+            closeRecipeModal();
+            loadRecipes();
+        } else {
+            const err = await res.json();
+            alert(err.detail || 'Error saving recipe');
+        }
+    } catch(e) {
+        alert('Error saving recipe');
+    }
+}
+
+async function printRecipe(id) {
+    try {
+        // Fetch full recipe details (to ensure we have everything, though we might have it in list)
+        // But loadRecipes() list items usually have all data.
+        // Let's re-fetch to be safe and clean.
+        const res = await fetchWithAuth(`${API_URL}/recipes/${id}`);
+        if(!res.ok) throw new Error("Failed to load recipe");
+        const recipe = await res.json();
+        const food = recipe.current_food || {};
+
+        // Open window
+        const win = window.open('', '_blank', 'width=800,height=900');
+
+        // Render Nutrition Label (Static HTML generation similar to modal)
+        // We'll hardcode the styles for the label to ensure it prints well without dependencies
+        const labelHTML = `
+            <div style="border: 2px solid black; padding: 10px; font-family: Helvetica, Arial, sans-serif; max-width: 350px; margin: 20px 0;">
+                <h1 style="border-bottom: 10px solid black; margin: 0 0 5px 0; font-size: 2em; line-height: 1;">Nutrition Facts</h1>
+                <div style="font-size: 1.1em; font-weight: bold; border-bottom: 5px solid black; padding-bottom: 5px;">
+                    Serving Size ${food.serving_size_unit || '1 serving'}
+                </div>
+                <div style="border-bottom: 5px solid black; padding: 5px 0;">
+                    <div style="font-weight: bold; font-size: 0.8em;">Amount Per Serving</div>
+                    <div style="font-size: 2em; font-weight: 900; line-height: 1;">Calories <span style="float: right;">${Math.round(food.calories)}</span></div>
+                </div>
+                <div style="border-bottom: 1px solid black; padding: 3px 0;">
+                    <strong>Total Fat</strong> ${food.fat}g
+                </div>
+                <div style="border-bottom: 1px solid black; padding: 3px 0; padding-left: 20px;">
+                    Cholesterol ${food.cholesterol || 0}mg
+                </div>
+                <div style="border-bottom: 1px solid black; padding: 3px 0;">
+                    <strong>Sodium</strong> ${food.sodium || 0}mg
+                </div>
+                <div style="border-bottom: 1px solid black; padding: 3px 0;">
+                    <strong>Total Carbohydrate</strong> ${food.carbs}g
+                </div>
+                <div style="border-bottom: 1px solid black; padding: 3px 0; padding-left: 20px;">
+                    Dietary Fiber ${food.fiber}g
+                </div>
+                <div style="border-bottom: 1px solid black; padding: 3px 0; padding-left: 20px;">
+                    Total Sugars ${food.total_sugars || 0}g
+                </div>
+                <div style="border-bottom: 5px solid black; padding: 3px 0;">
+                    <strong>Protein</strong> ${food.protein}g
+                </div>
+            </div>
+        `;
+
+        // Ingredients Table
+        let ingTable = `<table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+            <thead><tr style="background: #eee;"><th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Ingredient</th><th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Quantity</th></tr></thead><tbody>`;
+        if (recipe.ingredients) {
+            recipe.ingredients.forEach(ing => {
+                ingTable += `<tr><td style="border: 1px solid #ddd; padding: 8px;">${ing.food.food_name}</td><td style="border: 1px solid #ddd; padding: 8px;">${ing.quantity}</td></tr>`;
+            });
+        }
+        ingTable += `</tbody></table>`;
+
+        // Page Content
+        const content = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Print Recipe - ${escapeHtml(recipe.name)}</title>
+                <style>
+                    body { font-family: sans-serif; padding: 40px; color: #333; }
+                    h1 { border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+                    .meta { margin-bottom: 20px; font-size: 1.1em; color: #555; }
+                    .section-title { margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 5px; color: var(--primary-color, #007bff); }
+                    .instructions { white-space: pre-wrap; line-height: 1.6; }
+
+                    /* Print Button Styling */
+                    .print-btn-container { text-align: right; margin-bottom: 20px; }
+                    .print-btn { background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; font-weight: bold; }
+                    .print-btn:hover { background-color: #0056b3; }
+
+                    @media print {
+                        .no-print { display: none !important; }
+                        body { padding: 0; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="print-btn-container no-print">
+                    <button class="print-btn" onclick="window.print()">Print this page</button>
+                </div>
+
+                <h1>${escapeHtml(recipe.name)}</h1>
+                <div class="meta">
+                    <strong>Servings:</strong> ${recipe.total_servings} <br>
+                    <strong>Prep Time:</strong> ${recipe.prep_time_minutes || '--'} min | <strong>Cook Time:</strong> ${recipe.cook_time_minutes || '--'} min
+                </div>
+
+                ${labelHTML}
+
+                <h2 class="section-title">Ingredients</h2>
+                ${ingTable}
+
+                <h2 class="section-title">Instructions</h2>
+                <div class="instructions">${escapeHtml(recipe.instructions) || 'No instructions provided.'}</div>
+            </body>
+            </html>
+        `;
+
+        win.document.write(content);
+        win.document.close();
+
+    } catch(e) {
+        alert("Error printing recipe: " + e.message);
+    }
+}

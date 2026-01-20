@@ -41,6 +41,7 @@ class User(Base):
     exercise_logs = relationship("ExerciseLog", back_populates="user")
     allergies = relationship("Allergy", back_populates="user")
     vaccinations = relationship("Vaccination", back_populates="user")
+    recipes = relationship("Recipe", back_populates="user")
 
 class Allergy(Base):
     __tablename__ = "allergies"
@@ -234,3 +235,35 @@ class METLookup(Base):
     met_id = Column(Integer, primary_key=True, index=True)
     activity_name = Column(String, unique=True)
     met_value = Column(Float)
+
+class Recipe(Base):
+    __tablename__ = "recipes"
+
+    recipe_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    current_food_id = Column(Integer, ForeignKey("nutrition_cache.food_id"))
+
+    name = Column(String)
+    instructions = Column(String, nullable=True)
+    cook_time_minutes = Column(Integer, nullable=True)
+    prep_time_minutes = Column(Integer, nullable=True)
+    total_servings = Column(Float, default=1.0)
+
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.datetime.now(timezone.utc), onupdate=lambda: datetime.datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="recipes")
+    current_food = relationship("NutritionCache", foreign_keys=[current_food_id])
+    ingredients = relationship("RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan")
+
+class RecipeIngredient(Base):
+    __tablename__ = "recipe_ingredients"
+
+    ingredient_id = Column(Integer, primary_key=True, index=True)
+    recipe_id = Column(Integer, ForeignKey("recipes.recipe_id"))
+    food_id = Column(Integer, ForeignKey("nutrition_cache.food_id"))
+
+    quantity = Column(Float)
+
+    recipe = relationship("Recipe", back_populates="ingredients")
+    food = relationship("NutritionCache")
