@@ -2523,16 +2523,16 @@ async function handleSearchRecipeIngredient(query) {
         resultsDiv.innerHTML = '';
         if (foods.length > 0) {
             resultsDiv.classList.remove('hidden');
-            resultsDiv.style.backgroundColor = '#fff';
-            resultsDiv.style.border = '1px solid #ccc';
+            // Removed inline styles to allow CSS variables (dark mode) to take effect
+            // Re-adding essential structural styles via CSS class or ensuring they are in .search-results
             resultsDiv.style.maxHeight = '200px';
             resultsDiv.style.overflowY = 'auto';
+            // Explicitly reset background/border to empty to inherit from CSS class
+            resultsDiv.style.backgroundColor = '';
+            resultsDiv.style.border = '';
 
             foods.forEach(food => {
                 const div = document.createElement('div');
-                div.style.padding = '5px';
-                div.style.cursor = 'pointer';
-                div.style.borderBottom = '1px solid #eee';
                 div.className = 'search-item'; // reuse class
                 div.innerText = `${food.food_name} (${Math.round(food.calories)} kcal)`;
                 div.onclick = () => addIngredientToRecipe(food);
