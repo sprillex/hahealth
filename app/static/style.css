@@ -229,3 +229,97 @@ body.dark-theme .status-warning { color: #ef4444; } /* Lighter Red */
         page-break-inside: avoid;
     }
 }
+
+/* --- Nutrition Preview Modal --- */
+
+.nutrition-label {
+    border: 2px solid var(--text-color);
+    padding: 15px;
+    background-color: var(--card-bg);
+    font-family: Helvetica, Arial, sans-serif;
+    color: var(--text-color);
+    margin-top: 15px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.nutrition-title {
+    font-weight: 900;
+    font-size: 1.8em;
+    margin: 0;
+    border-bottom: 8px solid var(--text-color);
+    padding-bottom: 5px;
+    line-height: 1;
+}
+
+.nutrition-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding: 5px 0;
+    font-size: 0.95em;
+}
+
+.nutrition-row.header {
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.nutrition-row.thick-border {
+    border-bottom: 5px solid var(--text-color);
+}
+
+.nutrition-row.no-border {
+    border-bottom: none;
+}
+
+.nutrition-row strong {
+    font-weight: 800;
+}
+
+.nutrition-sub-row {
+    padding-left: 20px;
+    font-size: 0.9em;
+}
+
+.health-score-dot {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 8px;
+    border: 1px solid rgba(0,0,0,0.2);
+    vertical-align: middle;
+}
+
+.preview-info-box {
+    background-color: rgba(128, 128, 128, 0.1);
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
+
+.preview-highlight {
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.preview-header-box {
+    margin: -20px -20px 20px -20px; /* Counteract modal-content padding */
+    padding: 20px;
+    border-radius: 8px 8px 0 0; /* Match modal border radius */
+    color: var(--text-color); /* Default, might be overridden by inline style if we want contrast */
+    position: relative;
+    transition: background-color 0.3s;
+}
+
+/* Ensure close button is visible on colored background */
+.preview-header-box .close {
+    color: inherit;
+    opacity: 0.7;
+}
+.preview-header-box .close:hover {
+    opacity: 1;
+}
