@@ -2729,9 +2729,23 @@ async function printRecipe(id) {
                     .meta { margin-bottom: 20px; font-size: 1.1em; color: #555; }
                     .section-title { margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 5px; color: var(--primary-color, #007bff); }
                     .instructions { white-space: pre-wrap; line-height: 1.6; }
+
+                    /* Print Button Styling */
+                    .print-btn-container { text-align: right; margin-bottom: 20px; }
+                    .print-btn { background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; font-weight: bold; }
+                    .print-btn:hover { background-color: #0056b3; }
+
+                    @media print {
+                        .no-print { display: none !important; }
+                        body { padding: 0; }
+                    }
                 </style>
             </head>
             <body>
+                <div class="print-btn-container no-print">
+                    <button class="print-btn" onclick="window.print()">Print this page</button>
+                </div>
+
                 <h1>${escapeHtml(recipe.name)}</h1>
                 <div class="meta">
                     <strong>Servings:</strong> ${recipe.total_servings} <br>
@@ -2745,10 +2759,6 @@ async function printRecipe(id) {
 
                 <h2 class="section-title">Instructions</h2>
                 <div class="instructions">${escapeHtml(recipe.instructions) || 'No instructions provided.'}</div>
-
-                <script>
-                    window.onload = function() { window.print(); }
-                </script>
             </body>
             </html>
         `;
