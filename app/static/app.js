@@ -205,8 +205,12 @@ async function checkAuth() {
 
             if (user.is_admin) {
                 document.getElementById('nav-admin').classList.remove('hidden');
+                const importBtn = document.getElementById('btn-import-json');
+                if(importBtn) importBtn.classList.remove('hidden');
             } else {
                 document.getElementById('nav-admin').classList.add('hidden');
+                const importBtn = document.getElementById('btn-import-json');
+                if(importBtn) importBtn.classList.add('hidden');
             }
 
             showDashboard();
@@ -1839,6 +1843,98 @@ document.getElementById('edit-exercise-form').addEventListener('submit', async (
         } else alert("Update failed");
     } catch(e) { alert("Update failed"); }
 });
+
+// --- Import JSON Logic ---
+
+let importedJsonPayload = null;
+
+function openImportJsonModal() {
+    document.getElementById('import-json-modal').classList.remove('hidden');
+    document.getElementById('import-json-text').value = '';
+    document.getElementById('import-preview').classList.add('hidden');
+    document.getElementById('btn-import-submit').classList.add('hidden');
+    importedJsonPayload = null;
+}
+
+function closeImportJsonModal() {
+    document.getElementById('import-json-modal').classList.add('hidden');
+}
+
+function handlePreviewJson() {
+    const text = document.getElementById('import-json-text').value;
+    const previewDiv = document.getElementById('import-preview');
+    const contentDiv = document.getElementById('import-preview-content');
+    const submitBtn = document.getElementById('btn-import-submit');
+
+    try {
+        const json = JSON.parse(text);
+
+        // Basic Validation
+        if (!json.variables) throw new Error("Missing 'variables' object.");
+
+        const keys = Object.keys(json.variables);
+        if (keys.length === 0) throw new Error("No items in 'variables'.");
+
+        const firstKey = keys[0];
+        const item = json.variables[firstKey];
+
+        if (!item.metadata || !item.macros) throw new Error("Missing metadata or macros in first variable.");
+
+        // Valid
+        importedJsonPayload = json;
+        previewDiv.classList.remove('hidden');
+        submitBtn.classList.remove('hidden');
+
+        // Render Summary
+        const meta = item.metadata;
+        const macros = item.macros;
+
+        contentDiv.innerHTML = `
+            <p><strong>Name:</strong> ${escapeHtml(meta.name)}</p>
+            <p><strong>Brand:</strong> ${escapeHtml(meta.brand)}</p>
+            <p><strong>UPC:</strong> ${escapeHtml(meta.upc)}</p>
+            <p><strong>Macros:</strong> ${macros.calories} kcal | P: ${macros.protein_g}g | F: ${macros.fat_g}g | C: ${macros.carbs_g}g</p>
+            <p><strong>Serving:</strong> ${escapeHtml(item.serving_info ? item.serving_info.size : 'N/A')}</p>
+        `;
+
+    } catch (e) {
+        alert("Invalid JSON: " + e.message);
+        previewDiv.classList.add('hidden');
+        submitBtn.classList.add('hidden');
+        importedJsonPayload = null;
+    }
+}
+
+async function handleImportJson() {
+    if (!importedJsonPayload) return;
+
+    // Force quantity to 0 to prevent logging
+    importedJsonPayload.quantity = 0.0;
+
+    try {
+        // API_URL is '/api/v1'. I need '/api/v2/nutrition/log'.
+        const v2Url = '/api/v2/nutrition/log';
+
+        const res = await fetchWithAuth(v2Url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(importedJsonPayload)
+        });
+
+        if (res.ok) {
+            alert("Food Imported / Updated Successfully!");
+            closeImportJsonModal();
+        } else {
+            const err = await res.json();
+            alert("Import Failed: " + (err.detail || "Unknown error"));
+        }
+
+    } catch (e) {
+        alert("Import Error: " + e.message);
+    }
+}
 
 // --- Manage Food Library ---
 
