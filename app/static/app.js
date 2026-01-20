@@ -2431,6 +2431,7 @@ async function loadRecipes() {
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <h3>${escapeHtml(r.name)}</h3>
                     <div>
+                        <button class="btn-secondary" onclick="printRecipe(${r.recipe_id})">Print</button>
                         <button class="btn-secondary" onclick="openRecipeModal(${safeR})">Edit</button>
                         <button class="btn-warning" onclick="deleteRecipe(${r.recipe_id})" style="background-color: #dc3545;">Delete</button>
                     </div>
@@ -2654,5 +2655,108 @@ async function handleSaveRecipe(e) {
         }
     } catch(e) {
         alert('Error saving recipe');
+    }
+}
+
+async function printRecipe(id) {
+    try {
+        // Fetch full recipe details (to ensure we have everything, though we might have it in list)
+        // But loadRecipes() list items usually have all data.
+        // Let's re-fetch to be safe and clean.
+        const res = await fetchWithAuth(`${API_URL}/recipes/${id}`);
+        if(!res.ok) throw new Error("Failed to load recipe");
+        const recipe = await res.json();
+        const food = recipe.current_food || {};
+
+        // Open window
+        const win = window.open('', '_blank', 'width=800,height=900');
+
+        // Render Nutrition Label (Static HTML generation similar to modal)
+        // We'll hardcode the styles for the label to ensure it prints well without dependencies
+        const labelHTML = `
+            <div style="border: 2px solid black; padding: 10px; font-family: Helvetica, Arial, sans-serif; max-width: 350px; margin: 20px 0;">
+                <h1 style="border-bottom: 10px solid black; margin: 0 0 5px 0; font-size: 2em; line-height: 1;">Nutrition Facts</h1>
+                <div style="font-size: 1.1em; font-weight: bold; border-bottom: 5px solid black; padding-bottom: 5px;">
+                    Serving Size ${food.serving_size_unit || '1 serving'}
+                </div>
+                <div style="border-bottom: 5px solid black; padding: 5px 0;">
+                    <div style="font-weight: bold; font-size: 0.8em;">Amount Per Serving</div>
+                    <div style="font-size: 2em; font-weight: 900; line-height: 1;">Calories <span style="float: right;">${Math.round(food.calories)}</span></div>
+                </div>
+                <div style="border-bottom: 1px solid black; padding: 3px 0;">
+                    <strong>Total Fat</strong> ${food.fat}g
+                </div>
+                <div style="border-bottom: 1px solid black; padding: 3px 0; padding-left: 20px;">
+                    Cholesterol ${food.cholesterol || 0}mg
+                </div>
+                <div style="border-bottom: 1px solid black; padding: 3px 0;">
+                    <strong>Sodium</strong> ${food.sodium || 0}mg
+                </div>
+                <div style="border-bottom: 1px solid black; padding: 3px 0;">
+                    <strong>Total Carbohydrate</strong> ${food.carbs}g
+                </div>
+                <div style="border-bottom: 1px solid black; padding: 3px 0; padding-left: 20px;">
+                    Dietary Fiber ${food.fiber}g
+                </div>
+                <div style="border-bottom: 1px solid black; padding: 3px 0; padding-left: 20px;">
+                    Total Sugars ${food.total_sugars || 0}g
+                </div>
+                <div style="border-bottom: 5px solid black; padding: 3px 0;">
+                    <strong>Protein</strong> ${food.protein}g
+                </div>
+            </div>
+        `;
+
+        // Ingredients Table
+        let ingTable = `<table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+            <thead><tr style="background: #eee;"><th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Ingredient</th><th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Quantity</th></tr></thead><tbody>`;
+        if (recipe.ingredients) {
+            recipe.ingredients.forEach(ing => {
+                ingTable += `<tr><td style="border: 1px solid #ddd; padding: 8px;">${ing.food.food_name}</td><td style="border: 1px solid #ddd; padding: 8px;">${ing.quantity}</td></tr>`;
+            });
+        }
+        ingTable += `</tbody></table>`;
+
+        // Page Content
+        const content = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Print Recipe - ${escapeHtml(recipe.name)}</title>
+                <style>
+                    body { font-family: sans-serif; padding: 40px; color: #333; }
+                    h1 { border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+                    .meta { margin-bottom: 20px; font-size: 1.1em; color: #555; }
+                    .section-title { margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 5px; color: var(--primary-color, #007bff); }
+                    .instructions { white-space: pre-wrap; line-height: 1.6; }
+                </style>
+            </head>
+            <body>
+                <h1>${escapeHtml(recipe.name)}</h1>
+                <div class="meta">
+                    <strong>Servings:</strong> ${recipe.total_servings} <br>
+                    <strong>Prep Time:</strong> ${recipe.prep_time_minutes || '--'} min | <strong>Cook Time:</strong> ${recipe.cook_time_minutes || '--'} min
+                </div>
+
+                ${labelHTML}
+
+                <h2 class="section-title">Ingredients</h2>
+                ${ingTable}
+
+                <h2 class="section-title">Instructions</h2>
+                <div class="instructions">${escapeHtml(recipe.instructions) || 'No instructions provided.'}</div>
+
+                <script>
+                    window.onload = function() { window.print(); }
+                </script>
+            </body>
+            </html>
+        `;
+
+        win.document.write(content);
+        win.document.close();
+
+    } catch(e) {
+        alert("Error printing recipe: " + e.message);
     }
 }
