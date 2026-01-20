@@ -345,3 +345,49 @@ class VaccinationResponse(VaccinationBase):
     status: Optional[str] = None # For report (Overdue, etc)
     next_due: Optional[date] = None
     model_config = ConfigDict(from_attributes=True)
+
+# Recipes
+
+class RecipeIngredientBase(BaseModel):
+    food_id: int
+    quantity: float
+
+class RecipeIngredientCreate(RecipeIngredientBase):
+    pass
+
+class RecipeIngredientResponse(RecipeIngredientBase):
+    ingredient_id: int
+    food: NutritionCacheResponse
+    model_config = ConfigDict(from_attributes=True)
+
+class RecipeBase(BaseModel):
+    name: str
+    instructions: Optional[str] = None
+    cook_time_minutes: Optional[int] = None
+    prep_time_minutes: Optional[int] = None
+    total_servings: float = 1.0
+
+class RecipeCreate(RecipeBase):
+    ingredients: List[RecipeIngredientCreate]
+    health_score: Optional[str] = None
+    health_insight: Optional[str] = None
+    pairing_tip: Optional[str] = None
+
+class RecipeUpdate(BaseModel):
+    name: Optional[str] = None
+    instructions: Optional[str] = None
+    cook_time_minutes: Optional[int] = None
+    prep_time_minutes: Optional[int] = None
+    total_servings: Optional[float] = None
+    ingredients: Optional[List[RecipeIngredientCreate]] = None
+    health_score: Optional[str] = None
+    health_insight: Optional[str] = None
+    pairing_tip: Optional[str] = None
+
+class RecipeResponse(RecipeBase):
+    recipe_id: int
+    user_id: int
+    current_food_id: int
+    current_food: NutritionCacheResponse
+    ingredients: List[RecipeIngredientResponse]
+    model_config = ConfigDict(from_attributes=True)
