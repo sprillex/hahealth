@@ -1849,6 +1849,53 @@
         }
       }
     },
+    "/api/v2/nutrition/lookup/{barcode}": {
+      "get": {
+        "tags": [
+          "nutrition_v2"
+        ],
+        "summary": "Lookup Food V2",
+        "operationId": "lookup_food_v2_api_v2_nutrition_lookup__barcode__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "barcode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Barcode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2FoodItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/nutrition/log": {
       "post": {
         "tags": [
