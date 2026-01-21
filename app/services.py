@@ -11,11 +11,11 @@ from datetime import timezone
 import zoneinfo
 
 class CustomNutritionService:
-    def get_product(self, barcode: str, db: Session):
-        cached = db.query(models.NutritionCache).filter(models.NutritionCache.barcode == barcode).first()
-        if cached:
-            return cached
-
+    def _fetch_remote_product(self, barcode: str) -> models.NutritionCache | None:
+        """
+        Fetches product data from external service and returns a detached NutritionCache model.
+        Does NOT save to database.
+        """
         base_url = os.getenv("CUSTOM_NUTRITION_URL", "http://localhost:8000")
         # Ensure base_url doesn't end with slash if we append /product/...
         if base_url.endswith("/"):
@@ -73,14 +73,24 @@ class CustomNutritionService:
                         source=resp_json.get("source", "MANUAL"),
                         is_user_visible=True
                     )
-
-                    db.add(new_cache)
-                    db.commit()
-                    db.refresh(new_cache)
                     return new_cache
         except requests.RequestException:
             # Handle connection errors gracefully
             return None
+
+        return None
+
+    def get_product(self, barcode: str, db: Session):
+        cached = db.query(models.NutritionCache).filter(models.NutritionCache.barcode == barcode).first()
+        if cached:
+            return cached
+
+        new_cache = self._fetch_remote_product(barcode)
+        if new_cache:
+            db.add(new_cache)
+            db.commit()
+            db.refresh(new_cache)
+            return new_cache
 
         return None
 

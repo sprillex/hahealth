@@ -187,6 +187,62 @@ def delete_food(
     return {"status": "success"}
 
 # V2 Implementation
+
+def _convert_to_v2_schema(food: models.NutritionCache) -> schemas.V2FoodItem:
+    return schemas.V2FoodItem(
+        metadata=schemas.V2Metadata(
+            name=food.food_name,
+            brand=food.brand,
+            upc=food.barcode,
+            srv_per_cont=None # Not stored in cache currently
+        ),
+        macros=schemas.V2Macros(
+            calories=food.calories,
+            protein_g=food.protein,
+            fat_g=food.fat,
+            carbs_g=food.carbs,
+            fiber_g=food.fiber,
+            sodium_mg=food.sodium,
+            cholesterol_mg=food.cholesterol,
+            total_sugars_g=food.total_sugars,
+            added_sugars_g=food.added_sugars
+        ),
+        micros=schemas.V2Micros(
+            vit_d_mcg=food.vitamin_d,
+            calcium_mg=food.calcium,
+            iron_mg=food.iron,
+            potassium_mg=food.potassium
+        ),
+        serving_info=schemas.V2ServingInfo(
+            size=food.serving_size_unit
+        ),
+        analysis=schemas.V2Analysis(
+            score_color=food.health_score,
+            health_insight=food.health_insight,
+            pairing_tip=food.pairing_tip
+        )
+    )
+
+@router_v2.get("/lookup/{barcode}", response_model=schemas.V2FoodItem)
+def lookup_food_v2(
+    barcode: str,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # 1. Check Local DB
+    cached = db.query(models.NutritionCache).filter(models.NutritionCache.barcode == barcode).first()
+    if cached:
+        return _convert_to_v2_schema(cached)
+
+    # 2. Fetch Remote (Do not save)
+    service = services.CustomNutritionService()
+    fetched = service._fetch_remote_product(barcode)
+
+    if fetched:
+        return _convert_to_v2_schema(fetched)
+
+    raise HTTPException(status_code=404, detail="Food not found")
+
 @router_v2.post("/log", response_model=schemas.FoodLogResponse)
 def log_food_v2(
     payload: schemas.NutritionLogV2,
