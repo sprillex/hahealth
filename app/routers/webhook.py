@@ -61,8 +61,8 @@ def get_nutrition_info(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(auth.verify_webhook_api_key)
 ):
-    off_service = services.OpenFoodFactsService()
-    product = off_service.get_product(barcode, db)
+    service = services.CustomNutritionService()
+    product = service.get_product(barcode, db)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
