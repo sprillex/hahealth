@@ -1,6 +1,7 @@
 import requests
 import os
 import shutil
+from typing import Optional, List
 from sqlalchemy.orm import Session
 from app import models, schemas, database
 from datetime import datetime, date, timedelta, time
@@ -80,8 +81,47 @@ class CustomNutritionService:
 
         return None
 
-    def get_product(self, barcode: str, db: Session):
+    def find_in_cache(self, db: Session, barcode: str) -> Optional[models.NutritionCache]:
+        """
+        Attempts to find a product in the local cache using fuzzy matching on the barcode.
+        Strategies:
+        1. Exact match.
+        2. Leading zero variations (up to 14 digits).
+        """
+        # 1. Exact Match
         cached = db.query(models.NutritionCache).filter(models.NutritionCache.barcode == barcode).first()
+        if cached:
+            return cached
+
+        # 2. Fuzzy Match (Leading Zeros)
+        # Only proceed if barcode looks numeric
+        if not barcode.isdigit():
+            return None
+
+        # Strip leading zeros to get base
+        base_barcode = barcode.lstrip('0')
+        if not base_barcode: # Was all zeros
+             base_barcode = "0"
+
+        # Generate candidates (up to 14 digits, standard GTIN length)
+        candidates = set()
+        # We start from len(base_barcode) up to 14
+        # If base is "123", we try "123", "0123", ... "00...0123"
+        for i in range(len(base_barcode), 15):
+             candidate = base_barcode.zfill(i)
+             if candidate != barcode: # Avoid re-checking the exact input if possible
+                 candidates.add(candidate)
+
+        if not candidates:
+            return None
+
+        # Query for any of the candidates
+        # Note: We pick the first one found. Ambiguity handling: First found wins.
+        fuzzy_match = db.query(models.NutritionCache).filter(models.NutritionCache.barcode.in_(candidates)).first()
+        return fuzzy_match
+
+    def get_product(self, barcode: str, db: Session):
+        cached = self.find_in_cache(db, barcode)
         if cached:
             return cached
 

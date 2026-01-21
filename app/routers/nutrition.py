@@ -22,7 +22,8 @@ def create_custom_food(
 ):
     # Check if exists (by barcode if provided, or name)
     if food.barcode:
-        exists = db.query(models.NutritionCache).filter(models.NutritionCache.barcode == food.barcode).first()
+        service = services.CustomNutritionService()
+        exists = service.find_in_cache(db, food.barcode)
         if exists:
             raise HTTPException(status_code=400, detail="Barcode already exists")
 
@@ -230,12 +231,12 @@ def lookup_food_v2(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     # 1. Check Local DB
-    cached = db.query(models.NutritionCache).filter(models.NutritionCache.barcode == barcode).first()
+    service = services.CustomNutritionService()
+    cached = service.find_in_cache(db, barcode)
     if cached:
         return _convert_to_v2_schema(cached)
 
     # 2. Fetch Remote (Do not save)
-    service = services.CustomNutritionService()
     fetched = service._fetch_remote_product(barcode)
 
     if fetched:
@@ -264,7 +265,8 @@ def log_food_v2(
     # Try UPC
     food_item = None
     if food_data.metadata.upc:
-        food_item = db.query(models.NutritionCache).filter(models.NutritionCache.barcode == food_data.metadata.upc).first()
+        service = services.CustomNutritionService()
+        food_item = service.find_in_cache(db, food_data.metadata.upc)
 
     # Try Name
     if not food_item:
