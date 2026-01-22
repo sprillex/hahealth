@@ -1903,15 +1903,32 @@
         ],
         "summary": "Log Food V2",
         "operationId": "log_food_v2_api_v2_nutrition_log_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "check_existence",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Check Existence"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/NutritionLogV2"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1934,12 +1951,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/medical/allergies": {
