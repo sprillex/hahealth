@@ -137,6 +137,13 @@ button:hover {
     position: relative;
     max-height: 90vh;
     overflow-y: auto;
+    /* Ensure no fixed min-widths break mobile */
+    min-width: auto !important;
+}
+
+/* Wide Modal Variant (for Import/Recipe) */
+.modal-content.wide {
+    max-width: 800px;
 }
 
 .close {
