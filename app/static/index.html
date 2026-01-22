@@ -6,6 +6,7 @@
     <title>Health Tracker</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/gauge.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
     <style>
         .summary-card {
             background: linear-gradient(135deg, var(--primary-color), #2980b9);
@@ -304,19 +305,21 @@
                     <!-- Recent Exercises Section -->
                     <div class="card" style="margin-top: 20px;">
                         <h3>Recent Exercises</h3>
-                        <table id="exercise-history-table" style="width: 100%; text-align: left;">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Activity</th>
-                                    <th>Duration</th>
-                                    <th>Calories</th>
-                                </tr>
-                            </thead>
-                            <tbody id="exercise-history-body">
-                                <tr><td colspan="4">Loading...</td></tr>
-                            </tbody>
-                        </table>
+                        <div class="table-responsive">
+                            <table id="exercise-history-table" style="width: 100%; text-align: left;">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Activity</th>
+                                        <th>Duration</th>
+                                        <th>Calories</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="exercise-history-body">
+                                    <tr><td colspan="4">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div class="card" style="margin-top: 20px;">
@@ -376,19 +379,21 @@
 
                     <div class="card" style="margin-top: 20px;">
                         <h3>Medication Breakdown</h3>
-                        <table id="med-breakdown-table" style="width: 100%; text-align: left; margin-top: 10px;">
-                            <thead>
-                                <tr>
-                                    <th>Medication</th>
-                                    <th>Schedule</th>
-                                    <th>Taken / Exp</th>
-                                    <th>Compliance</th>
-                                </tr>
-                            </thead>
-                            <tbody id="med-breakdown-body">
-                                <tr><td colspan="3">Loading...</td></tr>
-                            </tbody>
-                        </table>
+                        <div class="table-responsive">
+                            <table id="med-breakdown-table" style="width: 100%; text-align: left; margin-top: 10px;">
+                                <thead>
+                                    <tr>
+                                        <th>Medication</th>
+                                        <th>Schedule</th>
+                                        <th>Taken / Exp</th>
+                                        <th>Compliance</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="med-breakdown-body">
+                                    <tr><td colspan="3">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div class="card" style="margin-top: 20px;">
@@ -399,19 +404,21 @@
                                 <button class="btn-secondary" onclick="downloadBPCSV()">Download CSV</button>
                             </div>
                         </div>
-                        <table id="bp-history-table" style="width: 100%; text-align: left; margin-top: 10px;">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>BP</th>
-                                    <th>Pulse</th>
-                                    <th>Context</th>
-                                </tr>
-                            </thead>
-                            <tbody id="bp-history-body">
-                                <tr><td colspan="4">Loading...</td></tr>
-                            </tbody>
-                        </table>
+                        <div class="table-responsive">
+                            <table id="bp-history-table" style="width: 100%; text-align: left; margin-top: 10px;">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>BP</th>
+                                        <th>Pulse</th>
+                                        <th>Context</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bp-history-body">
+                                    <tr><td colspan="4">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -595,12 +602,57 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Bottom Navigation (Mobile) -->
+            <nav id="bottom-nav" class="bottom-nav hidden">
+                <button class="nav-item" onclick="showTab('dashboard')" id="nav-btn-dashboard">
+                    <span class="material-symbols-outlined">home</span>
+                    <span class="nav-label">Home</span>
+                </button>
+                <button class="nav-item" onclick="showTab('nutrition')" id="nav-btn-nutrition">
+                    <span class="material-symbols-outlined">restaurant</span>
+                    <span class="nav-label">Food</span>
+                </button>
+                <button class="nav-item" onclick="showTab('health-logs')" id="nav-btn-health-logs">
+                    <span class="material-symbols-outlined">vital_signs</span>
+                    <span class="nav-label">Logs</span>
+                </button>
+                <button class="nav-item" onclick="showTab('medications')" id="nav-btn-medications">
+                    <span class="material-symbols-outlined">pill</span>
+                    <span class="nav-label">Meds</span>
+                </button>
+                <button class="nav-item" onclick="toggleMobileMenu()">
+                    <span class="material-symbols-outlined">menu</span>
+                    <span class="nav-label">Menu</span>
+                </button>
+            </nav>
+
+            <!-- Mobile Menu Overlay -->
+            <div id="mobile-menu-overlay" class="hidden" onclick="toggleMobileMenu()">
+                <div class="mobile-menu-content" onclick="event.stopPropagation()">
+                    <h3>Menu</h3>
+                    <button class="menu-item" onclick="mobileMenuGo('reports')">
+                        <span class="material-symbols-outlined">bar_chart</span> Reports
+                    </button>
+                    <button class="menu-item" onclick="mobileMenuGo('settings')">
+                        <span class="material-symbols-outlined">settings</span> Settings
+                    </button>
+                    <button class="menu-item hidden" id="mobile-nav-admin" onclick="mobileMenuGo('admin')">
+                        <span class="material-symbols-outlined">admin_panel_settings</span> Admin
+                    </button>
+                    <hr>
+                    <button class="menu-item logout-btn" onclick="logout()">
+                        <span class="material-symbols-outlined">logout</span> Logout
+                    </button>
+                    <button class="btn-secondary" onclick="toggleMobileMenu()" style="margin-top: 20px;">Close</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Recipe Modal -->
     <div id="recipe-modal" class="modal hidden">
-        <div class="modal-content" style="min-width: 600px;">
+        <div class="modal-content wide">
             <span class="close" onclick="closeRecipeModal()">&times;</span>
             <h2 id="recipe-modal-title">Create Recipe</h2>
             <form id="recipe-form">
@@ -643,19 +695,21 @@
                     <div id="recipe-ing-results" class="search-results hidden" style="position: relative;"></div>
                 </div>
 
-                <table style="width: 100%; text-align: left;" id="recipe-ing-table">
-                    <thead>
-                        <tr>
-                            <th>Ingredient</th>
-                            <th>Qty</th>
-                            <th>Cals</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="recipe-ing-body">
-                        <!-- Rows -->
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table style="width: 100%; text-align: left;" id="recipe-ing-table">
+                        <thead>
+                            <tr>
+                                <th>Ingredient</th>
+                                <th>Qty</th>
+                                <th>Cals</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recipe-ing-body">
+                            <!-- Rows -->
+                        </tbody>
+                    </table>
+                </div>
 
                 <div style="text-align: right; margin-top: 5px; font-weight: bold;">
                     Total Calories: <span id="recipe-total-cals">0</span> | Per Serving: <span id="recipe-serving-cals">0</span>
@@ -1129,7 +1183,7 @@
     </div>
 
     <div id="import-json-modal" class="modal hidden">
-        <div class="modal-content" style="min-width: 600px;">
+        <div class="modal-content wide">
             <span class="close" onclick="closeImportJsonModal()">&times;</span>
             <h2>Import Food JSON</h2>
             <p>Paste the JSON payload below. Quantity will be forced to 0 (Library Update Only).</p>
