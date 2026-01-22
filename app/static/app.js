@@ -313,7 +313,8 @@ function changeDate(offset) {
 }
 
 function updateDateDisplay() {
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    // Abbreviated format (e.g., "Mon, Jan 1, 2024") for better mobile fit
+    const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
     document.getElementById('current-date-display').innerText = currentDashboardDate.toLocaleDateString(undefined, options);
 
     // Check if today

@@ -407,6 +407,20 @@ body.dark-theme .status-warning { color: #ef4444; } /* Lighter Red */
         padding-bottom: 80px; /* 60px nav + 20px padding */
     }
 
+    /* Stack Header Actions (Title top, Controls bottom) */
+    .header-actions {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        text-align: center;
+    }
+
+    .header-actions h2, .header-actions h3 {
+        margin-bottom: 5px;
+        width: 100%;
+        text-align: center;
+    }
+
     /* Adjust Grids */
     .grid-list {
         grid-template-columns: 1fr; /* Single column on mobile */
