@@ -219,10 +219,16 @@ async function checkAuth() {
 
             if (user.is_admin) {
                 document.getElementById('nav-admin').classList.remove('hidden');
+                const mobileAdmin = document.getElementById('mobile-nav-admin');
+                if (mobileAdmin) mobileAdmin.classList.remove('hidden');
+
                 const importBtn = document.getElementById('btn-import-json');
                 if(importBtn) importBtn.classList.remove('hidden');
             } else {
                 document.getElementById('nav-admin').classList.add('hidden');
+                const mobileAdmin = document.getElementById('mobile-nav-admin');
+                if (mobileAdmin) mobileAdmin.classList.add('hidden');
+
                 const importBtn = document.getElementById('btn-import-json');
                 if(importBtn) importBtn.classList.add('hidden');
             }
@@ -262,6 +268,11 @@ function showDashboard() {
 function showTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
     document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+    // Update Bottom Nav Active State
+    document.querySelectorAll('.bottom-nav .nav-item').forEach(btn => btn.classList.remove('active'));
+    const navBtn = document.getElementById(`nav-btn-${tabName}`);
+    if(navBtn) navBtn.classList.add('active');
 
     if (tabName === 'dashboard') {
         updateDateDisplay();
@@ -2796,4 +2807,16 @@ async function printRecipe(id) {
     } catch(e) {
         alert("Error printing recipe: " + e.message);
     }
+}
+
+// --- Mobile Menu ---
+
+function toggleMobileMenu() {
+    const overlay = document.getElementById('mobile-menu-overlay');
+    overlay.classList.toggle('hidden');
+}
+
+function mobileMenuGo(tab) {
+    toggleMobileMenu();
+    showTab(tab);
 }
