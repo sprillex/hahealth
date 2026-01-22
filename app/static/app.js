@@ -358,8 +358,8 @@ function renderTodayLists(data) {
 
     if (data.food_logs && data.food_logs.length > 0) {
         foodList.innerHTML = '<ul>' + data.food_logs.map(f => {
-            const unitStr = f.unit ? ` ${f.unit}` : '';
-            return `<li>${f.name} - ${f.quantity}${unitStr} (${Math.round(f.calories)} kcal)</li>`;
+            const unit = f.unit || 'serving';
+            return `<li>${f.quantity} Servings of ${unit} ${f.name} - (${Math.round(f.calories)} kcal)</li>`;
         }).join('') + '</ul>';
     } else {
         foodList.innerHTML = '<em>No food logged.</em>';
