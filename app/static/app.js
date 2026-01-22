@@ -357,7 +357,10 @@ function renderTodayLists(data) {
     }
 
     if (data.food_logs && data.food_logs.length > 0) {
-        foodList.innerHTML = '<ul>' + data.food_logs.map(f => `<li>${f.name} (${Math.round(f.calories)} kcal)</li>`).join('') + '</ul>';
+        foodList.innerHTML = '<ul>' + data.food_logs.map(f => {
+            const unitStr = f.unit ? ` ${f.unit}` : '';
+            return `<li>${f.name} - ${f.quantity} x ${f.serving_size}${unitStr} (${Math.round(f.calories)} kcal)</li>`;
+        }).join('') + '</ul>';
     } else {
         foodList.innerHTML = '<em>No food logged.</em>';
     }
@@ -2067,6 +2070,22 @@ async function handleImportJson() {
         // API_URL is '/api/v1'. I need '/api/v2/nutrition/log'.
         const v2Url = '/api/v2/nutrition/log';
 
+        // 1. Check for existence
+        const checkRes = await fetchWithAuth(`${v2Url}?check_existence=true`, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify(importedJsonPayload)
+        });
+
+        if (checkRes.status === 409) {
+             const data = await checkRes.json();
+             const name = data.food_name || "This food";
+             if (!confirm(`${name} already exists. Update it?`)) {
+                 return;
+             }
+        }
+
+        // 2. Execute (Create or Update)
         const res = await fetchWithAuth(v2Url, {
             method: 'POST',
             headers: {

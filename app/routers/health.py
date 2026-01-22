@@ -154,6 +154,7 @@ def get_daily_summary(
             "meal": log.meal_id,
             "serving_size": log.serving_size,
             "quantity": log.quantity,
+            "unit": log.nutrition_info.serving_size_unit,
             "timestamp": ts
         })
 

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app import database, models, schemas, auth, services
@@ -247,6 +248,7 @@ def lookup_food_v2(
 @router_v2.post("/log", response_model=schemas.FoodLogResponse)
 def log_food_v2(
     payload: schemas.NutritionLogV2,
+    check_existence: bool = False,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -271,6 +273,12 @@ def log_food_v2(
     # Try Name
     if not food_item:
         food_item = db.query(models.NutritionCache).filter(models.NutritionCache.food_name == final_name).first()
+
+    if check_existence:
+        if food_item:
+            return JSONResponse(status_code=409, content={"detail": "Food already exists", "food_name": food_item.food_name})
+        else:
+            return JSONResponse(status_code=200, content={"detail": "Food available"})
 
     # 3. Prepare Attributes
     def sf(val): return val if val is not None else 0.0
