@@ -704,6 +704,7 @@ async function handleSearchFood(query) {
     if (!query || query.length < 2) {
         resultsDiv.classList.add('hidden');
         selectedFoodItem = null;
+        document.getElementById('log-unit-display').innerText = '1';
         return;
     }
 
@@ -739,6 +740,7 @@ function selectFood(food) {
     document.getElementById('food-search-input').value = food.food_name;
     document.getElementById('selected-food-name').value = food.food_name;
     document.getElementById('selected-food-barcode').value = food.barcode || '';
+    document.getElementById('log-unit-display').innerText = food.serving_size_unit || '1';
     document.getElementById('food-search-results').classList.add('hidden');
 }
 
@@ -846,7 +848,6 @@ function openPreviewModal(food, formData) {
     document.getElementById('preview-tip').innerText = food.pairing_tip || '--';
 
     // Inputs
-    document.getElementById('preview-serving-size').value = formData.serving_size || 1;
     document.getElementById('preview-quantity').value = formData.quantity || 1;
 
     // Store meal_id for confirmation
@@ -862,7 +863,7 @@ function closePreviewModal() {
 function updatePreviewTotals() {
     if (!selectedFoodItem) return;
 
-    const s = parseFloat(document.getElementById('preview-serving-size').value) || 0;
+    const s = 1.0;
     const q = parseFloat(document.getElementById('preview-quantity').value) || 0;
     const m = s * q;
 
@@ -910,7 +911,7 @@ function getScoreColor(score) {
 async function confirmLogFood() {
     if (!selectedFoodItem) return;
 
-    const s = parseFloat(document.getElementById('preview-serving-size').value);
+    const s = 1.0;
     const q = parseFloat(document.getElementById('preview-quantity').value);
     const mealId = document.getElementById('food-preview-modal').dataset.mealId;
 
@@ -2352,8 +2353,14 @@ function editFoodLog(log) {
     const container = document.getElementById('edit-food-form-container');
     container.classList.remove('hidden');
     document.getElementById('edit_food_log_id').value = log.log_id;
-    document.getElementById('edit_food_quantity').value = log.quantity;
-    document.getElementById('edit_food_serving').value = log.serving_size;
+    // Calculate effective quantity (Total Servings)
+    const effectiveQty = (log.quantity || 0) * (log.serving_size || 1);
+    document.getElementById('edit_food_quantity').value = effectiveQty;
+    // Display unit if available
+    const unitEl = document.getElementById('edit_food_unit_display');
+    if (log.unit) unitEl.innerText = `(${log.unit})`;
+    else unitEl.innerText = '(1)';
+
     document.getElementById('edit_food_meal').value = log.meal;
 
     // Timestamp handling (Same issue as exercise, need to patch backend)
@@ -2378,7 +2385,7 @@ document.getElementById('edit-food-form').addEventListener('submit', async (e) =
     const updates = {
         timestamp: isoStr,
         quantity: parseFloat(document.getElementById('edit_food_quantity').value),
-        serving_size: parseFloat(document.getElementById('edit_food_serving').value),
+        serving_size: 1.0,
         meal_id: document.getElementById('edit_food_meal').value
     };
 
@@ -2408,6 +2415,7 @@ function handleScopeChange(val) {
         input.placeholder = "Type to search foods...";
     }
     document.getElementById('food-search-results').classList.add('hidden');
+    document.getElementById('log-unit-display').innerText = '1';
     input.value = '';
 }
 
