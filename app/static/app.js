@@ -357,7 +357,10 @@ function renderTodayLists(data) {
     }
 
     if (data.food_logs && data.food_logs.length > 0) {
-        foodList.innerHTML = '<ul>' + data.food_logs.map(f => `<li>${f.name} (${Math.round(f.calories)} kcal)</li>`).join('') + '</ul>';
+        foodList.innerHTML = '<ul>' + data.food_logs.map(f => {
+            const unitStr = f.unit ? ` ${f.unit}` : '';
+            return `<li>${f.name} - ${f.quantity} x ${f.serving_size}${unitStr} (${Math.round(f.calories)} kcal)</li>`;
+        }).join('') + '</ul>';
     } else {
         foodList.innerHTML = '<em>No food logged.</em>';
     }
