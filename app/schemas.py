@@ -357,6 +357,7 @@ class VaccinationResponse(VaccinationBase):
 class RecipeIngredientBase(BaseModel):
     food_id: int
     quantity: float
+    unit: Optional[str] = "serving"
 
 class RecipeIngredientCreate(RecipeIngredientBase):
     pass

@@ -1223,6 +1223,27 @@
         </div>
     </div>
 
+    <div id="unit-selection-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 300px;">
+            <span class="close" onclick="closeUnitSelector()">&times;</span>
+            <h2>Select Unit</h2>
+            <div id="unit-selection-list" class="grid-list" style="grid-template-columns: 1fr; gap: 10px;">
+                <button class="btn-secondary" onclick="selectUnit('serving')">Serving (Default)</button>
+                <button class="btn-secondary" onclick="selectUnit('tsp')">tsp</button>
+                <button class="btn-secondary" onclick="selectUnit('tbsp')">tbsp</button>
+                <button class="btn-secondary" onclick="selectUnit('cup')">cup</button>
+                <button class="btn-secondary" onclick="selectUnit('fl oz')">fl oz</button>
+                <button class="btn-secondary" onclick="selectUnit('pint')">pint</button>
+                <button class="btn-secondary" onclick="selectUnit('quart')">quart</button>
+                <button class="btn-secondary" onclick="selectUnit('gallon')">gallon</button>
+                <button class="btn-secondary" onclick="selectUnit('ml')">ml</button>
+            </div>
+            <div class="form-actions" style="margin-top: 15px;">
+                 <button type="button" onclick="closeUnitSelector()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <footer style="text-align: center; margin-top: 20px; color: #666; font-size: 0.8em; padding: 10px;">
         <span id="app-version">Loading version...</span>
     </footer>

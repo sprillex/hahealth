@@ -266,6 +266,7 @@ class RecipeIngredient(Base):
     food_id = Column(Integer, ForeignKey("nutrition_cache.food_id"))
 
     quantity = Column(Float)
+    unit = Column(String, default="serving")
 
     recipe = relationship("Recipe", back_populates="ingredients")
     food = relationship("NutritionCache")

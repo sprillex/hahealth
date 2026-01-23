@@ -132,7 +132,7 @@ def test_webhook_get_nutrition(client, session):
         def json(self):
             return self._json
 
-    def mock_get(url):
+    def mock_get(url, *args, **kwargs):
         if "123456" in url:
              return MockResponse(200, {"status": 1, "product": {"product_name": "Test Food"}})
         return MockResponse(404, {})
