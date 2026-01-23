@@ -1,31 +1,25 @@
-INFO:     Started server process [7134]
+INFO:     Started server process [9306]
 INFO:     Waiting for application startup.
 INFO:app.mqtt:Connecting to MQTT Broker at localhost:1883
 ERROR:app.mqtt:Failed to connect to MQTT broker: [Errno 111] Connection refused
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:50900 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50900 - "GET /static/style.css HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50914 - "GET /static/gauge.css HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50900 - "GET /static/app.js?v=1.5.1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50900 - "GET /api/v1/version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33630 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33630 - "GET /static/style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33636 - "GET /static/gauge.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33642 - "GET /static/app.js?v=1.5.1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33642 - "GET /api/v1/version HTTP/1.1" 200 OK
 INFO:app.routers.auth:Login attempt for user: verify_user
 INFO:app.routers.auth:Login successful for user: verify_user
-INFO:     127.0.0.1:50900 - "POST /auth/token HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50900 - "GET /api/v1/users/me HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50914 - "GET /api/v1/medications/log?date_str=2026-01-23 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50900 - "GET /api/v1/log/summary?date_str=2026-01-23 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50914 - "GET /api/v1/log/summary?date_str=2026-01-23 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50914 - "GET /api/v1/medical/allergies HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50900 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50914 - "PUT /api/v1/users/me HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50900 - "GET /api/v1/users/me HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50914 - "GET /api/v1/version HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50900 - "GET /api/v1/medications/log?date_str=2026-01-23 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50914 - "GET /api/v1/log/summary?date_str=2026-01-23 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50900 - "GET /api/v1/log/summary?date_str=2026-01-23 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50900 - "GET /api/v1/medical/allergies HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33642 - "POST /auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33642 - "GET /api/v1/users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33636 - "GET /api/v1/medications/log?date_str=2026-01-23 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33642 - "GET /api/v1/log/summary?date_str=2026-01-23 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33636 - "GET /api/v1/log/summary?date_str=2026-01-23 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33636 - "GET /api/v1/medications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33642 - "GET /api/v1/medications/log?date_str=2026-01-23 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33636 - "GET /api/v1/log/summary?date_str=2026-01-23 HTTP/1.1" 200 OK
 INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
-INFO:     Finished server process [7134]
+INFO:     Finished server process [9306]
