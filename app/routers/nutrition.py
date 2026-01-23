@@ -218,7 +218,9 @@ def _convert_to_v2_schema(food: models.NutritionCache) -> schemas.V2FoodItem:
             potassium_mg=food.potassium
         ),
         serving_info=schemas.V2ServingInfo(
-            size=food.serving_size_unit
+            size=food.serving_size_unit,
+            weight_grams=food.serving_weight_grams,
+            volume_ml=food.serving_volume_ml
         ),
         analysis=schemas.V2Analysis(
             score_color=food.health_score,
@@ -290,6 +292,8 @@ def log_food_v2(
         "barcode": food_data.metadata.upc,
         "brand": food_data.metadata.brand,
         "serving_size_unit": food_data.serving_info.size if food_data.serving_info else None,
+        "serving_weight_grams": food_data.serving_info.weight_grams if food_data.serving_info else None,
+        "serving_volume_ml": food_data.serving_info.volume_ml if food_data.serving_info else None,
 
         # Base Macros
         "calories": sf(food_data.macros.calories),

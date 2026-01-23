@@ -303,6 +303,8 @@ class V2Micros(BaseModel):
 
 class V2ServingInfo(BaseModel):
     size: Optional[str] = None
+    weight_grams: Optional[float] = None
+    volume_ml: Optional[float] = None
 
 class V2Analysis(BaseModel):
     score_color: Optional[str] = None
