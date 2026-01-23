@@ -687,6 +687,12 @@ async function handleCreateFood(e) {
         data[k] = parseFloat(data[k]) || 0;
     });
 
+    // Parse new fields (allow null)
+    ['serving_weight_grams', 'serving_volume_ml'].forEach(k => {
+        const v = parseFloat(data[k]);
+        data[k] = isNaN(v) ? null : v;
+    });
+
     data.source = 'MANUAL';
     if (!data.barcode) delete data.barcode; // Send null or undefined if empty
 
@@ -2056,13 +2062,15 @@ function handlePreviewJson() {
         // Render Summary
         const meta = item.metadata;
         const macros = item.macros;
+        const srv = item.serving_info || {};
 
         contentDiv.innerHTML = `
             <p><strong>Name:</strong> ${escapeHtml(meta.name)}</p>
             <p><strong>Brand:</strong> ${escapeHtml(meta.brand)}</p>
             <p><strong>UPC:</strong> ${escapeHtml(meta.upc)}</p>
             <p><strong>Macros:</strong> ${macros.calories} kcal | P: ${macros.protein_g}g | F: ${macros.fat_g}g | C: ${macros.carbs_g}g</p>
-            <p><strong>Serving:</strong> ${escapeHtml(item.serving_info ? item.serving_info.size : 'N/A')}</p>
+            <p><strong>Serving:</strong> ${escapeHtml(srv.size || 'N/A')}</p>
+            <p><strong>Density:</strong> ${srv.weight_g || '-'}g / ${srv.volume_ml || '-'}ml</p>
         `;
 
     } catch (e) {
@@ -2209,6 +2217,8 @@ function editLibraryFood(food) {
     // Extended
     document.getElementById('edit_lib_brand').value = food.brand || '';
     document.getElementById('edit_lib_serving_unit').value = food.serving_size_unit || '';
+    document.getElementById('edit_lib_weight_g').value = food.serving_weight_grams || '';
+    document.getElementById('edit_lib_volume_ml').value = food.serving_volume_ml || '';
     document.getElementById('edit_lib_cholesterol').value = food.cholesterol || 0;
     document.getElementById('edit_lib_total_sugars').value = food.total_sugars || 0;
     document.getElementById('edit_lib_added_sugars').value = food.added_sugars || 0;
@@ -2239,6 +2249,8 @@ document.getElementById('edit-library-form').addEventListener('submit', async (e
         // Extended
         brand: document.getElementById('edit_lib_brand').value || null,
         serving_size_unit: document.getElementById('edit_lib_serving_unit').value || null,
+        serving_weight_grams: parseFloat(document.getElementById('edit_lib_weight_g').value) || null,
+        serving_volume_ml: parseFloat(document.getElementById('edit_lib_volume_ml').value) || null,
         cholesterol: parseFloat(document.getElementById('edit_lib_cholesterol').value) || 0,
         total_sugars: parseFloat(document.getElementById('edit_lib_total_sugars').value) || 0,
         added_sugars: parseFloat(document.getElementById('edit_lib_added_sugars').value) || 0,

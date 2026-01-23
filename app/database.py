@@ -23,6 +23,8 @@ def migrate_nutrition_table():
         new_columns = {
             "brand": "VARCHAR",
             "serving_size_unit": "VARCHAR",
+            "serving_weight_grams": "FLOAT",
+            "serving_volume_ml": "FLOAT",
             "cholesterol": "FLOAT DEFAULT 0.0",
             "total_sugars": "FLOAT DEFAULT 0.0",
             "added_sugars": "FLOAT DEFAULT 0.0",
