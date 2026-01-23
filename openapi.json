@@ -3420,6 +3420,28 @@
             ],
             "title": "Serving Size Unit"
           },
+          "serving_weight_grams": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Weight Grams"
+          },
+          "serving_volume_ml": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Volume Ml"
+          },
           "cholesterol": {
             "anyOf": [
               {
@@ -3612,6 +3634,28 @@
               }
             ],
             "title": "Serving Size Unit"
+          },
+          "serving_weight_grams": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Weight Grams"
+          },
+          "serving_volume_ml": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Volume Ml"
           },
           "cholesterol": {
             "anyOf": [
@@ -3875,6 +3919,28 @@
               }
             ],
             "title": "Serving Size Unit"
+          },
+          "serving_weight_grams": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Weight Grams"
+          },
+          "serving_volume_ml": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Volume Ml"
           },
           "cholesterol": {
             "anyOf": [
@@ -5177,6 +5243,28 @@
               }
             ],
             "title": "Size"
+          },
+          "weight_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight G"
+          },
+          "volume_ml": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume Ml"
           }
         },
         "type": "object",
