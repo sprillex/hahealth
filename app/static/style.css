@@ -343,6 +343,37 @@ body.dark-theme .status-warning { color: #ef4444; } /* Lighter Red */
     opacity: 1;
 }
 
+/* Sticky Footer for Preview Modal on Mobile */
+@media (max-width: 768px) {
+    #food-preview-modal .modal-content {
+        display: flex;
+        flex-direction: column;
+        max-height: 90vh;
+        padding-bottom: 0; /* Remove padding bottom as footer handles spacing */
+    }
+
+    #food-preview-modal .preview-scroll-area {
+        overflow-y: auto;
+        flex: 1;
+        margin-bottom: 60px; /* Space for fixed footer */
+    }
+
+    #food-preview-modal .form-actions.mobile-sticky {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background-color: var(--card-bg);
+        border-top: 1px solid var(--border-color);
+        padding: 10px;
+        box-sizing: border-box;
+        display: flex;
+        gap: 10px;
+        z-index: 10;
+        border-radius: 0 0 8px 8px;
+    }
+}
+
 /* --- Responsive & Mobile --- */
 
 .table-responsive {

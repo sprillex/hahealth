@@ -990,87 +990,92 @@
                 <h2 style="margin-top: 0;">Confirm Food Log</h2>
             </div>
 
-            <div id="preview-header" style="margin-bottom: 20px;">
-                <h3 id="preview-food-name" style="margin: 0;">Food Name</h3>
-                <small id="preview-brand" style="color: #666;">Brand</small>
+            <div class="preview-scroll-area">
+                <div id="preview-header" style="margin-bottom: 20px;">
+                    <h3 id="preview-food-name" style="margin: 0;">Food Name</h3>
+                    <small id="preview-brand" style="color: #666;">Brand</small>
+                </div>
+
+                <div class="preview-info-box">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                         <div>
+                             <strong>Unit:</strong> <span id="preview-unit">N/A</span>
+                         </div>
+                         <div style="display: flex; align-items: center;">
+                             <strong>Score:</strong>
+                             <span id="preview-score-dot" class="health-score-dot" style="margin-left: 5px;"></span>
+                         </div>
+                    </div>
+                    <div id="preview-insight-container" style="margin-bottom: 5px; font-size: 0.9em;">
+                        <strong>Insight:</strong> <span id="preview-insight">--</span>
+                    </div>
+                    <div id="preview-tip-container" style="font-size: 0.9em;">
+                        <strong>Tip:</strong> <span id="preview-tip">--</span>
+                    </div>
+                </div>
+
+                <div style="background-color: var(--bg-color); padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label>Quantity</label>
+                        <input type="number" id="preview-quantity" step="0.1" value="1" oninput="updatePreviewTotals()">
+                    </div>
+                </div>
+
+                <!-- Duplicate Action Button for Mobile Convenience -->
+                <button type="button" class="btn-primary" onclick="confirmLogFood()" style="width: 100%; margin-bottom: 15px;">Confirm Log</button>
+
+                <div class="nutrition-label">
+                    <div class="nutrition-title">Nutrition Facts</div>
+                    <div class="nutrition-row header">
+                        <span>Amount Per Selection</span>
+                    </div>
+                    <div class="nutrition-row thick-border">
+                        <strong>Calories</strong>
+                        <strong style="font-size: 1.5em;" id="preview-cal">0</strong>
+                    </div>
+                    <div class="nutrition-row">
+                        <strong>Total Fat</strong>
+                        <span id="preview-fat">0g</span>
+                    </div>
+                    <div class="nutrition-row nutrition-sub-row">
+                         <span>Cholesterol</span>
+                         <span id="preview-chol">0mg</span>
+                    </div>
+                    <div class="nutrition-row">
+                        <strong>Sodium</strong>
+                        <span id="preview-sod">0mg</span>
+                    </div>
+                    <div class="nutrition-row">
+                        <strong>Total Carbohydrate</strong>
+                        <span id="preview-carb">0g</span>
+                    </div>
+                    <div class="nutrition-row nutrition-sub-row">
+                         <span>Dietary Fiber</span>
+                         <span id="preview-fib">0g</span>
+                    </div>
+                    <div class="nutrition-row nutrition-sub-row">
+                         <span>Total Sugars</span>
+                         <span id="preview-sugar">0g</span>
+                    </div>
+                    <div class="nutrition-row nutrition-sub-row">
+                         <span>(Incl. <span id="preview-added-sugar">0</span>g Added Sugars)</span>
+                    </div>
+                    <div class="nutrition-row thick-border">
+                        <strong>Protein</strong>
+                        <span id="preview-prot">0g</span>
+                    </div>
+                    <div class="nutrition-row no-border" style="font-size: 0.8em; margin-top: 5px;">
+                        <span>Vit D <span id="preview-vitd">0</span>mcg</span>
+                        <span>Calcium <span id="preview-calc">0</span>mg</span>
+                    </div>
+                    <div class="nutrition-row no-border" style="font-size: 0.8em;">
+                        <span>Iron <span id="preview-iron">0</span>mg</span>
+                        <span>Potassium <span id="preview-pot">0</span>mg</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="preview-info-box">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                     <div>
-                         <strong>Unit:</strong> <span id="preview-unit">N/A</span>
-                     </div>
-                     <div style="display: flex; align-items: center;">
-                         <strong>Score:</strong>
-                         <span id="preview-score-dot" class="health-score-dot" style="margin-left: 5px;"></span>
-                     </div>
-                </div>
-                <div id="preview-insight-container" style="margin-bottom: 5px; font-size: 0.9em;">
-                    <strong>Insight:</strong> <span id="preview-insight">--</span>
-                </div>
-                <div id="preview-tip-container" style="font-size: 0.9em;">
-                    <strong>Tip:</strong> <span id="preview-tip">--</span>
-                </div>
-            </div>
-
-            <div style="background-color: var(--bg-color); padding: 10px; border-radius: 6px; margin-bottom: 15px;">
-                <div class="form-group" style="margin: 0;">
-                    <label>Quantity</label>
-                    <input type="number" id="preview-quantity" step="0.1" value="1" oninput="updatePreviewTotals()">
-                </div>
-            </div>
-
-            <div class="nutrition-label">
-                <div class="nutrition-title">Nutrition Facts</div>
-                <div class="nutrition-row header">
-                    <span>Amount Per Selection</span>
-                </div>
-                <div class="nutrition-row thick-border">
-                    <strong>Calories</strong>
-                    <strong style="font-size: 1.5em;" id="preview-cal">0</strong>
-                </div>
-                <div class="nutrition-row">
-                    <strong>Total Fat</strong>
-                    <span id="preview-fat">0g</span>
-                </div>
-                <div class="nutrition-row nutrition-sub-row">
-                     <span>Cholesterol</span>
-                     <span id="preview-chol">0mg</span>
-                </div>
-                <div class="nutrition-row">
-                    <strong>Sodium</strong>
-                    <span id="preview-sod">0mg</span>
-                </div>
-                <div class="nutrition-row">
-                    <strong>Total Carbohydrate</strong>
-                    <span id="preview-carb">0g</span>
-                </div>
-                <div class="nutrition-row nutrition-sub-row">
-                     <span>Dietary Fiber</span>
-                     <span id="preview-fib">0g</span>
-                </div>
-                <div class="nutrition-row nutrition-sub-row">
-                     <span>Total Sugars</span>
-                     <span id="preview-sugar">0g</span>
-                </div>
-                <div class="nutrition-row nutrition-sub-row">
-                     <span>(Incl. <span id="preview-added-sugar">0</span>g Added Sugars)</span>
-                </div>
-                <div class="nutrition-row thick-border">
-                    <strong>Protein</strong>
-                    <span id="preview-prot">0g</span>
-                </div>
-                <div class="nutrition-row no-border" style="font-size: 0.8em; margin-top: 5px;">
-                    <span>Vit D <span id="preview-vitd">0</span>mcg</span>
-                    <span>Calcium <span id="preview-calc">0</span>mg</span>
-                </div>
-                <div class="nutrition-row no-border" style="font-size: 0.8em;">
-                    <span>Iron <span id="preview-iron">0</span>mg</span>
-                    <span>Potassium <span id="preview-pot">0</span>mg</span>
-                </div>
-            </div>
-
-            <div class="form-actions" style="margin-top: 20px;">
+            <div class="form-actions mobile-sticky" style="margin-top: 20px;">
                 <button type="button" onclick="closePreviewModal()" style="background-color: #666;">Cancel</button>
                 <button type="button" class="btn-primary" onclick="confirmLogFood()">Confirm Log</button>
             </div>
