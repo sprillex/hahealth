@@ -1,0 +1,91 @@
+
+// --- Unit Conversion ---
+
+const UnitConverter = {
+    weights: {
+        'g': 1.0,
+        'kg': 1000.0,
+        'oz': 28.3495,
+        'lb': 453.592
+    },
+    volumes: {
+        'ml': 1.0,
+        'l': 1000.0,
+        'tsp': 4.92892,
+        'tbsp': 14.7868,
+        'fl oz': 29.5735,
+        'cup': 236.588,
+        'pt': 473.176,
+        'qt': 946.353,
+        'gal': 3785.41
+    },
+
+    getUnitOptions: function(food) {
+        // Always include 'serving' (or the specific unit name if it's not a standard one)
+        // Actually, we use 'serving' as the key for the base multiplier 1.0
+        // But we display food.serving_size_unit if available.
+        // However, the backend stores 'unit' string.
+        // If we store 'serving', we display 'serving'.
+        // Let's allow 'serving' and the actual string.
+
+        const options = ['serving'];
+        const baseUnit = food.serving_size_unit;
+        if (baseUnit && baseUnit.toLowerCase() !== 'serving' && baseUnit.toLowerCase() !== '1 serving') {
+             // If the base unit is something like "1 bar", we might want to list it?
+             // But our logic treats 'serving' = 1.0 multiplier of base.
+             // So 'serving' covers "1 bar".
+             // Maybe we can label it "serving (bar)" in UI?
+             // For now, simple 'serving'.
+        }
+
+        const hasWeight = food.serving_weight_grams > 0;
+        const hasVolume = food.serving_volume_ml > 0;
+
+        if (hasWeight) {
+            Object.keys(this.weights).forEach(k => options.push(k));
+        }
+        if (hasVolume) {
+            Object.keys(this.volumes).forEach(k => options.push(k));
+        }
+
+        return options;
+    },
+
+    getConversionFactor: function(unit, food) {
+        // Returns: How many "Servings" is 1 "Unit"?
+        // Example: Unit="g". Food=30g/serving.
+        // 1g = 1/30 servings = 0.0333 servings.
+        // Factor = UnitVal / BaseVal
+
+        if (!unit || unit === 'serving' || unit === food.serving_size_unit) return 1.0;
+
+        // Weight
+        if (this.weights[unit]) {
+            if (food.serving_weight_grams > 0) {
+                return this.weights[unit] / food.serving_weight_grams;
+            }
+            // Cross-calc if density
+            if (food.serving_volume_ml > 0) {
+                 // We have volume, but asked for weight.
+                 // Need density. Implicit density = weight/volume.
+                 // Wait, if serving_weight_grams is 0/null, we DON'T have density.
+                 // So we can't convert.
+                 return 1.0; // Fallback
+            }
+        }
+
+        // Volume
+        if (this.volumes[unit]) {
+            if (food.serving_volume_ml > 0) {
+                return this.volumes[unit] / food.serving_volume_ml;
+            }
+            // Cross-calc
+            // If we have weight but no volume, we can't convert unless we assume water density (bad idea).
+            return 1.0;
+        }
+
+        return 1.0;
+    }
+};
+
+// --- Mobile Menu ---

@@ -126,7 +126,8 @@ def create_recipe(
         ri = models.RecipeIngredient(
             recipe_id=new_recipe.recipe_id,
             food_id=ing.food_id,
-            quantity=ing.quantity
+            quantity=ing.quantity,
+            unit=ing.unit
         )
         db.add(ri)
 
@@ -187,7 +188,7 @@ def update_recipe(
             ingredients_to_use = updates.ingredients
         else:
             for ri in recipe.ingredients:
-                ingredients_to_use.append(schemas.RecipeIngredientCreate(food_id=ri.food_id, quantity=ri.quantity))
+                ingredients_to_use.append(schemas.RecipeIngredientCreate(food_id=ri.food_id, quantity=ri.quantity, unit=ri.unit))
 
         macros = calculate_recipe_nutrition(db, ingredients_to_use, new_servings)
 
@@ -263,7 +264,8 @@ def update_recipe(
                 ri = models.RecipeIngredient(
                     recipe_id=recipe_id,
                     food_id=ing.food_id,
-                    quantity=ing.quantity
+                    quantity=ing.quantity,
+                    unit=ing.unit
                 )
                 db.add(ri)
 

@@ -32,7 +32,9 @@ def migrate_nutrition_table():
             "potassium": "FLOAT DEFAULT 0.0",
             "health_score": "VARCHAR",
             "health_insight": "VARCHAR",
-            "pairing_tip": "VARCHAR"
+            "pairing_tip": "VARCHAR",
+            "serving_weight_grams": "FLOAT",
+            "serving_volume_ml": "FLOAT"
         }
 
         with engine.connect() as conn:
@@ -44,9 +46,33 @@ def migrate_nutrition_table():
     except Exception as e:
         print(f"Migration failed: {e}")
 
+def migrate_recipe_ingredients_table():
+    """Checks for missing columns in recipe_ingredients and adds them."""
+    try:
+        inspector = inspect(engine)
+        if not inspector.has_table("recipe_ingredients"):
+            return
+
+        columns = [c["name"] for c in inspector.get_columns("recipe_ingredients")]
+
+        # Map of column name -> SQLite type definition
+        new_columns = {
+            "unit": "VARCHAR"
+        }
+
+        with engine.connect() as conn:
+            for col, type_def in new_columns.items():
+                if col not in columns:
+                    print(f"Migrating recipe_ingredients: Adding column {col}")
+                    conn.execute(text(f"ALTER TABLE recipe_ingredients ADD COLUMN {col} {type_def}"))
+            conn.commit()
+    except Exception as e:
+        print(f"Migration failed (recipe_ingredients): {e}")
+
 def init_db():
     Base.metadata.create_all(bind=engine)
     migrate_nutrition_table()
+    migrate_recipe_ingredients_table()
 
 def get_db():
     db = SessionLocal()

@@ -238,6 +238,8 @@ class NutritionCacheBase(BaseModel):
     health_score: Optional[str] = None
     health_insight: Optional[str] = None
     pairing_tip: Optional[str] = None
+    serving_weight_grams: Optional[float] = None
+    serving_volume_ml: Optional[float] = None
 
 class NutritionCacheCreate(NutritionCacheBase):
     pass
@@ -265,6 +267,8 @@ class NutritionCacheUpdate(BaseModel):
     health_score: Optional[str] = None
     health_insight: Optional[str] = None
     pairing_tip: Optional[str] = None
+    serving_weight_grams: Optional[float] = None
+    serving_volume_ml: Optional[float] = None
 
 class NutritionCacheResponse(NutritionCacheBase):
     food_id: int
@@ -351,6 +355,7 @@ class VaccinationResponse(VaccinationBase):
 class RecipeIngredientBase(BaseModel):
     food_id: int
     quantity: float
+    unit: Optional[str] = None
 
 class RecipeIngredientCreate(RecipeIngredientBase):
     pass

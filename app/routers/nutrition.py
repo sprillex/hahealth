@@ -54,6 +54,8 @@ def create_custom_food(
         health_score=food.health_score,
         health_insight=food.health_insight,
         pairing_tip=food.pairing_tip,
+        serving_weight_grams=food.serving_weight_grams,
+        serving_volume_ml=food.serving_volume_ml,
         source="MANUAL"
     )
     db.add(new_food)

@@ -169,6 +169,8 @@ class NutritionCache(Base):
     # Extended Metadata (V2)
     brand = Column(String, nullable=True)
     serving_size_unit = Column(String, nullable=True) # e.g., "1 bar", "100g"
+    serving_weight_grams = Column(Float, nullable=True)
+    serving_volume_ml = Column(Float, nullable=True)
 
     # Extended Macros (V2)
     cholesterol = Column(Float, default=0.0) # mg
@@ -264,6 +266,7 @@ class RecipeIngredient(Base):
     food_id = Column(Integer, ForeignKey("nutrition_cache.food_id"))
 
     quantity = Column(Float)
+    unit = Column(String, nullable=True)
 
     recipe = relationship("Recipe", back_populates="ingredients")
     food = relationship("NutritionCache")

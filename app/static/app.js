@@ -687,6 +687,10 @@ async function handleCreateFood(e) {
         data[k] = parseFloat(data[k]) || 0;
     });
 
+    // Parse weight/volume
+    if(data.serving_weight_grams) data.serving_weight_grams = parseFloat(data.serving_weight_grams);
+    if(data.serving_volume_ml) data.serving_volume_ml = parseFloat(data.serving_volume_ml);
+
     data.source = 'MANUAL';
     if (!data.barcode) delete data.barcode; // Send null or undefined if empty
 
@@ -2209,6 +2213,8 @@ function editLibraryFood(food) {
     // Extended
     document.getElementById('edit_lib_brand').value = food.brand || '';
     document.getElementById('edit_lib_serving_unit').value = food.serving_size_unit || '';
+    document.getElementById('edit_lib_weight_g').value = food.serving_weight_grams || '';
+    document.getElementById('edit_lib_volume_ml').value = food.serving_volume_ml || '';
     document.getElementById('edit_lib_cholesterol').value = food.cholesterol || 0;
     document.getElementById('edit_lib_total_sugars').value = food.total_sugars || 0;
     document.getElementById('edit_lib_added_sugars').value = food.added_sugars || 0;
@@ -2239,6 +2245,8 @@ document.getElementById('edit-library-form').addEventListener('submit', async (e
         // Extended
         brand: document.getElementById('edit_lib_brand').value || null,
         serving_size_unit: document.getElementById('edit_lib_serving_unit').value || null,
+        serving_weight_grams: parseFloat(document.getElementById('edit_lib_weight_g').value) || null,
+        serving_volume_ml: parseFloat(document.getElementById('edit_lib_volume_ml').value) || null,
         cholesterol: parseFloat(document.getElementById('edit_lib_cholesterol').value) || 0,
         total_sugars: parseFloat(document.getElementById('edit_lib_total_sugars').value) || 0,
         added_sugars: parseFloat(document.getElementById('edit_lib_added_sugars').value) || 0,
@@ -2531,7 +2539,12 @@ function openRecipeModal(recipe = null) {
                     food_id: ing.food.food_id,
                     food_name: ing.food.food_name,
                     calories: ing.food.calories,
-                    quantity: ing.quantity
+                    quantity: ing.quantity,
+                    unit: ing.unit, // Saved unit
+                    // Carry over density data
+                    serving_weight_grams: ing.food.serving_weight_grams,
+                    serving_volume_ml: ing.food.serving_volume_ml,
+                    serving_size_unit: ing.food.serving_size_unit
                 });
             });
         }
@@ -2592,7 +2605,12 @@ function addIngredientToRecipe(food) {
         food_id: food.food_id,
         food_name: food.food_name,
         calories: food.calories,
-        quantity: 1.0 // Default
+        quantity: 1.0, // Default multiplier
+        unit: food.serving_size_unit || 'serving', // Default unit
+        // Density data
+        serving_weight_grams: food.serving_weight_grams,
+        serving_volume_ml: food.serving_volume_ml,
+        serving_size_unit: food.serving_size_unit
     });
 
     document.getElementById('recipe-ing-search').value = '';
@@ -2605,10 +2623,34 @@ function removeIngredient(index) {
     renderRecipeIngredients();
 }
 
-function updateIngredientQty(index, val) {
-    const qty = parseFloat(val) || 0;
-    currentRecipeIngredients[index].quantity = qty;
-    renderRecipeIngredients(); // Re-calc totals
+function updateIngredientQty(index, userVal) {
+    const val = parseFloat(userVal) || 0;
+    const ing = currentRecipeIngredients[index];
+
+    // Convert display value back to "servings" multiplier
+    // quantity = val / factor
+    // factor = how many "servings" is 1 "unit"?
+    const factor = UnitConverter.getConversionFactor(ing.unit, ing);
+    // If factor is 1 (serving), then qty = val.
+    // If unit is "Cup" (factor=4 servings), then val=1 -> qty=4.
+    // Wait. Factor = (grams in 1 unit) / (grams in 1 serving).
+    // So 1 Unit = Factor * Servings.
+    // Serving Multiplier = Val * Factor.
+
+    ing.quantity = val * factor;
+    renderRecipeIngredients();
+}
+
+function updateIngredientUnit(index, newUnit) {
+    const ing = currentRecipeIngredients[index];
+    if (ing.unit === newUnit) return;
+
+    // We want to preserve the *actual amount* (servings), but change the *display number*.
+    // quantity (servings) remains same.
+    // display = quantity / factor(newUnit)
+
+    ing.unit = newUnit;
+    renderRecipeIngredients();
 }
 
 function renderRecipeIngredients() {
@@ -2618,13 +2660,25 @@ function renderRecipeIngredients() {
     let totalCals = 0;
 
     currentRecipeIngredients.forEach((ing, idx) => {
-        totalCals += ing.calories * ing.quantity;
+        totalCals += ing.calories * ing.quantity; // Quantity is always servings multiplier
+
+        // Determine Display Value
+        const factor = UnitConverter.getConversionFactor(ing.unit, ing);
+        const displayVal = ing.quantity / factor;
+
+        // Generate Options
+        const options = UnitConverter.getUnitOptions(ing).map(u => {
+            return `<option value="${u}" ${u === ing.unit ? 'selected' : ''}>${u}</option>`;
+        }).join('');
 
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${escapeHtml(ing.food_name)}</td>
-            <td>
-                <input type="number" step="0.1" value="${ing.quantity}" style="width: 60px;" onchange="updateIngredientQty(${idx}, this.value)">
+            <td style="display: flex; gap: 5px;">
+                <input type="number" step="0.01" value="${parseFloat(displayVal.toFixed(3))}" style="width: 60px;" onchange="updateIngredientQty(${idx}, this.value)">
+                <select style="width: 80px;" onchange="updateIngredientUnit(${idx}, this.value)">
+                    ${options}
+                </select>
             </td>
             <td>${Math.round(ing.calories * ing.quantity)}</td>
             <td>
@@ -2657,7 +2711,8 @@ async function handleSaveRecipe(e) {
 
         ingredients: currentRecipeIngredients.map(ing => ({
             food_id: ing.food_id,
-            quantity: ing.quantity
+            quantity: ing.quantity,
+            unit: ing.unit
         })),
 
         health_score: document.getElementById('recipe_score').value || null,
@@ -2809,6 +2864,74 @@ async function printRecipe(id) {
         alert("Error printing recipe: " + e.message);
     }
 }
+
+// --- Unit Conversion ---
+
+const UnitConverter = {
+    weights: {
+        'g': 1.0,
+        'kg': 1000.0,
+        'oz': 28.3495,
+        'lb': 453.592
+    },
+    volumes: {
+        'ml': 1.0,
+        'l': 1000.0,
+        'tsp': 4.92892,
+        'tbsp': 14.7868,
+        'fl oz': 29.5735,
+        'cup': 236.588,
+        'pt': 473.176,
+        'qt': 946.353,
+        'gal': 3785.41
+    },
+
+    getUnitOptions: function(food) {
+        // Always include 'serving' (or the specific unit name if it's not a standard one)
+        const options = ['serving'];
+
+        // If we have data, we can convert
+        const hasWeight = food.serving_weight_grams > 0;
+        const hasVolume = food.serving_volume_ml > 0;
+
+        if (hasWeight) {
+            Object.keys(this.weights).forEach(k => options.push(k));
+        }
+        if (hasVolume) {
+            Object.keys(this.volumes).forEach(k => options.push(k));
+        }
+
+        // If we have BOTH, we can technically convert anything to anything via density.
+        // But the lists are already merged above.
+
+        return options;
+    },
+
+    getConversionFactor: function(unit, food) {
+        // Returns: How many "Servings" is 1 "Unit"?
+        // Example: Unit="g". Food=30g/serving.
+        // 1g = 1/30 servings = 0.0333 servings.
+        // Factor = UnitVal / BaseVal
+
+        if (!unit || unit === 'serving' || unit === food.serving_size_unit) return 1.0;
+
+        // Weight
+        if (this.weights[unit]) {
+            if (food.serving_weight_grams > 0) {
+                return this.weights[unit] / food.serving_weight_grams;
+            }
+        }
+
+        // Volume
+        if (this.volumes[unit]) {
+            if (food.serving_volume_ml > 0) {
+                return this.volumes[unit] / food.serving_volume_ml;
+            }
+        }
+
+        return 1.0; // Fallback
+    }
+};
 
 // --- Mobile Menu ---
 
