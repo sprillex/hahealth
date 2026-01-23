@@ -38,6 +38,12 @@ class UserUpdate(BaseModel):
     window_evening_start: Optional[time] = None
     window_bedtime_start: Optional[time] = None
 
+    # Meal Windows
+    meal_breakfast_start: Optional[time] = None
+    meal_lunch_start: Optional[time] = None
+    meal_dinner_start: Optional[time] = None
+    meal_dinner_end: Optional[time] = None
+
 class PasswordUpdate(BaseModel):
     current_password: str
     new_password: str
@@ -52,6 +58,11 @@ class UserResponse(UserBase):
     window_afternoon_start: Optional[time] = None
     window_evening_start: Optional[time] = None
     window_bedtime_start: Optional[time] = None
+
+    meal_breakfast_start: Optional[time] = None
+    meal_lunch_start: Optional[time] = None
+    meal_dinner_start: Optional[time] = None
+    meal_dinner_end: Optional[time] = None
     model_config = ConfigDict(from_attributes=True)
 
 # Token

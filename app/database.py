@@ -69,10 +69,37 @@ def migrate_recipe_ingredients_table():
     except Exception as e:
         print(f"Recipe Ingredient Migration failed: {e}")
 
+def migrate_users_table():
+    """Checks for missing columns in users and adds them."""
+    try:
+        inspector = inspect(engine)
+        if not inspector.has_table("users"):
+            return
+
+        columns = [c["name"] for c in inspector.get_columns("users")]
+
+        # Map of column name -> SQLite type definition
+        new_columns = {
+            "meal_breakfast_start": "TIME DEFAULT '09:00:00'",
+            "meal_lunch_start": "TIME DEFAULT '11:00:00'",
+            "meal_dinner_start": "TIME DEFAULT '15:00:00'",
+            "meal_dinner_end": "TIME DEFAULT '19:00:00'"
+        }
+
+        with engine.connect() as conn:
+            for col, type_def in new_columns.items():
+                if col not in columns:
+                    print(f"Migrating users: Adding column {col}")
+                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {type_def}"))
+            conn.commit()
+    except Exception as e:
+        print(f"Users Migration failed: {e}")
+
 def init_db():
     Base.metadata.create_all(bind=engine)
     migrate_nutrition_table()
     migrate_recipe_ingredients_table()
+    migrate_users_table()
 
 def get_db():
     db = SessionLocal()

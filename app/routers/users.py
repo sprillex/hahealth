@@ -69,6 +69,16 @@ def update_user_profile(
     if user_update.window_bedtime_start is not None:
         current_user.window_bedtime_start = user_update.window_bedtime_start
 
+    # Meal Windows
+    if user_update.meal_breakfast_start is not None:
+        current_user.meal_breakfast_start = user_update.meal_breakfast_start
+    if user_update.meal_lunch_start is not None:
+        current_user.meal_lunch_start = user_update.meal_lunch_start
+    if user_update.meal_dinner_start is not None:
+        current_user.meal_dinner_start = user_update.meal_dinner_start
+    if user_update.meal_dinner_end is not None:
+        current_user.meal_dinner_end = user_update.meal_dinner_end
+
     db.commit()
     db.refresh(current_user)
     return current_user
