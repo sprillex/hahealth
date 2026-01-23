@@ -27,13 +27,14 @@ def override_get_db():
 def override_get_current_user():
     return models.User(user_id=1, name="TestUser", is_admin=True)
 
-app.dependency_overrides[get_db] = override_get_db
-app.dependency_overrides[auth.get_current_user] = override_get_current_user
-
 client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    # Setup overrides
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[auth.get_current_user] = override_get_current_user
+
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
 
@@ -51,6 +52,10 @@ def setup_db():
     yield
 
     Base.metadata.drop_all(bind=engine)
+
+    # Teardown overrides
+    app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(auth.get_current_user, None)
 
 def test_create_recipe():
     # Get ingredient IDs

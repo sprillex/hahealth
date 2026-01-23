@@ -10,6 +10,19 @@ router = APIRouter(
     tags=["recipes"]
 )
 
+# Conversion factors to ml
+UNIT_TO_ML = {
+    "tsp": 4.92892,
+    "tbsp": 14.7868,
+    "cup": 236.588,
+    "fl oz": 29.5735,
+    "pint": 473.176,
+    "quart": 946.353,
+    "gallon": 3785.41,
+    "ml": 1.0,
+    "l": 1000.0
+}
+
 def calculate_recipe_nutrition(db: Session, ingredients: List[schemas.RecipeIngredientCreate], total_servings: float):
     total_cals = 0.0
     total_protein = 0.0
@@ -32,21 +45,29 @@ def calculate_recipe_nutrition(db: Session, ingredients: List[schemas.RecipeIngr
         if not food:
             raise HTTPException(status_code=400, detail=f"Ingredient food_id {ing.food_id} not found")
 
-        q = ing.quantity
-        total_cals += food.calories * q
-        total_protein += food.protein * q
-        total_fat += food.fat * q
-        total_carbs += food.carbs * q
-        total_fiber += food.fiber * q
-        total_sodium += (food.sodium or 0.0) * q
+        # Determine effective multiplier (servings)
+        multiplier = ing.quantity # Default if unit is serving or unknown
 
-        total_cholesterol += (food.cholesterol or 0.0) * q
-        total_sugars += (food.total_sugars or 0.0) * q
-        total_added_sugars += (food.added_sugars or 0.0) * q
-        total_vit_d += (food.vitamin_d or 0.0) * q
-        total_calcium += (food.calcium or 0.0) * q
-        total_iron += (food.iron or 0.0) * q
-        total_potassium += (food.potassium or 0.0) * q
+        if ing.unit and ing.unit.lower() in UNIT_TO_ML and food.serving_volume_ml and food.serving_volume_ml > 0:
+            # Volume conversion
+            ml_per_unit = UNIT_TO_ML[ing.unit.lower()]
+            total_ml = ing.quantity * ml_per_unit
+            multiplier = total_ml / food.serving_volume_ml
+
+        total_cals += food.calories * multiplier
+        total_protein += food.protein * multiplier
+        total_fat += food.fat * multiplier
+        total_carbs += food.carbs * multiplier
+        total_fiber += food.fiber * multiplier
+        total_sodium += (food.sodium or 0.0) * multiplier
+
+        total_cholesterol += (food.cholesterol or 0.0) * multiplier
+        total_sugars += (food.total_sugars or 0.0) * multiplier
+        total_added_sugars += (food.added_sugars or 0.0) * multiplier
+        total_vit_d += (food.vitamin_d or 0.0) * multiplier
+        total_calcium += (food.calcium or 0.0) * multiplier
+        total_iron += (food.iron or 0.0) * multiplier
+        total_potassium += (food.potassium or 0.0) * multiplier
 
     if total_servings <= 0:
         total_servings = 1.0
@@ -126,7 +147,8 @@ def create_recipe(
         ri = models.RecipeIngredient(
             recipe_id=new_recipe.recipe_id,
             food_id=ing.food_id,
-            quantity=ing.quantity
+            quantity=ing.quantity,
+            unit=ing.unit
         )
         db.add(ri)
 
@@ -187,7 +209,7 @@ def update_recipe(
             ingredients_to_use = updates.ingredients
         else:
             for ri in recipe.ingredients:
-                ingredients_to_use.append(schemas.RecipeIngredientCreate(food_id=ri.food_id, quantity=ri.quantity))
+                ingredients_to_use.append(schemas.RecipeIngredientCreate(food_id=ri.food_id, quantity=ri.quantity, unit=ri.unit))
 
         macros = calculate_recipe_nutrition(db, ingredients_to_use, new_servings)
 
@@ -263,7 +285,8 @@ def update_recipe(
                 ri = models.RecipeIngredient(
                     recipe_id=recipe_id,
                     food_id=ing.food_id,
-                    quantity=ing.quantity
+                    quantity=ing.quantity,
+                    unit=ing.unit
                 )
                 db.add(ri)
 

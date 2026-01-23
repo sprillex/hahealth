@@ -10,6 +10,19 @@ let selectedFoodItem = null; // Store selected food for preview
 // Globals for Recipes
 let currentScope = 'food';
 let currentRecipeIngredients = [];
+let currentEditingIngredientIndex = -1; // For unit selector
+
+const UNIT_CONVERSIONS = {
+    "tsp": 4.92892,
+    "tbsp": 14.7868,
+    "cup": 236.588,
+    "fl oz": 29.5735,
+    "pint": 473.176,
+    "quart": 946.353,
+    "gallon": 3785.41,
+    "ml": 1.0,
+    "l": 1000.0
+};
 
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
@@ -2543,7 +2556,9 @@ function openRecipeModal(recipe = null) {
                     food_id: ing.food.food_id,
                     food_name: ing.food.food_name,
                     calories: ing.food.calories,
-                    quantity: ing.quantity
+                    serving_volume_ml: ing.food.serving_volume_ml, // Need this for conversion
+                    quantity: ing.quantity,
+                    unit: ing.unit || 'serving'
                 });
             });
         }
@@ -2604,7 +2619,9 @@ function addIngredientToRecipe(food) {
         food_id: food.food_id,
         food_name: food.food_name,
         calories: food.calories,
-        quantity: 1.0 // Default
+        serving_volume_ml: food.serving_volume_ml,
+        quantity: 1.0, // Default
+        unit: 'serving'
     });
 
     document.getElementById('recipe-ing-search').value = '';
@@ -2630,15 +2647,34 @@ function renderRecipeIngredients() {
     let totalCals = 0;
 
     currentRecipeIngredients.forEach((ing, idx) => {
-        totalCals += ing.calories * ing.quantity;
+        // Calculate Calories
+        let multiplier = ing.quantity;
+        if (ing.unit && ing.unit !== 'serving' && UNIT_CONVERSIONS[ing.unit] && ing.serving_volume_ml > 0) {
+             const ml = ing.quantity * UNIT_CONVERSIONS[ing.unit];
+             multiplier = ml / ing.serving_volume_ml;
+        }
+
+        const rowCals = ing.calories * multiplier;
+        totalCals += rowCals;
+
+        // Unit Display
+        let unitDisplay = ing.unit || 'serving';
+        let otherAction = '';
+        if (ing.serving_volume_ml && ing.serving_volume_ml > 0) {
+            otherAction = `<a href="#" onclick="openUnitSelector(${idx}); return false;" style="margin-left:5px; font-size:0.8em;">[Other]</a>`;
+        }
 
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${escapeHtml(ing.food_name)}</td>
             <td>
-                <input type="number" step="0.1" value="${ing.quantity}" style="width: 60px;" onchange="updateIngredientQty(${idx}, this.value)">
+                <div style="display: flex; align-items: center;">
+                    <input type="number" step="0.1" value="${ing.quantity}" style="width: 60px; margin-right: 5px;" onchange="updateIngredientQty(${idx}, this.value)">
+                    <span style="font-size: 0.9em; margin-right: 5px;">${unitDisplay}</span>
+                    ${otherAction}
+                </div>
             </td>
-            <td>${Math.round(ing.calories * ing.quantity)}</td>
+            <td>${Math.round(rowCals)}</td>
             <td>
                 <button type="button" onclick="removeIngredient(${idx})" style="color: red; border: none; background: none; cursor: pointer;">&times;</button>
             </td>
@@ -2649,6 +2685,23 @@ function renderRecipeIngredients() {
     const servings = parseFloat(document.getElementById('recipe_servings').value) || 1;
     document.getElementById('recipe-total-cals').innerText = Math.round(totalCals);
     document.getElementById('recipe-serving-cals').innerText = Math.round(totalCals / servings);
+}
+
+function openUnitSelector(index) {
+    currentEditingIngredientIndex = index;
+    document.getElementById('unit-selection-modal').classList.remove('hidden');
+}
+
+function closeUnitSelector() {
+    document.getElementById('unit-selection-modal').classList.add('hidden');
+    currentEditingIngredientIndex = -1;
+}
+
+function selectUnit(unit) {
+    if (currentEditingIngredientIndex === -1) return;
+    currentRecipeIngredients[currentEditingIngredientIndex].unit = unit;
+    renderRecipeIngredients();
+    closeUnitSelector();
 }
 
 function calculateRecipeTotals() {
@@ -2669,7 +2722,8 @@ async function handleSaveRecipe(e) {
 
         ingredients: currentRecipeIngredients.map(ing => ({
             food_id: ing.food_id,
-            quantity: ing.quantity
+            quantity: ing.quantity,
+            unit: ing.unit
         })),
 
         health_score: document.getElementById('recipe_score').value || null,
@@ -2763,7 +2817,8 @@ async function printRecipe(id) {
             <thead><tr style="background: #eee;"><th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Ingredient</th><th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Quantity</th></tr></thead><tbody>`;
         if (recipe.ingredients) {
             recipe.ingredients.forEach(ing => {
-                ingTable += `<tr><td style="border: 1px solid #ddd; padding: 8px;">${ing.food.food_name}</td><td style="border: 1px solid #ddd; padding: 8px;">${ing.quantity}</td></tr>`;
+                const unit = ing.unit || 'serving';
+                ingTable += `<tr><td style="border: 1px solid #ddd; padding: 8px;">${ing.food.food_name}</td><td style="border: 1px solid #ddd; padding: 8px;">${ing.quantity} ${unit}</td></tr>`;
             });
         }
         ingTable += `</tbody></table>`;
