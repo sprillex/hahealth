@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import sys
 import os
 import re
@@ -6,8 +7,16 @@ import signal
 # Add the parent directory to sys.path so we can import app modules
 sys.path.append(os.getcwd())
 
-from app.database import SessionLocal
-from app.models import NutritionCache
+try:
+    from app.database import SessionLocal
+    from app.models import NutritionCache
+except ImportError as e:
+    print("\nError: Could not import application modules.")
+    print(f"Details: {e}")
+    print("Please ensure you have installed the requirements using:")
+    print("  pip install -r requirements.txt")
+    print("And that you are running this script from the project root directory.\n")
+    sys.exit(1)
 
 def signal_handler(sig, frame):
     print("\nExiting...")
