@@ -228,6 +228,8 @@ class NutritionCacheBase(BaseModel):
     # New Fields (Base, optional for creation to support old API if needed, but good to include)
     brand: Optional[str] = None
     serving_size_unit: Optional[str] = None
+    serving_weight_grams: Optional[float] = None
+    serving_volume_ml: Optional[float] = None
     cholesterol: Optional[float] = 0.0
     total_sugars: Optional[float] = 0.0
     added_sugars: Optional[float] = 0.0
@@ -255,6 +257,8 @@ class NutritionCacheUpdate(BaseModel):
     # New Fields
     brand: Optional[str] = None
     serving_size_unit: Optional[str] = None
+    serving_weight_grams: Optional[float] = None
+    serving_volume_ml: Optional[float] = None
     cholesterol: Optional[float] = None
     total_sugars: Optional[float] = None
     added_sugars: Optional[float] = None
@@ -299,6 +303,8 @@ class V2Micros(BaseModel):
 
 class V2ServingInfo(BaseModel):
     size: Optional[str] = None
+    weight_g: Optional[float] = None
+    volume_ml: Optional[float] = None
 
 class V2Analysis(BaseModel):
     score_color: Optional[str] = None
