@@ -4278,6 +4278,18 @@
           "quantity": {
             "type": "number",
             "title": "Quantity"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit",
+            "default": "serving"
           }
         },
         "type": "object",
@@ -4296,6 +4308,18 @@
           "quantity": {
             "type": "number",
             "title": "Quantity"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit",
+            "default": "serving"
           },
           "ingredient_id": {
             "type": "integer",
