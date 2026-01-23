@@ -55,11 +55,11 @@
         <!-- Dashboard View (Hidden by default) -->
         <div id="dashboard-view" class="hidden">
             <nav class="navbar">
-                <div class="nav-brand">Health Tracker</div>
+                <div class="nav-brand" onclick="showTab('dashboard')" style="cursor: pointer;">Health Tracker</div>
                 <div class="nav-links">
                     <button onclick="showTab('dashboard')">Dashboard</button>
+                    <button onclick="showTab('nutrition')">Food</button>
                     <button onclick="showTab('medications')">Medications</button>
-                    <button onclick="showTab('nutrition')">Nutrition</button>
                     <button onclick="showTab('health-logs')">Health Logs</button>
                     <button onclick="showTab('reports')">Reports</button>
                     <button onclick="showTab('settings')">Settings</button>
@@ -546,6 +546,33 @@
                                     <small>If log time < Morning Start, it counts as Bedtime (Yesterday).</small>
                                 </div>
                                 <button type="submit" class="btn-primary">Update Schedule</button>
+                            </form>
+                        </div>
+
+                        <!-- Meal Windows -->
+                        <div class="card">
+                            <h3>Meal Schedule Defaults</h3>
+                            <p style="color: #666; font-size: 0.9em;">These settings determine the default meal selected when logging food.</p>
+                            <form id="meal-windows-form">
+                                <div class="form-group">
+                                    <label>Breakfast Start</label>
+                                    <input type="time" id="meal-breakfast">
+                                    <small>Defaults to Snack before this time.</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Lunch Start</label>
+                                    <input type="time" id="meal-lunch">
+                                </div>
+                                <div class="form-group">
+                                    <label>Dinner Start</label>
+                                    <input type="time" id="meal-dinner">
+                                </div>
+                                <div class="form-group">
+                                    <label>Dinner End</label>
+                                    <input type="time" id="meal-dinner-end">
+                                    <small>Defaults to Snack after this time.</small>
+                                </div>
+                                <button type="submit" class="btn-primary">Update Meal Schedule</button>
                             </form>
                         </div>
 

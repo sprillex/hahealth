@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('allergy-form').addEventListener('submit', handleAddAllergy);
     document.getElementById('profile-form').addEventListener('submit', handleUpdateProfile);
     document.getElementById('windows-form').addEventListener('submit', handleUpdateWindows);
+    document.getElementById('meal-windows-form').addEventListener('submit', handleUpdateMealWindows);
     document.getElementById('password-form').addEventListener('submit', handleChangePassword);
     // document.getElementById('dark-mode-toggle').addEventListener('change', toggleTheme); // Removed old toggle
 
@@ -297,6 +298,7 @@ function showTab(tabName) {
         // Clear forms
         document.getElementById('food-search-input').value = '';
         document.getElementById('food-search-results').classList.add('hidden');
+        updateDefaultMeal();
     }
     if (tabName === 'reports') {
         loadReports();
@@ -1554,6 +1556,19 @@ function loadProfileData() {
     if(user.window_afternoon_start) document.getElementById('win-afternoon').value = user.window_afternoon_start.substring(0, 5);
     if(user.window_evening_start) document.getElementById('win-evening').value = user.window_evening_start.substring(0, 5);
     if(user.window_bedtime_start) document.getElementById('win-bedtime').value = user.window_bedtime_start.substring(0, 5);
+
+    // Meal Windows
+    if(user.meal_breakfast_start) document.getElementById('meal-breakfast').value = user.meal_breakfast_start.substring(0, 5);
+    else document.getElementById('meal-breakfast').value = "09:00";
+
+    if(user.meal_lunch_start) document.getElementById('meal-lunch').value = user.meal_lunch_start.substring(0, 5);
+    else document.getElementById('meal-lunch').value = "11:00";
+
+    if(user.meal_dinner_start) document.getElementById('meal-dinner').value = user.meal_dinner_start.substring(0, 5);
+    else document.getElementById('meal-dinner').value = "15:00";
+
+    if(user.meal_dinner_end) document.getElementById('meal-dinner-end').value = user.meal_dinner_end.substring(0, 5);
+    else document.getElementById('meal-dinner-end').value = "19:00";
 }
 
 function updateProfileUnitLabels() {
@@ -1652,6 +1667,80 @@ async function handleUpdateWindows(e) {
     } catch (err) {
         alert('Error updating windows');
     }
+}
+
+async function handleUpdateMealWindows(e) {
+    e.preventDefault();
+    const data = {
+        meal_breakfast_start: document.getElementById('meal-breakfast').value || null,
+        meal_lunch_start: document.getElementById('meal-lunch').value || null,
+        meal_dinner_start: document.getElementById('meal-dinner').value || null,
+        meal_dinner_end: document.getElementById('meal-dinner-end').value || null
+    };
+
+    // Append seconds if missing
+    for(let k in data) {
+        if(data[k] && data[k].length === 5) data[k] += ':00';
+    }
+
+    try {
+        const res = await fetchWithAuth(`${API_URL}/users/me`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            user = await res.json();
+            alert('Meal schedule updated');
+        } else {
+            alert('Error updating meal schedule');
+        }
+    } catch (err) {
+        alert('Error updating meal schedule');
+    }
+}
+
+function determineDefaultMeal() {
+    if (!user) return "Snack";
+
+    // Defaults
+    const defaults = {
+        b: "09:00",
+        l: "11:00",
+        d: "15:00",
+        e: "19:00"
+    };
+
+    // User values or defaults
+    const bStart = user.meal_breakfast_start ? user.meal_breakfast_start.substring(0, 5) : defaults.b;
+    const lStart = user.meal_lunch_start ? user.meal_lunch_start.substring(0, 5) : defaults.l;
+    const dStart = user.meal_dinner_start ? user.meal_dinner_start.substring(0, 5) : defaults.d;
+    const dEnd = user.meal_dinner_end ? user.meal_dinner_end.substring(0, 5) : defaults.e;
+
+    // Current Time HH:MM
+    const now = new Date();
+    const current = now.toTimeString().substring(0, 5); // "14:30"
+
+    // Logic:
+    // Snack: < bStart OR >= dEnd
+    // Breakfast: >= bStart AND < lStart
+    // Lunch: >= lStart AND < dStart
+    // Dinner: >= dStart AND < dEnd
+
+    if (current < bStart) return "Snack";
+    if (current >= bStart && current < lStart) return "Breakfast";
+    if (current >= lStart && current < dStart) return "Lunch";
+    if (current >= dStart && current < dEnd) return "Dinner";
+
+    return "Snack";
+}
+
+function updateDefaultMeal() {
+    const meal = determineDefaultMeal();
+    const select = document.getElementById('food-meal');
+    if (select) select.value = meal;
 }
 
 

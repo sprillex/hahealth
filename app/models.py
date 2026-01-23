@@ -32,6 +32,12 @@ class User(Base):
     window_evening_start = Column(Time, default=datetime.time(17, 0))
     window_bedtime_start = Column(Time, default=datetime.time(21, 0))
 
+    # Meal Windows (Defaults)
+    meal_breakfast_start = Column(Time, default=datetime.time(9, 0))
+    meal_lunch_start = Column(Time, default=datetime.time(11, 0))
+    meal_dinner_start = Column(Time, default=datetime.time(15, 0))
+    meal_dinner_end = Column(Time, default=datetime.time(19, 0))
+
     daily_logs = relationship("DailyLog", back_populates="user")
     prescribers = relationship("Prescriber", back_populates="user")
     medications = relationship("Medication", back_populates="user")
