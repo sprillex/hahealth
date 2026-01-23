@@ -4803,6 +4803,54 @@
               }
             ],
             "title": "Window Bedtime Start"
+          },
+          "meal_breakfast_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Breakfast Start"
+          },
+          "meal_lunch_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Lunch Start"
+          },
+          "meal_dinner_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Dinner Start"
+          },
+          "meal_dinner_end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Dinner End"
           }
         },
         "type": "object",
@@ -4977,6 +5025,54 @@
               }
             ],
             "title": "Window Bedtime Start"
+          },
+          "meal_breakfast_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Breakfast Start"
+          },
+          "meal_lunch_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Lunch Start"
+          },
+          "meal_dinner_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Dinner Start"
+          },
+          "meal_dinner_end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Dinner End"
           }
         },
         "type": "object",
