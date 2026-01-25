@@ -431,6 +431,129 @@ class HealthLogService:
         db.refresh(log)
         return log
 
+    def log_weight(self, db: Session, user: models.User, weight_kg: float, timestamp: datetime = None):
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc)
+
+        # Ensure timestamp has timezone
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+
+        # Update User Profile
+        user.weight_kg = weight_kg
+
+        # Log History
+        log = models.WeightLog(
+            user_id=user.user_id,
+            weight_kg=weight_kg,
+            timestamp=timestamp
+        )
+        db.add(log)
+        db.commit()
+        db.refresh(log)
+        return log
+
+    def get_weight_change(self, db: Session, user: models.User, days: int = 30) -> float:
+        """
+        Calculates weight change over the last N days.
+        Returns: current_weight - weight_N_days_ago.
+        Positive = Gained, Negative = Lost.
+        """
+        if not user.weight_kg:
+            return 0.0
+
+        # Current is simply the user's current profile weight
+        current_weight = user.weight_kg
+
+        # Target date: N days ago
+        now = datetime.now(timezone.utc)
+        target_date = now - timedelta(days=days)
+
+        # Find the weight log closest to target_date (before or at target_date)
+        # We want the most recent log that is <= target_date
+        past_log = db.query(models.WeightLog).filter(
+            models.WeightLog.user_id == user.user_id,
+            models.WeightLog.timestamp <= target_date
+        ).order_by(models.WeightLog.timestamp.desc()).first()
+
+        if not past_log:
+            # If no log found before 30 days ago, try to find the oldest log available
+            # This handles cases where user started < 30 days ago.
+            past_log = db.query(models.WeightLog).filter(
+                models.WeightLog.user_id == user.user_id
+            ).order_by(models.WeightLog.timestamp.asc()).first()
+
+        if past_log:
+            return current_weight - past_log.weight_kg
+
+        return 0.0
+
+    def get_exercise_streak(self, db: Session, user: models.User) -> int:
+        """
+        Calculates consecutive days with at least one exercise log.
+        """
+        try:
+            user_tz = zoneinfo.ZoneInfo(user.timezone) if user.timezone else timezone.utc
+        except Exception:
+            user_tz = timezone.utc
+
+        # Get all unique dates with exercise
+        # We fetch timestamp and convert to local date in python to avoid DB dialect issues
+        logs = db.query(models.ExerciseLog.timestamp).filter(
+            models.ExerciseLog.user_id == user.user_id
+        ).order_by(models.ExerciseLog.timestamp.desc()).all()
+
+        if not logs:
+            return 0
+
+        unique_dates = set()
+        for log in logs:
+            ts = log.timestamp
+            if ts.tzinfo is None: ts = ts.replace(tzinfo=timezone.utc)
+            local_date = ts.astimezone(user_tz).date()
+            unique_dates.add(local_date)
+
+        sorted_dates = sorted(list(unique_dates), reverse=True)
+
+        if not sorted_dates:
+            return 0
+
+        today = datetime.now(user_tz).date()
+        yesterday = today - timedelta(days=1)
+
+        # Streak must include today or yesterday to be active
+        if sorted_dates[0] < yesterday:
+            return 0
+
+        streak = 0
+        current = today
+
+        # If the latest exercise was today, start counting from today.
+        # If the latest was yesterday, start counting from yesterday.
+        # (Already checked that latest >= yesterday)
+        if sorted_dates[0] == today:
+            streak = 1
+            current = yesterday
+        elif sorted_dates[0] == yesterday:
+            streak = 1
+            current = yesterday - timedelta(days=1)
+
+        # Check previous days
+        # We need to check if 'current' exists in sorted_dates
+        # But iterating through sorted_dates is more efficient
+
+        # Pointer for sorted_dates. We already consumed index 0.
+        idx = 1
+        while idx < len(sorted_dates):
+            if sorted_dates[idx] == current:
+                streak += 1
+                current -= timedelta(days=1)
+                idx += 1
+            else:
+                break
+
+        return streak
+
     def calculate_compliance_report(self, db: Session, user: models.User):
         try:
             user_tz = zoneinfo.ZoneInfo(user.timezone) if user.timezone else timezone.utc

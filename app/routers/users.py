@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from app import database, models, schemas, auth
+from app import database, models, schemas, auth, services
 
 router = APIRouter(
     prefix="/api/v1/users",
@@ -37,7 +37,10 @@ def update_user_profile(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     if user_update.weight_kg is not None:
-        current_user.weight_kg = user_update.weight_kg
+        service = services.HealthLogService()
+        service.log_weight(db, current_user, user_update.weight_kg)
+        # current_user.weight_kg is updated inside log_weight
+
     if user_update.height_cm is not None:
         current_user.height_cm = user_update.height_cm
     if user_update.unit_system is not None:

@@ -361,6 +361,19 @@ async function loadSummary() {
         document.getElementById('summary-cals-out').innerText = Math.round(summaryData.calories_burned);
         document.getElementById('summary-net').innerText = Math.round(summaryData.calories_consumed - summaryData.calories_burned);
 
+        // New stats
+        document.getElementById('summary-streak').innerText = (summaryData.exercise_streak || 0) + ' days';
+        const wc = summaryData.weight_change_30d;
+        if (wc !== undefined && wc !== null) {
+            let changeStr = formatWeight(Math.abs(wc));
+            if (wc > 0) changeStr = "+" + changeStr;
+            else if (wc < 0) changeStr = "-" + changeStr;
+            else changeStr = "No Change";
+            document.getElementById('summary-weight-change').innerText = changeStr;
+        } else {
+            document.getElementById('summary-weight-change').innerText = '--';
+        }
+
         const targets = calculateTargets();
         updateRecommendations(targets);
         renderGauges(summaryData, targets);
