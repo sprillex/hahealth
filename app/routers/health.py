@@ -178,13 +178,20 @@ def get_daily_summary(
             "timestamp": ts
         })
 
+    # Weight Change & Streak
+    service = services.HealthLogService()
+    weight_change = service.get_weight_change(db, current_user, days=30)
+    exercise_streak = service.get_exercise_streak(db, current_user)
+
     return {
         "blood_pressure": bp_str,
         "calories_consumed": calories_consumed,
         "calories_burned": calories_burned,
         "macros": macros,
         "food_logs": food_list,
-        "exercises": exercises_list
+        "exercises": exercises_list,
+        "weight_change_30d": weight_change,
+        "exercise_streak": exercise_streak
     }
 
 @router.get("/reports/compliance")

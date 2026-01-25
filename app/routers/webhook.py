@@ -48,8 +48,7 @@ def webhook_ingestion(
         w_kg = data.weight
         if data.unit.lower() in ["lbs", "lb", "pound", "pounds"]:
             w_kg = w_kg * 0.453592
-        user.weight_kg = w_kg
-        db.commit()
+        service_health.log_weight(db, user, w_kg)
         return {"status": "success", "message": "Weight logged"}
 
     else:

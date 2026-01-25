@@ -45,9 +45,20 @@ class User(Base):
     food_item_logs = relationship("FoodItemLog", back_populates="user")
     api_keys = relationship("APIKey", back_populates="user")
     exercise_logs = relationship("ExerciseLog", back_populates="user")
+    weight_logs = relationship("WeightLog", back_populates="user")
     allergies = relationship("Allergy", back_populates="user")
     vaccinations = relationship("Vaccination", back_populates="user")
     recipes = relationship("Recipe", back_populates="user")
+
+class WeightLog(Base):
+    __tablename__ = "weight_logs"
+
+    log_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    weight_kg = Column(Float)
+    timestamp = Column(DateTime, default=lambda: datetime.datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="weight_logs")
 
 class Allergy(Base):
     __tablename__ = "allergies"
