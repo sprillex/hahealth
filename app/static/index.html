@@ -156,6 +156,7 @@
                         <h2>Nutrition</h2>
                         <div>
                             <button class="btn-secondary" onclick="showNutritionView('log')">Log Food</button>
+                            <button class="btn-secondary" onclick="showNutritionView('planner')">Meal Planner</button>
                             <button class="btn-secondary" onclick="showNutritionView('recipes')">Recipes</button>
                             <span style="border-left: 1px solid #ccc; margin: 0 5px;"></span>
                             <button class="btn-secondary hidden" id="btn-import-json" onclick="openImportJsonModal()">Import JSON</button>
@@ -219,6 +220,66 @@
                             <!-- Recipe Cards -->
                             Loading...
                         </div>
+                    </div>
+
+                    <!-- View: Meal Planner -->
+                    <div id="nutrition-view-planner" class="hidden">
+                         <div class="header-actions">
+                            <h3>Meal Planner</h3>
+                            <div class="date-nav">
+                                <button onclick="changePlannerDate(-1)">&lt; Prev</button>
+                                <span id="planner-date-display" style="margin: 0 10px; font-weight: bold;"></span>
+                                <button onclick="changePlannerDate(1)">Next &gt;</button>
+                            </div>
+                         </div>
+                         <div class="card" style="margin-bottom: 20px;">
+                            <div class="form-group" style="display: flex; gap: 20px; align-items: center; margin-bottom: 0;">
+                                <label style="font-weight: bold;">Mode:</label>
+                                <label><input type="radio" name="planner_mode" value="today" checked onchange="updatePlannerGauges()"> Include Today's Log</label>
+                                <label><input type="radio" name="planner_mode" value="future" onchange="updatePlannerGauges()"> Plan Only (Future)</label>
+                            </div>
+                         </div>
+
+                         <!-- Gauges (Top) -->
+                         <div id="planner-gauges-container" class="grid-list" style="margin-bottom: 20px;">
+                            <!-- Injected -->
+                         </div>
+
+                         <!-- Meal Lists -->
+                         <div id="planner-meals-container">
+                             <!-- Breakfast -->
+                             <div class="card" style="margin-bottom: 15px;">
+                                 <div class="header-actions">
+                                     <h4 style="margin:0;">Breakfast</h4>
+                                     <button class="btn-secondary" style="font-size: 0.8em; padding: 5px 10px;" onclick="openPlannerAdd('Breakfast')">+ Add</button>
+                                 </div>
+                                 <div id="planner-list-Breakfast">Loading...</div>
+                             </div>
+                             <!-- Lunch -->
+                             <div class="card" style="margin-bottom: 15px;">
+                                 <div class="header-actions">
+                                     <h4 style="margin:0;">Lunch</h4>
+                                     <button class="btn-secondary" style="font-size: 0.8em; padding: 5px 10px;" onclick="openPlannerAdd('Lunch')">+ Add</button>
+                                 </div>
+                                 <div id="planner-list-Lunch">Loading...</div>
+                             </div>
+                             <!-- Dinner -->
+                             <div class="card" style="margin-bottom: 15px;">
+                                 <div class="header-actions">
+                                     <h4 style="margin:0;">Dinner</h4>
+                                     <button class="btn-secondary" style="font-size: 0.8em; padding: 5px 10px;" onclick="openPlannerAdd('Dinner')">+ Add</button>
+                                 </div>
+                                 <div id="planner-list-Dinner">Loading...</div>
+                             </div>
+                             <!-- Snack -->
+                             <div class="card" style="margin-bottom: 15px;">
+                                 <div class="header-actions">
+                                     <h4 style="margin:0;">Snack</h4>
+                                     <button class="btn-secondary" style="font-size: 0.8em; padding: 5px 10px;" onclick="openPlannerAdd('Snack')">+ Add</button>
+                                 </div>
+                                 <div id="planner-list-Snack">Loading...</div>
+                             </div>
+                         </div>
                     </div>
                 </div>
 
@@ -1286,6 +1347,6 @@
         <span id="app-version">Loading version...</span>
     </footer>
 
-    <script src="/static/app.js?v=1.5.1"></script>
+    <script src="/static/app.js?v=1.6.0"></script>
 </body>
 </html>
