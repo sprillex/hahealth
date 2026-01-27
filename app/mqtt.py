@@ -258,6 +258,11 @@ class MQTTClient:
                 elif key == "fat": payload["icon"] = "mdi:oil"
                 elif key == "fiber": payload["icon"] = "mdi:barley"
 
+                # Add attributes to calories_in sensor
+                if key == "calories_in":
+                    payload["json_attributes_topic"] = state_topic
+                    payload["json_attributes_template"] = "{{ value_json.nutrition | tojson }}"
+
                 self.client.publish(discovery_topic, json.dumps(payload), retain=True)
 
     def publish_periodic_stats(self, db: Session):
@@ -299,16 +304,31 @@ class MQTTClient:
                 carbs = 0.0
                 fiber = 0.0
                 sodium = 0.0
+                cholesterol = 0.0
+                total_sugars = 0.0
+                added_sugars = 0.0
+                vitamin_d = 0.0
+                calcium = 0.0
+                iron = 0.0
+                potassium = 0.0
 
                 for log in food_logs:
                     log_date = services.get_user_local_date(user, log.timestamp)
                     if log_date == local_date:
                         mult = log.quantity * log.serving_size
-                        protein += log.nutrition_info.protein * mult
-                        fat += log.nutrition_info.fat * mult
-                        carbs += log.nutrition_info.carbs * mult
-                        fiber += log.nutrition_info.fiber * mult
-                        sodium += log.nutrition_info.sodium * mult
+                        # Use (x or 0.0) to handle potential None values safely
+                        protein += (log.nutrition_info.protein or 0.0) * mult
+                        fat += (log.nutrition_info.fat or 0.0) * mult
+                        carbs += (log.nutrition_info.carbs or 0.0) * mult
+                        fiber += (log.nutrition_info.fiber or 0.0) * mult
+                        sodium += (log.nutrition_info.sodium or 0.0) * mult
+                        cholesterol += (log.nutrition_info.cholesterol or 0.0) * mult
+                        total_sugars += (log.nutrition_info.total_sugars or 0.0) * mult
+                        added_sugars += (log.nutrition_info.added_sugars or 0.0) * mult
+                        vitamin_d += (log.nutrition_info.vitamin_d or 0.0) * mult
+                        calcium += (log.nutrition_info.calcium or 0.0) * mult
+                        iron += (log.nutrition_info.iron or 0.0) * mult
+                        potassium += (log.nutrition_info.potassium or 0.0) * mult
 
                 # 3. Latest BP
                 bp = db.query(models.BloodPressure).filter(
@@ -327,7 +347,21 @@ class MQTTClient:
                     "fat": round(fat, 1),
                     "carbs": round(carbs, 1),
                     "fiber": round(fiber, 1),
-                    "sodium": round(sodium, 1)
+                    "sodium": round(sodium, 1),
+                    "nutrition": {
+                        "protein": round(protein, 1),
+                        "fat": round(fat, 1),
+                        "carbs": round(carbs, 1),
+                        "fiber": round(fiber, 1),
+                        "sodium": round(sodium, 1),
+                        "cholesterol": round(cholesterol, 1),
+                        "total_sugars": round(total_sugars, 1),
+                        "added_sugars": round(added_sugars, 1),
+                        "vitamin_d": round(vitamin_d, 1),
+                        "calcium": round(calcium, 1),
+                        "iron": round(iron, 1),
+                        "potassium": round(potassium, 1),
+                    }
                 }
 
                 topic = f"hahealth/{user.user_id}/state"
