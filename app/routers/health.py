@@ -33,12 +33,7 @@ def log_exercise(
 ):
     service = services.HealthLogService()
     log = service.log_exercise(db, current_user, exercise)
-    # The return value log is a DailyLog object which only has date and total_cals.
-    # The caller expects calories burned.
-    # In services.py log_exercise returns the DailyLog.
-    # It also creates an ExerciseLog.
-    # The DailyLog has total_calories_burned updated.
-    return {"message": "Exercise logged", "calories_burned": exercise.calories_burned or 0} # Approximate or need to fetch details
+    return {"message": "Exercise logged", "calories_burned": log.calories_burned}
 
 @router.get("/history/bp")
 def get_bp_history(
