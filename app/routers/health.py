@@ -142,13 +142,22 @@ def get_daily_summary(
         ts = log.timestamp
         if ts and ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
+        # Use planned quantity for display calculation if not eaten yet
+        display_mult = log.quantity if log.quantity > 0 else log.planned_quantity
+
         food_list.append({
             "log_id": log.item_log_id,
             "name": log.nutrition_info.food_name,
-            "calories": (log.nutrition_info.calories or 0) * multiplier,
+            "calories": (log.nutrition_info.calories or 0) * display_mult * log.serving_size,
+            "protein": (log.nutrition_info.protein or 0) * display_mult * log.serving_size,
+            "fat": (log.nutrition_info.fat or 0) * display_mult * log.serving_size,
+            "carbs": (log.nutrition_info.carbs or 0) * display_mult * log.serving_size,
+            "fiber": (log.nutrition_info.fiber or 0) * display_mult * log.serving_size,
+            "sodium": (log.nutrition_info.sodium or 0) * display_mult * log.serving_size,
             "meal": log.meal_id,
             "serving_size": log.serving_size,
             "quantity": log.quantity,
+            "planned_quantity": log.planned_quantity,
             "unit": log.nutrition_info.serving_size_unit,
             "timestamp": ts
         })
@@ -285,5 +294,6 @@ def update_food(
         "calories": cals,
         "serving_size": log.serving_size,
         "quantity": log.quantity,
+        "planned_quantity": log.planned_quantity,
         "timestamp": ts
     }
