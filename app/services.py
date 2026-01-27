@@ -136,7 +136,17 @@ class CustomNutritionService:
 
 class METCalculator:
     def calculate_calories(self, db: Session, user: models.User, activity_type: str, duration_minutes: float):
-        default_mets = {"running": 9.8, "walking": 3.8, "cycling": 7.5, "swimming": 8.0, "yoga": 2.5}
+        default_mets = {
+            "running": 9.8,
+            "walking": 3.8,
+            "cycling": 7.5,
+            "swimming": 8.0,
+            "yoga": 2.5,
+            "snow shoveling": 6.0,
+            "gardening": 4.0,
+            "weight lifting": 6.0,
+            "rowing machine": 7.0
+        }
         met_entry = db.query(models.METLookup).filter(models.METLookup.activity_name == activity_type.lower()).first()
         met_value = met_entry.met_value if met_entry else default_mets.get(activity_type.lower(), 1.0)
         return (met_value * user.weight_kg * 3.5 / 200) * duration_minutes
