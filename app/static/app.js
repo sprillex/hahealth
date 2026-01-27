@@ -2587,20 +2587,36 @@ function handleScopeChange(val) {
     input.value = '';
 }
 
-function showNutritionView(view) {
+function showNutritionView(view, preserveMode = false) {
     document.getElementById('nutrition-view-log').classList.add('hidden');
     document.getElementById('nutrition-view-recipes').classList.add('hidden');
     document.getElementById('nutrition-view-planner').classList.add('hidden');
 
     if (view === 'log') {
-        isPlanningMode = false;
+        if (!preserveMode) isPlanningMode = false;
         document.getElementById('nutrition-view-log').classList.remove('hidden');
+        updateLogViewUI();
     } else if (view === 'recipes') {
         document.getElementById('nutrition-view-recipes').classList.remove('hidden');
         loadRecipes();
     } else if (view === 'planner') {
         document.getElementById('nutrition-view-planner').classList.remove('hidden');
         loadPlanner();
+    }
+}
+
+function updateLogViewUI() {
+    const btn = document.querySelector('#food-log-form button[type="submit"]');
+    const title = document.querySelector('#nutrition-view-log h3');
+
+    if (isPlanningMode) {
+        if(btn) btn.innerText = "Add to Plan";
+        if(title) title.innerText = "Add to Meal Plan";
+        // Maybe highlight the Meal dropdown or lock it?
+        // document.getElementById('food-meal').style.border = "2px solid var(--primary-color)";
+    } else {
+        if(btn) btn.innerText = "Log Food";
+        if(title) title.innerText = "Log Food";
     }
 }
 
@@ -3165,9 +3181,8 @@ function renderPlannerItemDetails(item) {
     if (item.quantity > 0) {
         return `<span style="color:green;">Eaten: ${item.quantity} ${item.unit || ''} (${Math.round(item.calories)} kcal)</span>`;
     } else {
-        // We don't have calories for planned items yet due to backend limitation mentioned above.
-        // Will show "?? kcal" for now.
-        return `<span style="color:#d35400;">Planned: ${item.planned_quantity} ${item.unit || ''}</span>`;
+        // Backend now returns calories for planned items too
+        return `<span style="color:#d35400;">Planned: ${item.planned_quantity} ${item.unit || ''} (${Math.round(item.calories)} kcal)</span>`;
     }
 }
 
@@ -3179,22 +3194,15 @@ function renderPlannerItemActions(item) {
 }
 
 function openPlannerAdd(meal) {
-    isPlanningMode = true; // Set flag
-    openFoodModal(); // Or focus search
-    // We want to open the search view actually, not "Create Custom Food".
-    // "Log Food" view.
-    closeFoodModal(); // Oops, openFoodModal opens the creation modal.
-    // We want 'showNutritionView("log")' but keeping planner context?
-    // No, better to just scroll to top or show a modal for searching?
-    // The requirement said "Select items from the list of ingredients".
-    // I can reuse the "Log Food" view but pre-fill the Meal.
+    isPlanningMode = true;
+    // We pass true to preserveMode to avoid flickering
+    showNutritionView('log', true);
 
-    showNutritionView('log');
     document.getElementById('food-meal').value = meal;
-    isPlanningMode = true; // Re-set because showNutritionView('log') clears it.
 
-    // Change button text or title to indicate planning?
-    // Maybe add a visual cue.
+    // Ensure UI is updated (though showNutritionView calls it, we force isPlanningMode first)
+    // Actually showNutritionView handles it.
+    updateLogViewUI();
 }
 
 async function commitPlanItem(logId) {
