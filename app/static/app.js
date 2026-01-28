@@ -414,8 +414,8 @@ function renderTodayLists(data) {
         if (planned.length > 0) {
             plannedList.innerHTML = '<ul class="grid-list" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">' + planned.map(f => {
                 const unit = f.unit || 'serving';
-                // Pass log_id to openConfirmLogForPlan
-                return `<li class="card" style="padding: 10px; cursor: pointer; border: 1px dashed var(--primary-color);" onclick="openConfirmLogForPlan(${f.log_id})">
+                // Pass log_id to openEditLog
+                return `<li class="card" style="padding: 10px; cursor: pointer; border: 1px dashed var(--primary-color);" onclick="openEditLog(${f.log_id})">
                     <strong>${f.name}</strong><br>
                     <span style="color: #666; font-size: 0.9em;">Planned: ${f.planned_quantity} ${unit}</span>
                 </li>`;
@@ -429,14 +429,18 @@ function renderTodayLists(data) {
     if (eaten.length > 0) {
         foodList.innerHTML = '<ul>' + eaten.map(f => {
             const unit = f.unit || 'serving';
-            return `<li>${f.quantity} Servings of ${unit} ${f.name} - (${Math.round(f.calories)} kcal)</li>`;
+            // Make clickable using openEditLog
+            return `<li onclick="openEditLog(${f.log_id})" style="cursor: pointer; padding: 5px 0; border-bottom: 1px solid #eee;">
+                ${f.quantity} Servings of ${unit} <strong>${f.name}</strong> - (${Math.round(f.calories)} kcal)
+            </li>`;
         }).join('') + '</ul>';
     } else {
         foodList.innerHTML = '<em>No food logged.</em>';
     }
 }
 
-async function openConfirmLogForPlan(logId) {
+// Renamed from openConfirmLogForPlan to openEditLog to reflect shared usage
+async function openEditLog(logId) {
     if (!summaryData || !summaryData.food_logs) return;
     const item = summaryData.food_logs.find(l => l.log_id === logId);
     if (!item) return;
@@ -446,9 +450,14 @@ async function openConfirmLogForPlan(logId) {
         const res = await fetchWithAuth(`${API_URL}/nutrition/${item.food_id}`);
         if(res.ok) {
             const food = await res.json();
+
+            // Determine quantity to show: Eaten (quantity) takes precedence over Planned (planned_quantity)
+            // if we are editing an eaten log.
+            const qty = (item.quantity > 0) ? item.quantity : item.planned_quantity;
+
             // Open modal with explicit update target
             openPreviewModal(food, {
-                quantity: item.planned_quantity,
+                quantity: qty,
                 meal_id: item.meal,
                 update_log_id: logId // Pass this to switch mode from CREATE to UPDATE
             });
@@ -460,6 +469,9 @@ async function openConfirmLogForPlan(logId) {
         alert("Error loading food details.");
     }
 }
+
+// Alias for backward compatibility if needed, though replaced in HTML
+const openConfirmLogForPlan = openEditLog;
 
 function calculateTargets() {
     if (!user || !user.birth_year || !user.gender) return null;
@@ -974,6 +986,16 @@ function openPreviewModal(food, formData) {
         modal.dataset.updateLogId = formData.update_log_id;
     } else {
         delete modal.dataset.updateLogId;
+    }
+
+    // Store update target if present (for Planned items) and toggle Delete button
+    const deleteBtn = document.getElementById('preview-btn-delete');
+    if (formData.update_log_id) {
+        modal.dataset.updateLogId = formData.update_log_id;
+        if(deleteBtn) deleteBtn.classList.remove('hidden');
+    } else {
+        delete modal.dataset.updateLogId;
+        if(deleteBtn) deleteBtn.classList.add('hidden');
     }
 
     // Store update target if present (for Planned items) and toggle Delete button
@@ -3303,12 +3325,16 @@ function openPlannerAdd(meal) {
 }
 
 async function commitPlanItem(logId, quantityOverride = null) {
-    // Try to find item in plannerLogs first, if not (e.g. from dashboard), we proceed with just ID if override provided
-    const item = plannerLogs.find(l => l.log_id === logId);
+    // Try to find item in plannerLogs first, if not try summaryData (dashboard context)
+    let item = plannerLogs.find(l => l.log_id === logId);
+    if (!item && summaryData && summaryData.food_logs) {
+        item = summaryData.food_logs.find(l => l.log_id === logId);
+    }
 
     let quantity = quantityOverride;
     if (quantity === null && item) {
-        quantity = item.planned_quantity;
+        // Fallback to existing quantity if override not present (though normally passed by confirmLogFood)
+        quantity = item.quantity > 0 ? item.quantity : item.planned_quantity;
     }
 
     if (quantity === null) {
@@ -3317,10 +3343,16 @@ async function commitPlanItem(logId, quantityOverride = null) {
     }
 
     const updates = {
-        quantity: quantity,
-        timestamp: new Date().toISOString() // Update time to Now
-        // planned_quantity remains as is (record of plan)
+        quantity: quantity
+        // timestamp: depends on context
     };
+
+    // If it was purely a planned item (quantity=0), we update timestamp to NOW (logging it as eaten now).
+    // If it was already eaten (quantity > 0), we preserve timestamp (editing an old entry).
+    // If we can't determine (no item found), we assume it's a new log/plan commit => update timestamp.
+    if (!item || item.quantity === 0) {
+        updates.timestamp = new Date().toISOString();
+    }
 
     try {
         const res = await fetchWithAuth(`${API_URL}/log/food/${logId}`, {
