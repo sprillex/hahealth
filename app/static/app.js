@@ -976,7 +976,27 @@ function openPreviewModal(food, formData) {
         delete modal.dataset.updateLogId;
     }
 
+    // Store update target if present (for Planned items) and toggle Delete button
+    const deleteBtn = document.getElementById('preview-btn-delete');
+    if (formData.update_log_id) {
+        modal.dataset.updateLogId = formData.update_log_id;
+        if(deleteBtn) deleteBtn.classList.remove('hidden');
+    } else {
+        delete modal.dataset.updateLogId;
+        if(deleteBtn) deleteBtn.classList.add('hidden');
+    }
+
     updatePreviewTotals();
+}
+
+function deletePreviewItem() {
+    const modal = document.getElementById('food-preview-modal');
+    const updateLogId = modal.dataset.updateLogId;
+
+    if (updateLogId) {
+        deleteFoodLog(parseInt(updateLogId));
+        closePreviewModal();
+    }
 }
 
 function closePreviewModal() {
@@ -2577,7 +2597,16 @@ async function deleteFoodLog(id) {
         const res = await fetchWithAuth(`${API_URL}/log/food/${id}`, {
             method: 'DELETE'
         });
-        if(res.ok) loadManageFoodList();
+        if(res.ok) {
+            // Refresh logic: check where we are
+            if(document.getElementById('manage-food-modal') && !document.getElementById('manage-food-modal').classList.contains('hidden')) {
+                loadManageFoodList();
+            } else if(document.getElementById('nutrition-view-planner') && !document.getElementById('nutrition-view-planner').classList.contains('hidden')) {
+                loadPlanner();
+            } else if(document.getElementById('tab-dashboard') && !document.getElementById('tab-dashboard').classList.contains('hidden')) {
+                loadSummary();
+            }
+        }
         else alert("Delete failed");
     } catch(err) { alert("Delete failed"); }
 }
@@ -3253,7 +3282,10 @@ function renderPlannerItemDetails(item) {
 
 function renderPlannerItemActions(item) {
     if (item.quantity === 0 && item.planned_quantity > 0) {
-        return `<button class="btn-primary" style="font-size:0.8em; padding: 4px 8px;" onclick="commitPlanItem(${item.log_id})">Log</button>`;
+        return `
+            <button class="btn-primary" style="font-size:0.8em; padding: 4px 8px;" onclick="commitPlanItem(${item.log_id})">Log</button>
+            <button class="btn-warning" style="font-size:0.8em; padding: 4px 8px; margin-left: 5px; background-color: #dc3545;" onclick="deleteFoodLog(${item.log_id})">Del</button>
+        `;
     }
     return ''; // Already eaten
 }
