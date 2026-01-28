@@ -981,6 +981,22 @@ function openPreviewModal(food, formData) {
 
     // Store meal_id for confirmation
     modal.dataset.mealId = formData.meal_id;
+    // Store update target if present (for Planned items)
+    if (formData.update_log_id) {
+        modal.dataset.updateLogId = formData.update_log_id;
+    } else {
+        delete modal.dataset.updateLogId;
+    }
+
+    // Store update target if present (for Planned items) and toggle Delete button
+    const deleteBtn = document.getElementById('preview-btn-delete');
+    if (formData.update_log_id) {
+        modal.dataset.updateLogId = formData.update_log_id;
+        if(deleteBtn) deleteBtn.classList.remove('hidden');
+    } else {
+        delete modal.dataset.updateLogId;
+        if(deleteBtn) deleteBtn.classList.add('hidden');
+    }
 
     // Store update target if present (for Planned items) and toggle Delete button
     const deleteBtn = document.getElementById('preview-btn-delete');
