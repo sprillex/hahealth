@@ -2817,6 +2817,11 @@
             "title": "Quantity",
             "default": 1.0
           },
+          "planned_quantity": {
+            "type": "number",
+            "title": "Planned Quantity",
+            "default": 0.0
+          },
           "meal_id": {
             "type": "string",
             "title": "Meal Id",
@@ -2937,6 +2942,10 @@
             "type": "number",
             "title": "Quantity"
           },
+          "planned_quantity": {
+            "type": "number",
+            "title": "Planned Quantity"
+          },
           "timestamp": {
             "anyOf": [
               {
@@ -2956,7 +2965,8 @@
           "meal_id",
           "calories",
           "serving_size",
-          "quantity"
+          "quantity",
+          "planned_quantity"
         ],
         "title": "FoodLogResponse"
       },
@@ -3052,6 +3062,17 @@
               }
             ],
             "title": "Quantity"
+          },
+          "planned_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Quantity"
           },
           "serving_size": {
             "anyOf": [
