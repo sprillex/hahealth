@@ -404,13 +404,60 @@ function renderTodayLists(data) {
         exList.innerHTML = '<em>No exercise.</em>';
     }
 
-    if (data.food_logs && data.food_logs.length > 0) {
-        foodList.innerHTML = '<ul>' + data.food_logs.map(f => {
+    // Filter Planned vs Eaten
+    const planned = (data.food_logs || []).filter(f => f.quantity === 0 && f.planned_quantity > 0);
+    const eaten = (data.food_logs || []).filter(f => f.quantity > 0);
+
+    // Render Planned
+    const plannedList = document.getElementById('planned-today-list');
+    if(plannedList) {
+        if (planned.length > 0) {
+            plannedList.innerHTML = '<ul class="grid-list" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">' + planned.map(f => {
+                const unit = f.unit || 'serving';
+                // Pass log_id to openConfirmLogForPlan
+                return `<li class="card" style="padding: 10px; cursor: pointer; border: 1px dashed var(--primary-color);" onclick="openConfirmLogForPlan(${f.log_id})">
+                    <strong>${f.name}</strong><br>
+                    <span style="color: #666; font-size: 0.9em;">Planned: ${f.planned_quantity} ${unit}</span>
+                </li>`;
+            }).join('') + '</ul>';
+        } else {
+            plannedList.innerHTML = '<em style="color: #888;">No planned meals.</em>';
+        }
+    }
+
+    // Render Eaten
+    if (eaten.length > 0) {
+        foodList.innerHTML = '<ul>' + eaten.map(f => {
             const unit = f.unit || 'serving';
             return `<li>${f.quantity} Servings of ${unit} ${f.name} - (${Math.round(f.calories)} kcal)</li>`;
         }).join('') + '</ul>';
     } else {
         foodList.innerHTML = '<em>No food logged.</em>';
+    }
+}
+
+async function openConfirmLogForPlan(logId) {
+    if (!summaryData || !summaryData.food_logs) return;
+    const item = summaryData.food_logs.find(l => l.log_id === logId);
+    if (!item) return;
+
+    // Fetch full food details to populate the preview modal properly
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/${item.food_id}`);
+        if(res.ok) {
+            const food = await res.json();
+            // Open modal with explicit update target
+            openPreviewModal(food, {
+                quantity: item.planned_quantity,
+                meal_id: item.meal,
+                update_log_id: logId // Pass this to switch mode from CREATE to UPDATE
+            });
+        } else {
+            alert("Could not load food details.");
+        }
+    } catch(e) {
+        console.error(e);
+        alert("Error loading food details.");
     }
 }
 
@@ -922,6 +969,12 @@ function openPreviewModal(food, formData) {
 
     // Store meal_id for confirmation
     modal.dataset.mealId = formData.meal_id;
+    // Store update target if present (for Planned items)
+    if (formData.update_log_id) {
+        modal.dataset.updateLogId = formData.update_log_id;
+    } else {
+        delete modal.dataset.updateLogId;
+    }
 
     updatePreviewTotals();
 }
@@ -983,7 +1036,22 @@ async function confirmLogFood() {
 
     const s = 1.0;
     const q = parseFloat(document.getElementById('preview-quantity').value);
-    const mealId = document.getElementById('food-preview-modal').dataset.mealId;
+    const modal = document.getElementById('food-preview-modal');
+    const mealId = modal.dataset.mealId;
+    const updateLogId = modal.dataset.updateLogId;
+
+    // Close modal first
+    closePreviewModal();
+
+    if (updateLogId) {
+        // We are updating a planned item to eaten
+        await commitPlanItem(parseInt(updateLogId), q);
+        // Refresh dashboard if we are there
+        if(document.getElementById('tab-dashboard') && !document.getElementById('tab-dashboard').classList.contains('hidden')) {
+            loadSummary();
+        }
+        return;
+    }
 
     const data = {
         food_name: selectedFoodItem.food_name,
@@ -997,9 +1065,6 @@ async function confirmLogFood() {
         data.planned_quantity = data.quantity;
         data.quantity = 0;
     }
-
-    // Close modal first
-    closePreviewModal();
 
     // Use shared submit logic
     // Pass form element if we want it reset. We can find it.
@@ -3205,13 +3270,22 @@ function openPlannerAdd(meal) {
     updateLogViewUI();
 }
 
-async function commitPlanItem(logId) {
-    // Find item
+async function commitPlanItem(logId, quantityOverride = null) {
+    // Try to find item in plannerLogs first, if not (e.g. from dashboard), we proceed with just ID if override provided
     const item = plannerLogs.find(l => l.log_id === logId);
-    if(!item) return;
+
+    let quantity = quantityOverride;
+    if (quantity === null && item) {
+        quantity = item.planned_quantity;
+    }
+
+    if (quantity === null) {
+        alert("Cannot determine quantity to log.");
+        return;
+    }
 
     const updates = {
-        quantity: item.planned_quantity
+        quantity: quantity
         // planned_quantity remains as is (record of plan)
     };
 
@@ -3222,7 +3296,10 @@ async function commitPlanItem(logId) {
             body: JSON.stringify(updates)
         });
         if(res.ok) {
-            loadPlanner(); // Refresh
+            // Refresh wherever we are
+            if(document.getElementById('nutrition-view-planner') && !document.getElementById('nutrition-view-planner').classList.contains('hidden')) {
+                loadPlanner();
+            }
         } else {
             alert("Failed to log item");
         }

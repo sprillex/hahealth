@@ -147,6 +147,7 @@ def get_daily_summary(
 
         food_list.append({
             "log_id": log.item_log_id,
+            "food_id": log.food_id,
             "name": log.nutrition_info.food_name,
             "calories": (log.nutrition_info.calories or 0) * display_mult * log.serving_size,
             "protein": (log.nutrition_info.protein or 0) * display_mult * log.serving_size,
