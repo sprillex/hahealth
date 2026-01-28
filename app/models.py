@@ -219,6 +219,7 @@ class FoodItemLog(Base):
     food_id = Column(Integer, ForeignKey("nutrition_cache.food_id"))
     serving_size = Column(Float)
     quantity = Column(Float)
+    planned_quantity = Column(Float, default=0.0)
     timestamp = Column(DateTime, default=lambda: datetime.datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="food_item_logs")
