@@ -1,0 +1,20 @@
+INFO:     Started server process [11517]
+INFO:     Waiting for application startup.
+INFO:app.mqtt:Connecting to MQTT Broker at localhost:1883
+ERROR:app.mqtt:Failed to connect to MQTT broker: [Errno 111] Connection refused
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:55176 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55176 - "GET /static/style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55178 - "GET /static/gauge.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55178 - "GET /static/app.js?v=1.6.0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55178 - "GET /api/v1/version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43978 - "GET /static/app.js?v=1.6.0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37142 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37142 - "GET /static/style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37148 - "GET /static/gauge.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37164 - "GET /static/app.js?v=1.6.0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37164 - "GET /api/v1/version HTTP/1.1" 200 OK
+INFO:app.routers.auth:Login attempt for user: frontend_user
+WARNING:app.routers.auth:User not found: frontend_user
+INFO:     127.0.0.1:37164 - "POST /auth/token HTTP/1.1" 401 Unauthorized

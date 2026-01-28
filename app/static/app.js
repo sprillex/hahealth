@@ -223,42 +223,43 @@ async function checkAuth() {
         const res = await fetchWithAuth(`${API_URL}/users/me`);
         if (res.ok) {
             user = await res.json();
+
             // Admin check
-            if (user.is_admin === false) { // Assuming field is exposed in schema. Wait, need to check Schema.
-                 // Actually I haven't added is_admin to UserResponse schema yet!
-                 // Let's assume backend returns it if I update Schema, or check if key exists.
-            }
-            // For now, let's just try to show it. If backend filters unauthorized calls, that's fine.
-            // But UI should hide button if not admin.
+            try {
+                if (user.is_admin) {
+                    const navAdmin = document.getElementById('nav-admin');
+                    if(navAdmin) navAdmin.classList.remove('hidden');
 
-            // Note: Schema wasn't updated in plan to return is_admin.
-            // I should update UserResponse schema or just blindly show/hide based on try/error.
-            // Let's rely on backend property.
+                    const mobileAdmin = document.getElementById('mobile-nav-admin');
+                    if (mobileAdmin) mobileAdmin.classList.remove('hidden');
 
-            if (user.is_admin) {
-                document.getElementById('nav-admin').classList.remove('hidden');
-                const mobileAdmin = document.getElementById('mobile-nav-admin');
-                if (mobileAdmin) mobileAdmin.classList.remove('hidden');
+                    const importBtn = document.getElementById('btn-import-json');
+                    if(importBtn) importBtn.classList.remove('hidden');
+                } else {
+                    const navAdmin = document.getElementById('nav-admin');
+                    if(navAdmin) navAdmin.classList.add('hidden');
 
-                const importBtn = document.getElementById('btn-import-json');
-                if(importBtn) importBtn.classList.remove('hidden');
-            } else {
-                document.getElementById('nav-admin').classList.add('hidden');
-                const mobileAdmin = document.getElementById('mobile-nav-admin');
-                if (mobileAdmin) mobileAdmin.classList.add('hidden');
+                    const mobileAdmin = document.getElementById('mobile-nav-admin');
+                    if (mobileAdmin) mobileAdmin.classList.add('hidden');
 
-                const importBtn = document.getElementById('btn-import-json');
-                if(importBtn) importBtn.classList.add('hidden');
+                    const importBtn = document.getElementById('btn-import-json');
+                    if(importBtn) importBtn.classList.add('hidden');
+                }
+            } catch(e) {
+                console.warn("Error updating admin UI elements", e);
             }
 
-            showDashboard();
-            loadProfileData();
-            loadSummary();
-            applyTheme(); // Re-apply theme after user load
+            try { showDashboard(); } catch(e) { console.error("Error showing dashboard", e); }
+            try { loadProfileData(); } catch(e) { console.error("Error loading profile", e); }
+            try { loadSummary(); } catch(e) { console.error("Error loading summary", e); }
+            try { applyTheme(); } catch(e) { console.error("Error applying theme", e); }
+
         } else {
+            console.warn("Check auth failed with status", res.status);
             logout();
         }
     } catch (err) {
+        console.error("Check auth crashed", err);
         logout();
     }
 }
@@ -986,6 +987,16 @@ function openPreviewModal(food, formData) {
         modal.dataset.updateLogId = formData.update_log_id;
     } else {
         delete modal.dataset.updateLogId;
+    }
+
+    // Store update target if present (for Planned items) and toggle Delete button
+    const deleteBtn = document.getElementById('preview-btn-delete');
+    if (formData.update_log_id) {
+        modal.dataset.updateLogId = formData.update_log_id;
+        if(deleteBtn) deleteBtn.classList.remove('hidden');
+    } else {
+        delete modal.dataset.updateLogId;
+        if(deleteBtn) deleteBtn.classList.add('hidden');
     }
 
     // Store update target if present (for Planned items) and toggle Delete button
