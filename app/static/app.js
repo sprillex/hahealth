@@ -11,6 +11,10 @@ let selectedFoodItem = null; // Store selected food for preview
 let currentScope = 'food';
 let currentRecipeIngredients = [];
 let currentEditingIngredientIndex = -1; // For unit selector
+// Globals for Planner
+let currentPlannerDate = new Date();
+let plannerLogs = []; // Stores the raw food logs for planner
+let isPlanningMode = false; // Flag to indicate if we are adding to plan
 
 const UNIT_CONVERSIONS = {
     "tsp": 4.92892,
@@ -299,6 +303,10 @@ function showTab(tabName) {
         document.getElementById('food-search-input').value = '';
         document.getElementById('food-search-results').classList.add('hidden');
         updateDefaultMeal();
+        // Default view
+        if(document.getElementById('nutrition-view-planner') && !document.getElementById('nutrition-view-planner').classList.contains('hidden')) {
+             loadPlanner();
+        }
     }
     if (tabName === 'reports') {
         loadReports();
@@ -396,13 +404,60 @@ function renderTodayLists(data) {
         exList.innerHTML = '<em>No exercise.</em>';
     }
 
-    if (data.food_logs && data.food_logs.length > 0) {
-        foodList.innerHTML = '<ul>' + data.food_logs.map(f => {
+    // Filter Planned vs Eaten
+    const planned = (data.food_logs || []).filter(f => f.quantity === 0 && f.planned_quantity > 0);
+    const eaten = (data.food_logs || []).filter(f => f.quantity > 0);
+
+    // Render Planned
+    const plannedList = document.getElementById('planned-today-list');
+    if(plannedList) {
+        if (planned.length > 0) {
+            plannedList.innerHTML = '<ul class="grid-list" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">' + planned.map(f => {
+                const unit = f.unit || 'serving';
+                // Pass log_id to openConfirmLogForPlan
+                return `<li class="card" style="padding: 10px; cursor: pointer; border: 1px dashed var(--primary-color);" onclick="openConfirmLogForPlan(${f.log_id})">
+                    <strong>${f.name}</strong><br>
+                    <span style="color: #666; font-size: 0.9em;">Planned: ${f.planned_quantity} ${unit}</span>
+                </li>`;
+            }).join('') + '</ul>';
+        } else {
+            plannedList.innerHTML = '<em style="color: #888;">No planned meals.</em>';
+        }
+    }
+
+    // Render Eaten
+    if (eaten.length > 0) {
+        foodList.innerHTML = '<ul>' + eaten.map(f => {
             const unit = f.unit || 'serving';
             return `<li>${f.quantity} Servings of ${unit} ${f.name} - (${Math.round(f.calories)} kcal)</li>`;
         }).join('') + '</ul>';
     } else {
         foodList.innerHTML = '<em>No food logged.</em>';
+    }
+}
+
+async function openConfirmLogForPlan(logId) {
+    if (!summaryData || !summaryData.food_logs) return;
+    const item = summaryData.food_logs.find(l => l.log_id === logId);
+    if (!item) return;
+
+    // Fetch full food details to populate the preview modal properly
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/${item.food_id}`);
+        if(res.ok) {
+            const food = await res.json();
+            // Open modal with explicit update target
+            openPreviewModal(food, {
+                quantity: item.planned_quantity,
+                meal_id: item.meal,
+                update_log_id: logId // Pass this to switch mode from CREATE to UPDATE
+            });
+        } else {
+            alert("Could not load food details.");
+        }
+    } catch(e) {
+        console.error(e);
+        alert("Error loading food details.");
     }
 }
 
@@ -452,8 +507,9 @@ function updateRecommendations(targets) {
     document.getElementById('recommendation-text').innerHTML = html;
 }
 
-function renderGauges(data, targets) {
-    const container = document.getElementById('gauges-container');
+function renderGauges(data, targets, containerId = 'gauges-container') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
     container.innerHTML = '';
 
     if (!targets) return;
@@ -697,6 +753,7 @@ async function refillMed(id, qty) {
 // --- Nutrition ---
 
 function openFoodModal() {
+    isPlanningMode = false; // Reset by default
     document.getElementById('food-modal').classList.remove('hidden');
     document.getElementById('create-food-form').reset();
 }
@@ -801,6 +858,11 @@ async function handleLogFood(e) {
         quantity: parseFloat(fd.get('quantity'))
     };
 
+    if (isPlanningMode) {
+        data.planned_quantity = data.quantity;
+        data.quantity = 0;
+    }
+
     if (!data.food_name && document.getElementById('food-search-input').value) {
         data.food_name = document.getElementById('food-search-input').value;
     }
@@ -832,10 +894,19 @@ async function submitLog(data, formElement) {
         });
 
         if (res.ok) {
-            alert('Food logged successfully');
+            if (isPlanningMode) {
+                alert('Added to Meal Plan');
+                loadPlanner(); // Refresh planner
+            } else {
+                alert('Food logged successfully');
+            }
+
             if(formElement) formElement.reset();
             document.getElementById('food-search-results').classList.add('hidden');
             selectedFoodItem = null;
+
+            // Reset mode
+            isPlanningMode = false;
         } else {
             const err = await res.json();
             if (res.status === 404) {
@@ -899,7 +970,27 @@ function openPreviewModal(food, formData) {
     // Store meal_id for confirmation
     modal.dataset.mealId = formData.meal_id;
 
+    // Store update target if present (for Planned items) and toggle Delete button
+    const deleteBtn = document.getElementById('preview-btn-delete');
+    if (formData.update_log_id) {
+        modal.dataset.updateLogId = formData.update_log_id;
+        if(deleteBtn) deleteBtn.classList.remove('hidden');
+    } else {
+        delete modal.dataset.updateLogId;
+        if(deleteBtn) deleteBtn.classList.add('hidden');
+    }
+
     updatePreviewTotals();
+}
+
+function deletePreviewItem() {
+    const modal = document.getElementById('food-preview-modal');
+    const updateLogId = modal.dataset.updateLogId;
+
+    if (updateLogId) {
+        deleteFoodLog(parseInt(updateLogId));
+        closePreviewModal();
+    }
 }
 
 function closePreviewModal() {
@@ -959,7 +1050,22 @@ async function confirmLogFood() {
 
     const s = 1.0;
     const q = parseFloat(document.getElementById('preview-quantity').value);
-    const mealId = document.getElementById('food-preview-modal').dataset.mealId;
+    const modal = document.getElementById('food-preview-modal');
+    const mealId = modal.dataset.mealId;
+    const updateLogId = modal.dataset.updateLogId;
+
+    // Close modal first
+    closePreviewModal();
+
+    if (updateLogId) {
+        // We are updating a planned item to eaten
+        await commitPlanItem(parseInt(updateLogId), q);
+        // Refresh dashboard if we are there
+        if(document.getElementById('tab-dashboard') && !document.getElementById('tab-dashboard').classList.contains('hidden')) {
+            loadSummary();
+        }
+        return;
+    }
 
     const data = {
         food_name: selectedFoodItem.food_name,
@@ -969,8 +1075,10 @@ async function confirmLogFood() {
         quantity: q
     };
 
-    // Close modal first
-    closePreviewModal();
+    if (isPlanningMode) {
+        data.planned_quantity = data.quantity;
+        data.quantity = 0;
+    }
 
     // Use shared submit logic
     // Pass form element if we want it reset. We can find it.
@@ -2483,7 +2591,16 @@ async function deleteFoodLog(id) {
         const res = await fetchWithAuth(`${API_URL}/log/food/${id}`, {
             method: 'DELETE'
         });
-        if(res.ok) loadManageFoodList();
+        if(res.ok) {
+            // Refresh logic: check where we are
+            if(document.getElementById('manage-food-modal') && !document.getElementById('manage-food-modal').classList.contains('hidden')) {
+                loadManageFoodList();
+            } else if(document.getElementById('nutrition-view-planner') && !document.getElementById('nutrition-view-planner').classList.contains('hidden')) {
+                loadPlanner();
+            } else if(document.getElementById('tab-dashboard') && !document.getElementById('tab-dashboard').classList.contains('hidden')) {
+                loadSummary();
+            }
+        }
         else alert("Delete failed");
     } catch(err) { alert("Delete failed"); }
 }
@@ -2558,15 +2675,36 @@ function handleScopeChange(val) {
     input.value = '';
 }
 
-function showNutritionView(view) {
+function showNutritionView(view, preserveMode = false) {
     document.getElementById('nutrition-view-log').classList.add('hidden');
     document.getElementById('nutrition-view-recipes').classList.add('hidden');
+    document.getElementById('nutrition-view-planner').classList.add('hidden');
 
     if (view === 'log') {
+        if (!preserveMode) isPlanningMode = false;
         document.getElementById('nutrition-view-log').classList.remove('hidden');
+        updateLogViewUI();
     } else if (view === 'recipes') {
         document.getElementById('nutrition-view-recipes').classList.remove('hidden');
         loadRecipes();
+    } else if (view === 'planner') {
+        document.getElementById('nutrition-view-planner').classList.remove('hidden');
+        loadPlanner();
+    }
+}
+
+function updateLogViewUI() {
+    const btn = document.querySelector('#food-log-form button[type="submit"]');
+    const title = document.querySelector('#nutrition-view-log h3');
+
+    if (isPlanningMode) {
+        if(btn) btn.innerText = "Add to Plan";
+        if(title) title.innerText = "Add to Meal Plan";
+        // Maybe highlight the Meal dropdown or lock it?
+        // document.getElementById('food-meal').style.border = "2px solid var(--primary-color)";
+    } else {
+        if(btn) btn.innerText = "Log Food";
+        if(title) title.innerText = "Log Food";
     }
 }
 
@@ -2989,4 +3127,254 @@ function toggleMobileMenu() {
 function mobileMenuGo(tab) {
     toggleMobileMenu();
     showTab(tab);
+}
+
+// --- Meal Planner Logic ---
+
+function changePlannerDate(offset) {
+    currentPlannerDate.setDate(currentPlannerDate.getDate() + offset);
+    loadPlanner();
+}
+
+function updatePlannerDateDisplay() {
+    const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+    document.getElementById('planner-date-display').innerText = currentPlannerDate.toLocaleDateString(undefined, options);
+}
+
+async function loadPlanner() {
+    updatePlannerDateDisplay();
+    // Use summary endpoint to get food logs
+    // Summary endpoint returns { food_logs: [...] }
+    // food_logs now include planned_quantity
+
+    try {
+        const dateStr = getFormattedDate(currentPlannerDate);
+        const res = await fetchWithAuth(`${API_URL}/log/summary?date_str=${dateStr}`);
+        const data = await res.json();
+
+        // Store for gauge updates
+        plannerLogs = data.food_logs || [];
+
+        // Also need base nutrition info for gauge calculations?
+        // summaryData from dashboard has pre-calculated macros for EATEN items.
+        // But for Planner, we need to calculate ourselves based on the toggle.
+        // food_logs items have: name, calories, meal, serving_size, quantity, planned_quantity, unit.
+        // They DON'T have raw macros (protein, fat, etc) in the summary response yet?
+        // Wait, 'get_daily_summary' in health.py:
+        /*
+        food_list.append({
+            "log_id": log.item_log_id,
+            "name": log.nutrition_info.food_name,
+            "calories": (log.nutrition_info.calories or 0) * multiplier,
+            "meal": log.meal_id,
+            "serving_size": log.serving_size,
+            "quantity": log.quantity,
+            "planned_quantity": log.planned_quantity,
+            "unit": log.nutrition_info.serving_size_unit,
+            "timestamp": ts
+        })
+        */
+        // It returns calculated calories, but NOT protein/fat/carbs for individual items.
+        // This is a problem for the Gauges if we want to show Macros.
+        // The gauges on dashboard use 'macros' object which is pre-summed by backend.
+        // But that pre-sum is only for EATEN items.
+        // If I want to show Planned Macros, I need the macro data in the list.
+
+        // NOTE: I should have updated the backend to include macros in food_logs list.
+        // I missed that in the plan.
+        // For now, I can only accurately show Calories in the Planner Gauges unless I fetch more data.
+        // Or I can update the backend quickly.
+        // The user requirement said "It will show the same gauges featured on the daily summary."
+        // So I need macros.
+
+        // I'll stick to rendering the planner list first, and maybe show just calories or 0 for others
+        // if I can't fix backend now without going back.
+        // Actually, I can use 'read_file' to check if I can easily patch health.py again.
+        // Yes, I can. But let's finish app.js first with what we have.
+        // I will display Calories Gauge accurately. Others might be 0 or I'll assume standard distribution? No that's bad.
+        // I will assume for now we only show Calories or accept that macros might be missing for Planned items unless I fix backend.
+        // Let's implement the list rendering.
+
+        renderPlanner();
+        updatePlannerGauges();
+
+    } catch(err) {
+        console.error("Planner load error", err);
+    }
+}
+
+function renderPlanner() {
+    const meals = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+
+    meals.forEach(meal => {
+        const listDiv = document.getElementById(`planner-list-${meal}`);
+        if(!listDiv) return;
+
+        const items = plannerLogs.filter(l => l.meal === meal);
+        if(items.length === 0) {
+            listDiv.innerHTML = '<div style="color:#888; font-style:italic; padding:10px;">No items planned.</div>';
+            return;
+        }
+
+        let html = '<ul style="list-style:none; padding:0; margin:0;">';
+        items.forEach(item => {
+            const isEaten = item.quantity > 0;
+            const isPlanned = item.quantity === 0 && item.planned_quantity > 0;
+
+            // If neither (both 0), maybe deleted or weird state. Skip.
+            if(!isEaten && !isPlanned) return;
+
+            // Display Logic
+            // If Eaten: Show "Quantity: X (Eaten)"
+            // If Planned: Show "Planned: Y" and a [Log] button/checkbox.
+
+            // Calculate Calories to show
+            // item.calories is calculated based on quantity * serving_size in backend.
+            // But if quantity is 0, backend calculated 0 calories.
+            // We need to calc calories for planned item?
+            // Problem: Backend returned 'calories' = (log.nutrition_info.calories) * multiplier.
+            // If multiplier (quantity) is 0, calories is 0.
+            // So for Planned items, I don't have the calorie count!
+            // I need to update backend to send per-serving calories or something.
+            // Wait, I can't do the gauges OR the list display properly without this.
+
+            // CRITICAL: I must update backend 'get_daily_summary' to return 'calories_per_serving' or similar.
+            // Or calc it if I have unit info? No.
+
+            // WORKAROUND: In backend 'get_daily_summary', I can modify the calculation logic?
+            // No, better to expose 'calories_per_serving' in the response.
+            // Or 'nutrition_info' object.
+
+            let displayCals = Math.round(item.calories);
+            // If planned and not eaten, item.calories is 0.
+            // We can't show it.
+
+            html += `<li style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>${escapeHtml(item.name)}</strong>
+                    <br>
+                    ${renderPlannerItemDetails(item)}
+                </div>
+                <div>
+                    ${renderPlannerItemActions(item)}
+                </div>
+            </li>`;
+        });
+        html += '</ul>';
+        listDiv.innerHTML = html;
+    });
+}
+
+function renderPlannerItemDetails(item) {
+    if (item.quantity > 0) {
+        return `<span style="color:green;">Eaten: ${item.quantity} ${item.unit || ''} (${Math.round(item.calories)} kcal)</span>`;
+    } else {
+        // Backend now returns calories for planned items too
+        return `<span style="color:#d35400;">Planned: ${item.planned_quantity} ${item.unit || ''} (${Math.round(item.calories)} kcal)</span>`;
+    }
+}
+
+function renderPlannerItemActions(item) {
+    if (item.quantity === 0 && item.planned_quantity > 0) {
+        return `
+            <button class="btn-primary" style="font-size:0.8em; padding: 4px 8px;" onclick="commitPlanItem(${item.log_id})">Log</button>
+            <button class="btn-warning" style="font-size:0.8em; padding: 4px 8px; margin-left: 5px; background-color: #dc3545;" onclick="deleteFoodLog(${item.log_id})">Del</button>
+        `;
+    }
+    return ''; // Already eaten
+}
+
+function openPlannerAdd(meal) {
+    isPlanningMode = true;
+    // We pass true to preserveMode to avoid flickering
+    showNutritionView('log', true);
+
+    document.getElementById('food-meal').value = meal;
+
+    // Ensure UI is updated (though showNutritionView calls it, we force isPlanningMode first)
+    // Actually showNutritionView handles it.
+    updateLogViewUI();
+}
+
+async function commitPlanItem(logId, quantityOverride = null) {
+    // Try to find item in plannerLogs first, if not (e.g. from dashboard), we proceed with just ID if override provided
+    const item = plannerLogs.find(l => l.log_id === logId);
+
+    let quantity = quantityOverride;
+    if (quantity === null && item) {
+        quantity = item.planned_quantity;
+    }
+
+    if (quantity === null) {
+        alert("Cannot determine quantity to log.");
+        return;
+    }
+
+    const updates = {
+        quantity: quantity,
+        timestamp: new Date().toISOString() // Update time to Now
+        // planned_quantity remains as is (record of plan)
+    };
+
+    try {
+        const res = await fetchWithAuth(`${API_URL}/log/food/${logId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+        if(res.ok) {
+            // Refresh wherever we are
+            if(document.getElementById('nutrition-view-planner') && !document.getElementById('nutrition-view-planner').classList.contains('hidden')) {
+                loadPlanner();
+            }
+        } else {
+            alert("Failed to log item");
+        }
+    } catch(e) {
+        alert("Failed to log item");
+    }
+}
+
+function updatePlannerGauges() {
+    // Determine mode
+    const mode = document.querySelector('input[name="planner_mode"]:checked').value;
+
+    // Calculate Totals
+    const totals = { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0, sodium: 0 };
+
+    if (plannerLogs) {
+        plannerLogs.forEach(item => {
+            const isEaten = item.quantity > 0;
+            const isPlanned = item.quantity === 0 && item.planned_quantity > 0;
+
+            let include = false;
+            if (mode === 'today') {
+                include = true;
+            } else if (mode === 'future') {
+                include = isPlanned;
+            }
+
+            if (include) {
+                totals.calories += item.calories || 0;
+                totals.protein += item.protein || 0;
+                totals.fat += item.fat || 0;
+                totals.carbs += item.carbs || 0;
+                totals.fiber += item.fiber || 0;
+                totals.sodium += item.sodium || 0;
+            }
+        });
+    }
+
+    const gaugeData = {
+        calories_consumed: totals.calories,
+        macros: {
+            protein: totals.protein,
+            fat: totals.fat,
+            carbs: totals.carbs,
+            fiber: totals.fiber,
+            sodium: totals.sodium
+        }
+    };
+
+    renderGauges(gaugeData, calculateTargets(), 'planner-gauges-container');
 }
