@@ -308,7 +308,8 @@ class HealthLogService:
                 return None, "Food not found"
         item_log = models.FoodItemLog(
             user_id=user.user_id, meal_id=data.meal_id, food_id=food_item.food_id,
-            serving_size=data.serving_size, quantity=data.quantity
+            serving_size=data.serving_size, quantity=data.quantity,
+            planned_quantity=data.planned_quantity
         )
         db.add(item_log)
         local_date = get_user_local_date(user, datetime.now(timezone.utc))
@@ -316,8 +317,13 @@ class HealthLogService:
         if not daily_log:
             daily_log = models.DailyLog(user_id=user.user_id, date=local_date, total_calories_burned=0, total_calories_consumed=0)
             db.add(daily_log)
-        total_cals = food_item.calories * data.serving_size * data.quantity
-        daily_log.total_calories_consumed += total_cals
+
+        # Only add to DailyLog if explicitly eaten (quantity > 0)
+        # Planned items (quantity=0) do not count towards daily totals in DB
+        if data.quantity > 0:
+            total_cals = food_item.calories * data.serving_size * data.quantity
+            daily_log.total_calories_consumed += total_cals
+
         db.commit()
         return item_log, None
 
@@ -395,7 +401,10 @@ class HealthLogService:
         # Deduct from DailyLog
         # Need to know total calories of this item
         # log has nutrition_info rel
-        cals = log.nutrition_info.calories * log.serving_size * log.quantity
+        # Only deduct if it was eaten (quantity > 0)
+        cals = 0.0
+        if log.quantity > 0:
+            cals = log.nutrition_info.calories * log.serving_size * log.quantity
 
         local_date = get_user_local_date(log.user, log.timestamp)
         daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == user_id, models.DailyLog.date == local_date).first()
@@ -411,18 +420,25 @@ class HealthLogService:
         log = db.query(models.FoodItemLog).filter(models.FoodItemLog.item_log_id == log_id, models.FoodItemLog.user_id == user_id).first()
         if not log: return None
 
-        # Old values
-        old_cals = log.nutrition_info.calories * log.serving_size * log.quantity
+        # Old values (only count towards daily log if quantity > 0)
+        old_cals = 0.0
+        if log.quantity > 0:
+            old_cals = log.nutrition_info.calories * log.serving_size * log.quantity
+
         old_date = get_user_local_date(log.user, log.timestamp)
 
         # Updates
         if updates.timestamp: log.timestamp = updates.timestamp
         if updates.quantity is not None: log.quantity = updates.quantity
+        if updates.planned_quantity is not None: log.planned_quantity = updates.planned_quantity
         if updates.serving_size is not None: log.serving_size = updates.serving_size
         if updates.meal_id: log.meal_id = updates.meal_id
 
-        # New values
-        new_cals = log.nutrition_info.calories * log.serving_size * log.quantity
+        # New values (only count towards daily log if quantity > 0)
+        new_cals = 0.0
+        if log.quantity > 0:
+            new_cals = log.nutrition_info.calories * log.serving_size * log.quantity
+
         new_date = get_user_local_date(log.user, log.timestamp)
 
         # Update DailyLogs

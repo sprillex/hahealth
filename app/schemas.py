@@ -189,6 +189,7 @@ class FoodLogPayload(BaseModel):
     food_name: Optional[str] = None
     serving_size: float = 1.0
     quantity: float = 1.0
+    planned_quantity: float = 0.0
     meal_id: str = "Snack"
     calories: Optional[float] = None
     protein: Optional[float] = None
@@ -205,6 +206,7 @@ class FoodLogResponse(BaseModel):
     calories: float
     serving_size: float
     quantity: float
+    planned_quantity: float
     timestamp: Optional[datetime] = None
 
 class WeightPayload(BaseModel):
@@ -223,6 +225,7 @@ class LogUpdate(BaseModel):
     activity_type: Optional[str] = None
     # For Food
     quantity: Optional[float] = None
+    planned_quantity: Optional[float] = None
     serving_size: Optional[float] = None
     meal_id: Optional[str] = None
 
