@@ -3285,7 +3285,8 @@ async function commitPlanItem(logId, quantityOverride = null) {
     }
 
     const updates = {
-        quantity: quantity
+        quantity: quantity,
+        timestamp: new Date().toISOString() // Update time to Now
         // planned_quantity remains as is (record of plan)
     };
 
