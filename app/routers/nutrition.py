@@ -374,6 +374,7 @@ def log_food_v2(
             calories=total_cals,
             serving_size=item_log.serving_size,
             quantity=item_log.quantity,
+            planned_quantity=item_log.planned_quantity,
             timestamp=item_log.timestamp
         )
     else:
@@ -385,5 +386,6 @@ def log_food_v2(
             calories=0.0,
             serving_size=1.0,
             quantity=0.0,
+            planned_quantity=0.0,
             timestamp=None
         )
