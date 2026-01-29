@@ -3,3 +3,13 @@ __pycache__/
 *.db
 .pytest_cache/
 venv/
+# Ignore database backups
+*.db.bak
+backups/
+
+# Ignore local utility scripts
+testbrach.sh
+update.sh
+
+# Ignore environment variables (contains secrets)
+.env
