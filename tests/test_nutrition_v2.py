@@ -169,3 +169,22 @@ def test_log_v2_save_only(client, session):
     # Verify NO Log
     logs = session.query(models.FoodItemLog).filter(models.FoodItemLog.food_id == f.food_id).all()
     assert len(logs) == 0
+
+def test_generate_upc_endpoint(client, session):
+    token = get_auth_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    res = client.get("/api/v2/nutrition/generate_upc", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert "upc" in data
+    upc = data["upc"]
+    assert len(upc) == 12
+    assert upc.startswith("4")
+
+    # Call again to ensure consistent behavior
+    res2 = client.get("/api/v2/nutrition/generate_upc", headers=headers)
+    assert res2.status_code == 200
+    upc2 = res2.json()["upc"]
+    assert len(upc2) == 12
+    assert upc2.startswith("4")

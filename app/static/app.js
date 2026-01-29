@@ -2306,10 +2306,24 @@ function handlePreviewJson() {
         const macros = item.macros;
         const srv = item.serving_info || {};
 
+        // Check for missing/invalid UPC
+        let upcDisplay = escapeHtml(meta.upc);
+        let showGenerateBtn = false;
+        // Check for null, undefined, empty string, or explicit "null"/"na"/"n/a" strings
+        if (!meta.upc || ['null', 'na', 'n/a', 'none'].includes(String(meta.upc).toLowerCase())) {
+             upcDisplay = '<span style="color: red; font-style: italic;">Missing</span>';
+             showGenerateBtn = true;
+        }
+
+        let generateBtnHtml = '';
+        if (showGenerateBtn) {
+            generateBtnHtml = `<button onclick="handleGenerateUPC()" class="btn-secondary" style="margin-left: 10px; font-size: 0.8em; padding: 2px 8px; width: auto;">Generate Internal UPC</button>`;
+        }
+
         contentDiv.innerHTML = `
             <p><strong>Name:</strong> ${escapeHtml(meta.name)}</p>
             <p><strong>Brand:</strong> ${escapeHtml(meta.brand)}</p>
-            <p><strong>UPC:</strong> ${escapeHtml(meta.upc)}</p>
+            <p><strong>UPC:</strong> <span id="import-preview-upc">${upcDisplay}</span> ${generateBtnHtml}</p>
             <p><strong>Macros:</strong> ${macros.calories} kcal | P: ${macros.protein_g}g | F: ${macros.fat_g}g | C: ${macros.carbs_g}g</p>
             <p><strong>Serving:</strong> ${escapeHtml(srv.size || 'N/A')}</p>
             <p><strong>Density:</strong> ${srv.weight_g || '-'}g / ${srv.volume_ml || '-'}ml</p>
@@ -2320,6 +2334,45 @@ function handlePreviewJson() {
         previewDiv.classList.add('hidden');
         submitBtn.classList.add('hidden');
         importedJsonPayload = null;
+    }
+}
+
+async function handleGenerateUPC() {
+    try {
+        const res = await fetchWithAuth(`/api/v2/nutrition/generate_upc`);
+        if (res.ok) {
+            const data = await res.json();
+            const newUpc = data.upc;
+
+            // Update Payload
+            if (importedJsonPayload && importedJsonPayload.variables) {
+                const keys = Object.keys(importedJsonPayload.variables);
+                if (keys.length > 0) {
+                     importedJsonPayload.variables[keys[0]].metadata.upc = newUpc;
+                }
+            }
+
+            // Update UI
+            const upcSpan = document.getElementById('import-preview-upc');
+            if(upcSpan) {
+                upcSpan.innerHTML = newUpc;
+                upcSpan.style.color = "var(--text-color)";
+                upcSpan.style.fontStyle = "normal";
+            }
+
+            const btn = document.querySelector('#import-preview-content button');
+            if(btn) {
+                btn.innerText = "Generated";
+                btn.disabled = true;
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-primary'); // Highlight success
+            }
+
+        } else {
+            alert("Failed to generate UPC");
+        }
+    } catch(e) {
+        alert("Error generating UPC: " + e.message);
     }
 }
 
