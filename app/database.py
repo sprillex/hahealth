@@ -42,6 +42,12 @@ def migrate_nutrition_table():
                 if col not in columns:
                     print(f"Migrating nutrition_cache: Adding column {col}")
                     conn.execute(text(f"ALTER TABLE nutrition_cache ADD COLUMN {col} {type_def}"))
+
+            # Staple migration
+            if "is_staple" not in columns:
+                print(f"Migrating nutrition_cache: Adding column is_staple")
+                conn.execute(text("ALTER TABLE nutrition_cache ADD COLUMN is_staple BOOLEAN DEFAULT 0"))
+
             conn.commit()
     except Exception as e:
         print(f"Migration failed: {e}")

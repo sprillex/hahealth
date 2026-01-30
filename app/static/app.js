@@ -75,6 +75,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Staple Search Listener
+    const stapleSearchInput = document.getElementById('staple-search-input');
+    if(stapleSearchInput) {
+        let debounceStaple;
+        stapleSearchInput.addEventListener('input', (e) => {
+             clearTimeout(debounceStaple);
+             debounceStaple = setTimeout(() => handleSearchStapleToAdd(e.target.value), 300);
+        });
+    }
+
     // Profile Listeners
     document.getElementById('profile-units').addEventListener('change', updateProfileUnitLabels);
 
@@ -790,6 +800,9 @@ async function handleCreateFood(e) {
         const v = parseFloat(data[k]);
         data[k] = isNaN(v) ? null : v;
     });
+
+    // Checkbox
+    data.is_staple = !!data.is_staple;
 
     data.source = 'MANUAL';
     if (!data.barcode) delete data.barcode; // Send null or undefined if empty
@@ -2526,6 +2539,7 @@ function editLibraryFood(food) {
     document.getElementById('edit_lib_tip').value = food.pairing_tip || '';
 
     document.getElementById('edit_lib_visible').checked = food.is_user_visible;
+    document.getElementById('edit_lib_is_staple').checked = food.is_staple;
 }
 
 document.getElementById('edit-library-form').addEventListener('submit', async (e) => {
@@ -2557,7 +2571,8 @@ document.getElementById('edit-library-form').addEventListener('submit', async (e
         health_insight: document.getElementById('edit_lib_insight').value || null,
         pairing_tip: document.getElementById('edit_lib_tip').value || null,
 
-        is_user_visible: document.getElementById('edit_lib_visible').checked
+        is_user_visible: document.getElementById('edit_lib_visible').checked,
+        is_staple: document.getElementById('edit_lib_is_staple').checked
     };
 
     try {
@@ -2751,6 +2766,7 @@ function showNutritionView(view, preserveMode = false) {
     document.getElementById('nutrition-view-log').classList.add('hidden');
     document.getElementById('nutrition-view-recipes').classList.add('hidden');
     document.getElementById('nutrition-view-planner').classList.add('hidden');
+    document.getElementById('nutrition-view-staples').classList.add('hidden');
 
     if (view === 'log') {
         if (!preserveMode) isPlanningMode = false;
@@ -2762,6 +2778,9 @@ function showNutritionView(view, preserveMode = false) {
     } else if (view === 'planner') {
         document.getElementById('nutrition-view-planner').classList.remove('hidden');
         loadPlanner();
+    } else if (view === 'staples') {
+        document.getElementById('nutrition-view-staples').classList.remove('hidden');
+        loadStaples();
     }
 }
 
@@ -3530,4 +3549,207 @@ function updatePlannerGauges() {
     };
 
     renderGauges(gaugeData, calculateTargets(), 'planner-gauges-container');
+}
+
+// --- Staples Logic ---
+
+async function loadStaples() {
+    const listDiv = document.getElementById('staples-list');
+    listDiv.innerHTML = 'Loading...';
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/list?is_staple=true&limit=100`);
+        const foods = await res.json();
+
+        if (foods.length === 0) {
+            listDiv.innerHTML = '<em>No staples found. Use the search above to add some.</em>';
+            return;
+        }
+
+        let html = '<ul style="list-style: none; padding: 0;">';
+        foods.forEach(food => {
+             const safeFood = JSON.stringify(food).replace(/"/g, '&quot;');
+             const safeName = escapeHtml(food.food_name);
+
+             html += `
+             <li class="card" style="margin-bottom: 10px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>${safeName}</strong> <br>
+                    <small>${Math.round(food.calories)} kcal | ${food.serving_size_unit || '1 serving'}</small>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <button class="btn-primary" onclick='openLogStaple(${safeFood})' style="padding: 5px 10px; font-size: 0.9em;">Log</button>
+                    <button class="btn-secondary" onclick='editLibraryFood(${safeFood})' style="padding: 5px 10px; font-size: 0.9em;">Edit</button>
+                    <button class="btn-warning" onclick="removeStaple(${food.food_id})" style="padding: 5px 10px; font-size: 0.9em; background-color: #e67e22;">Unmark</button>
+                </div>
+             </li>
+             `;
+        });
+        html += '</ul>';
+        listDiv.innerHTML = html;
+
+    } catch (err) {
+        listDiv.innerHTML = 'Error loading staples.';
+        console.error(err);
+    }
+}
+
+async function handleSearchStapleToAdd(query) {
+    const resultsDiv = document.getElementById('staple-search-results');
+    if (!query || query.length < 2) {
+        resultsDiv.classList.add('hidden');
+        return;
+    }
+
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/search?query=${encodeURIComponent(query)}&scope=food`);
+        const foods = await res.json();
+
+        resultsDiv.innerHTML = '';
+        if (foods.length > 0) {
+            resultsDiv.classList.remove('hidden');
+            resultsDiv.style.maxHeight = '200px';
+            resultsDiv.style.overflowY = 'auto';
+
+            foods.forEach(food => {
+                const div = document.createElement('div');
+                div.className = 'search-item';
+                div.innerText = `${food.food_name} (${Math.round(food.calories)} kcal)`;
+                div.onclick = () => addStaple(food);
+                resultsDiv.appendChild(div);
+            });
+        } else {
+            resultsDiv.classList.add('hidden');
+        }
+
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+async function addStaple(food) {
+    // Call PUT to set is_staple = true
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/${food.food_id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_staple: true })
+        });
+
+        if (res.ok) {
+            document.getElementById('staple-search-input').value = '';
+            document.getElementById('staple-search-results').classList.add('hidden');
+            loadStaples();
+        } else {
+            alert("Failed to add staple");
+        }
+    } catch(e) {
+        alert("Failed to add staple");
+    }
+}
+
+async function removeStaple(foodId) {
+    if(!confirm("Remove from Staples list?")) return;
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/${foodId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_staple: false })
+        });
+        if(res.ok) {
+            loadStaples();
+        } else {
+            alert("Failed to remove staple");
+        }
+    } catch(e) {
+        alert("Failed to remove staple");
+    }
+}
+
+function openLogStaple(food) {
+    // Switch to Log view
+    showNutritionView('log');
+
+    // Pre-select food (mimic search selection)
+    selectedFoodItem = food;
+    document.getElementById('food-search-input').value = food.food_name;
+    document.getElementById('selected-food-name').value = food.food_name;
+    document.getElementById('selected-food-barcode').value = food.barcode || '';
+    document.getElementById('log-unit-display').innerText = food.serving_size_unit || '1';
+
+    // Automatically open preview modal if we have details?
+    // User probably wants to just enter quantity.
+    // The current flow requires user to click "Log Food" or enter data.
+    // Let's scroll to form?
+    document.getElementById('food-log-form').scrollIntoView();
+}
+
+// --- Daily Nutrition Modal ---
+
+function openDailyNutritionModal() {
+    if (!summaryData || !summaryData.macros) {
+        alert("No data available.");
+        return;
+    }
+
+    const modal = document.getElementById('daily-nutrition-modal');
+    const tbody = document.getElementById('daily-nutrition-body');
+    const m = summaryData.macros;
+    const t = calculateTargets() || {};
+
+    // Helper to format rows
+    const row = (label, val, unit, goalMin=null, goalMax=null) => {
+        let goalText = '--';
+        if (goalMin !== null) {
+            if (goalMax !== null) goalText = `${goalMin}-${goalMax} ${unit}`;
+            else goalText = `> ${goalMin} ${unit}`;
+
+            // Sodium max check
+            if (label === 'Sodium' && goalMax !== null) goalText = `< ${goalMax} ${unit}`;
+        }
+
+        // Color coding
+        let color = 'inherit';
+        if (goalMin !== null) {
+             if (val < goalMin) color = '#f1c40f'; // Low (Yellow)
+             else if (goalMax && val > goalMax) color = '#e74c3c'; // High (Red)
+             else color = '#2ecc71'; // Good (Green)
+        } else if (label === 'Sodium' && goalMax) {
+             if (val > goalMax) color = '#e74c3c';
+             else color = '#2ecc71';
+        }
+
+        return `
+        <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 8px;">${label}</td>
+            <td style="padding: 8px; text-align: right; color: ${color}; font-weight: bold;">${Math.round(val)} ${unit}</td>
+            <td style="padding: 8px; text-align: right; font-size: 0.9em; color: #666;">${goalText}</td>
+        </tr>`;
+    };
+
+    let html = '';
+
+    // Macros
+    html += `<tr style="background: rgba(0,0,0,0.05);"><td colspan="3" style="padding: 5px; font-weight: bold; font-size: 0.9em;">Macros</td></tr>`;
+    html += row('Calories', summaryData.calories_consumed, 'kcal', t.calories ? Math.round(t.calories*0.9) : null, t.calories ? Math.round(t.calories*1.1) : null);
+    html += row('Protein', m.protein, 'g', t.protein?.min, t.protein?.max);
+    html += row('Fat', m.fat, 'g', t.fat?.min, t.fat?.max);
+    html += row('Carbs', m.carbs, 'g', t.carbs?.min, t.carbs?.max);
+    html += row('Fiber', m.fiber, 'g', t.fiber?.min);
+    html += row('Sodium', m.sodium, 'mg', null, t.sodium?.max);
+
+    // Extended
+    html += `<tr style="background: rgba(0,0,0,0.05);"><td colspan="3" style="padding: 5px; font-weight: bold; font-size: 0.9em;">Extended</td></tr>`;
+    html += row('Cholesterol', m.cholesterol || 0, 'mg', null, 300);
+    html += row('Total Sugars', m.total_sugars || 0, 'g');
+    html += row('Added Sugars', m.added_sugars || 0, 'g', null, 36); // Rough guideline (men)
+
+    // Micros
+    html += `<tr style="background: rgba(0,0,0,0.05);"><td colspan="3" style="padding: 5px; font-weight: bold; font-size: 0.9em;">Micronutrients</td></tr>`;
+    html += row('Vitamin D', m.vitamin_d || 0, 'mcg', 15); // RDA
+    html += row('Calcium', m.calcium || 0, 'mg', 1000);
+    html += row('Iron', m.iron || 0, 'mg', 8); // Men (18 for women)
+    html += row('Potassium', m.potassium || 0, 'mg', 3400);
+
+    tbody.innerHTML = html;
+    modal.classList.remove('hidden');
 }

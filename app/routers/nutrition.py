@@ -58,6 +58,7 @@ def create_custom_food(
         health_score=food.health_score,
         health_insight=food.health_insight,
         pairing_tip=food.pairing_tip,
+        is_staple=food.is_staple,
         source="MANUAL"
     )
     db.add(new_food)
@@ -126,6 +127,7 @@ def list_foods(
     limit: int = 50,
     search: Optional[str] = None,
     include_hidden: bool = False,
+    is_staple: Optional[bool] = None,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -135,6 +137,9 @@ def list_foods(
 
     if not include_hidden:
         query = query.filter(models.NutritionCache.is_user_visible == True)
+
+    if is_staple is not None:
+        query = query.filter(models.NutritionCache.is_staple == is_staple)
 
     return query.offset(skip).limit(limit).all()
 
