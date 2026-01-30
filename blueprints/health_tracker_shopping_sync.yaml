@@ -1,0 +1,158 @@
+blueprint:
+  name: Health Tracker Shopping List Sync
+  description: >
+    Synchronize the Health Tracker shopping list with a Home Assistant To-Do list.
+
+    Setup Instructions:
+    1. Ensure your Health Tracker MQTT sensor is working (e.g., sensor.health_tracker_shopping_list).
+    2. Add the `rest_command` configuration to your configuration.yaml (see documentation).
+    3. Select the To-Do list entity and the REST command services below.
+  domain: automation
+  input:
+    todo_list:
+      name: To-Do List
+      description: The Home Assistant To-Do list entity to sync with.
+      selector:
+        entity:
+          domain: todo
+    mqtt_sensor:
+      name: Health Tracker Sensor
+      description: The MQTT sensor for the Health Tracker (e.g., sensor.health_tracker_shopping_list).
+      selector:
+        entity:
+          domain: sensor
+    add_item_service:
+      name: Add Item Service
+      description: The full service name of the REST command to ADD an item (e.g., rest_command.health_tracker_add).
+      default: rest_command.health_tracker_add
+      selector:
+        text:
+    remove_item_service:
+      name: Remove Item Service
+      description: The full service name of the REST command to REMOVE an item (e.g., rest_command.health_tracker_remove).
+      default: rest_command.health_tracker_remove
+      selector:
+        text:
+
+mode: queued
+max: 10
+
+trigger:
+  - platform: state
+    entity_id: !input mqtt_sensor
+    attribute: items
+    id: sync_trigger
+  - platform: state
+    entity_id: !input todo_list
+    id: sync_trigger
+
+variables:
+  todo_entity: !input todo_list
+  mqtt_sensor_entity: !input mqtt_sensor
+  add_svc: !input add_item_service
+  remove_svc: !input remove_item_service
+
+action:
+  # 1. Fetch current state of HA To-Do List
+  - service: todo.get_items
+    target:
+      entity_id: !input todo_list
+    response_variable: current_todo_list
+
+  - variables:
+      # Extract lists
+      ha_items_raw: "{{ current_todo_list[todo_entity]['items'] }}"
+      ha_item_names: "{{ ha_items_raw | map(attribute='summary') | list }}"
+      # Get MQTT items directly from state machine to ensure freshness regardless of trigger
+      mqtt_items: "{{ state_attr(mqtt_sensor_entity, 'items') | default([]) }}"
+
+  # ----------------------------------------------------------------
+  # PHASE 1: INGRESS (Tracker -> HA)
+  # ----------------------------------------------------------------
+
+  # 1.1 ADD items (In MQTT, Not in HA)
+  - repeat:
+      for_each: "{{ mqtt_items }}"
+      sequence:
+        - if:
+            - condition: template
+              value_template: "{{ repeat.item not in ha_item_names }}"
+          then:
+            - service: todo.add_item
+              target:
+                entity_id: !input todo_list
+              data:
+                item: "{{ repeat.item }}"
+                description: "#healthtracker"
+
+  # 1.2 UPDATE items (In MQTT, In HA, Missing Tag)
+  - repeat:
+      for_each: "{{ ha_items_raw }}"
+      sequence:
+        - if:
+            - condition: template
+              value_template: >
+                {{
+                  repeat.item.summary in mqtt_items and
+                  '#healthtracker' not in (repeat.item.description | default(''))
+                }}
+          then:
+            - service: todo.update_item
+              target:
+                entity_id: !input todo_list
+              data:
+                item: "{{ repeat.item.summary }}"
+                description: "{{ (repeat.item.description | default('')) ~ ' #healthtracker' }}"
+
+  # 1.3 REMOVE items (In HA (Tagged), Not in MQTT)
+  # This implies they were deleted on the Tracker side
+  - repeat:
+      for_each: "{{ ha_items_raw }}"
+      sequence:
+        - if:
+            - condition: template
+              value_template: >
+                {{
+                  repeat.item.summary not in mqtt_items and
+                  '#healthtracker' in (repeat.item.description | default(''))
+                }}
+          then:
+            - service: todo.remove_item
+              target:
+                entity_id: !input todo_list
+              data:
+                item: "{{ repeat.item.summary }}"
+
+  # ----------------------------------------------------------------
+  # PHASE 2: EGRESS (HA -> Tracker)
+  # ----------------------------------------------------------------
+
+  # 2.1 ADD items (In HA (Untagged), Not in MQTT)
+  # This implies user added them manually in HA
+  - repeat:
+      for_each: "{{ ha_items_raw }}"
+      sequence:
+        - if:
+            - condition: template
+              value_template: >
+                {{
+                  repeat.item.summary not in mqtt_items and
+                  '#healthtracker' not in (repeat.item.description | default(''))
+                }}
+          then:
+            - service: "{{ add_svc }}"
+              data:
+                name: "{{ repeat.item.summary }}"
+
+  # 2.2 REMOVE items (In MQTT, Not in HA)
+  # This implies user deleted them in HA
+  - repeat:
+      for_each: "{{ mqtt_items }}"
+      sequence:
+        - if:
+            - condition: template
+              value_template: "{{ repeat.item not in ha_item_names }}"
+          then:
+            - service: "{{ remove_svc }}"
+              data:
+                name: "{{ repeat.item }}"
