@@ -1674,6 +1674,22 @@
               "default": false,
               "title": "Include Hidden"
             }
+          },
+          {
+            "name": "is_staple",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Staple"
+            }
           }
         ],
         "responses": {
@@ -3608,6 +3624,18 @@
               }
             ],
             "title": "Pairing Tip"
+          },
+          "is_staple": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Staple",
+            "default": false
           }
         },
         "type": "object",
@@ -3823,6 +3851,18 @@
               }
             ],
             "title": "Pairing Tip"
+          },
+          "is_staple": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Staple",
+            "default": false
           },
           "food_id": {
             "type": "integer",
@@ -4101,6 +4141,17 @@
               }
             ],
             "title": "Pairing Tip"
+          },
+          "is_staple": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Staple"
           }
         },
         "type": "object",
