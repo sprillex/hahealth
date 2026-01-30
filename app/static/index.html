@@ -699,6 +699,14 @@
                             </div>
                         </div>
 
+                        <!-- API Keys -->
+                        <div class="card">
+                            <h3>API Keys</h3>
+                            <p style="color: #666; font-size: 0.9em;">Generate keys for third-party integration (e.g., Home Assistant auto-login).</p>
+                            <div id="api-key-list" style="margin-bottom: 10px;">Loading...</div>
+                            <button class="btn-primary" onclick="handleCreateAPIKey()">+ Generate New Key</button>
+                        </div>
+
                         <!-- MQTT Status -->
                         <div class="card hidden" id="mqtt-status-card">
                             <h3>MQTT Status (Admin)</h3>
@@ -1416,6 +1424,19 @@
             <div class="form-actions" style="margin-top: 15px;">
                  <button type="button" onclick="closeUnitSelector()">Cancel</button>
             </div>
+        </div>
+    </div>
+
+    <div id="api-key-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('api-key-modal').classList.add('hidden')">&times;</span>
+            <h2>New API Key Created</h2>
+            <p>Please copy this key now. It will not be shown again.</p>
+            <div style="background: #eee; padding: 10px; word-break: break-all; font-family: monospace; margin-bottom: 15px; color: #333; font-size: 1.1em;" id="new-api-key-display">
+                --
+            </div>
+            <button class="btn-primary" onclick="copyAPIKey()">Copy to Clipboard</button>
+            <button class="btn-secondary" onclick="document.getElementById('api-key-modal').classList.add('hidden')">Close</button>
         </div>
     </div>
 

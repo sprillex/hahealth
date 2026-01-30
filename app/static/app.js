@@ -31,6 +31,18 @@ const UNIT_CONVERSIONS = {
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
+
+    // Check for API Key in URL (Auto Login)
+    const urlParams = new URLSearchParams(window.location.search);
+    const apiKey = urlParams.get('api_key');
+    if (apiKey) {
+        console.log("Found API Key in URL, logging in...");
+        token = apiKey;
+        localStorage.setItem('access_token', token);
+        // Clean URL to remove key from address bar
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     if (token) {
         checkAuth();
     } else {
@@ -327,6 +339,7 @@ function showTab(tabName) {
         loadProfileData();
         loadAllergiesSettings();
         refreshMQTTStatus();
+        loadAPIKeys();
     }
     if (tabName === 'health-logs') {
         console.log("Switching to Health Logs tab.");
@@ -2029,6 +2042,90 @@ async function refreshMQTTStatus() {
     } catch (e) {
         content.innerHTML = '<p style="color: red;">Error checking status.</p>';
     }
+}
+
+// --- API Keys ---
+
+async function loadAPIKeys() {
+    const div = document.getElementById('api-key-list');
+    if(!div) return;
+    div.innerHTML = 'Loading...';
+    try {
+        const res = await fetchWithAuth(`${API_URL}/users/me/keys`);
+        const keys = await res.json();
+
+        if (keys.length === 0) {
+            div.innerHTML = '<em>No API Keys generated.</em>';
+            return;
+        }
+
+        let html = '<ul style="list-style: none; padding: 0;">';
+        keys.forEach(k => {
+             const created = new Date(k.created_at).toLocaleDateString();
+             html += `
+             <li style="border-bottom: 1px solid #eee; padding: 8px 0; display: flex; justify-content: space-between; align-items: center;">
+                <span>
+                    <strong>${escapeHtml(k.name)}</strong> <small>(${created})</small>
+                </span>
+                <button onclick="handleDeleteAPIKey(${k.key_id})" class="btn-warning" style="font-size: 0.8em; padding: 2px 8px; background-color: #dc3545;">Revoke</button>
+             </li>`;
+        });
+        html += '</ul>';
+        div.innerHTML = html;
+
+    } catch (err) {
+        div.innerHTML = 'Error loading keys.';
+    }
+}
+
+async function handleCreateAPIKey() {
+    const name = prompt("Enter a name for this key (e.g. 'Home Assistant')");
+    if (!name) return;
+
+    try {
+        const res = await fetchWithAuth(`${API_URL}/users/me/keys`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            // Show modal
+            document.getElementById('new-api-key-display').innerText = data.api_key;
+            document.getElementById('api-key-modal').classList.remove('hidden');
+            loadAPIKeys();
+        } else {
+            alert("Failed to create key");
+        }
+    } catch(e) {
+        alert("Failed to create key");
+    }
+}
+
+async function handleDeleteAPIKey(keyId) {
+    if (!confirm("Revoke this API Key? It will stop working immediately.")) return;
+    try {
+        const res = await fetchWithAuth(`${API_URL}/users/me/keys/${keyId}`, {
+            method: 'DELETE'
+        });
+        if (res.ok) {
+            loadAPIKeys();
+        } else {
+            alert("Failed to revoke key");
+        }
+    } catch(e) {
+        alert("Failed to revoke key");
+    }
+}
+
+function copyAPIKey() {
+    const text = document.getElementById('new-api-key-display').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        alert("Copied to clipboard!");
+    }, () => {
+        alert("Failed to copy.");
+    });
 }
 
 // --- Management Functions (Appended) ---
