@@ -208,6 +208,7 @@ class NutritionCache(Base):
     source = Column(String) # OFF/MANUAL
     is_user_visible = Column(Boolean, default=True)
     is_staple = Column(Boolean, default=False)
+    on_shopping_list = Column(Boolean, default=False)
 
     food_item_logs = relationship("FoodItemLog", back_populates="nutrition_info")
 

@@ -236,7 +236,8 @@ class MQTTClient:
                 ("fat", "Fat", None, "g"),
                 ("carbs", "Carbs", None, "g"),
                 ("fiber", "Fiber", None, "g"),
-                ("sodium", "Sodium", None, "mg")
+                ("sodium", "Sodium", None, "mg"),
+                ("shopping_list", "Shopping List", None, "items")
             ]
 
             for key, name, device_class, unit in sensors:
@@ -257,11 +258,17 @@ class MQTTClient:
                 elif key == "carbs": payload["icon"] = "mdi:pasta"
                 elif key == "fat": payload["icon"] = "mdi:oil"
                 elif key == "fiber": payload["icon"] = "mdi:barley"
+                elif key == "shopping_list": payload["icon"] = "mdi:cart"
 
                 # Add attributes to calories_in sensor
                 if key == "calories_in":
                     payload["json_attributes_topic"] = state_topic
                     payload["json_attributes_template"] = "{{ value_json.nutrition | tojson }}"
+
+                # Add attributes to shopping_list sensor
+                if key == "shopping_list":
+                    payload["json_attributes_topic"] = state_topic
+                    payload["json_attributes_template"] = "{{ value_json.shopping_list_items | tojson }}"
 
                 self.client.publish(discovery_topic, json.dumps(payload), retain=True)
 
@@ -330,7 +337,14 @@ class MQTTClient:
                         iron += (log.nutrition_info.iron or 0.0) * mult
                         potassium += (log.nutrition_info.potassium or 0.0) * mult
 
-                # 3. Latest BP
+                # 3. Shopping List
+                shopping_items = db.query(models.NutritionCache).filter(
+                    models.NutritionCache.on_shopping_list == True
+                ).all()
+                shopping_list_count = len(shopping_items)
+                shopping_list_names = [item.food_name for item in shopping_items]
+
+                # 4. Latest BP
                 bp = db.query(models.BloodPressure).filter(
                     models.BloodPressure.user_id == user.user_id
                 ).order_by(desc(models.BloodPressure.timestamp)).first()
@@ -348,6 +362,8 @@ class MQTTClient:
                     "carbs": round(carbs, 1),
                     "fiber": round(fiber, 1),
                     "sodium": round(sodium, 1),
+                    "shopping_list": shopping_list_count,
+                    "shopping_list_items": shopping_list_names,
                     "nutrition": {
                         "protein": round(protein, 1),
                         "fat": round(fat, 1),

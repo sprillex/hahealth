@@ -166,6 +166,7 @@
                             <button class="btn-secondary" onclick="showNutritionView('planner')">Meal Planner</button>
                             <button class="btn-secondary" onclick="showNutritionView('recipes')">Recipes</button>
                             <button class="btn-secondary" onclick="showNutritionView('staples')">Staples</button>
+                            <button class="btn-secondary" onclick="showNutritionView('shopping-list')">Shopping List</button>
                             <span style="border-left: 1px solid #ccc; margin: 0 5px;"></span>
                             <button class="btn-secondary hidden" id="btn-import-json" onclick="openImportJsonModal()">Import JSON</button>
                             <button class="btn-secondary" onclick="openManageLibrary()">Manage Library</button>
@@ -775,6 +776,20 @@
         <div id="staples-list" class="grid-list">
             <!-- Staples List -->
             Loading...
+        </div>
+    </div>
+
+    <!-- View: Shopping List -->
+    <div id="nutrition-view-shopping-list" class="hidden">
+        <div class="header-actions">
+            <h3>Shopping List</h3>
+            <div>
+                <button class="btn-secondary" onclick="copyShoppingList()">Copy to Clipboard</button>
+                <button class="btn-secondary" onclick="printShoppingList()">Print List</button>
+            </div>
+        </div>
+        <div class="card">
+            <div id="shopping-list-content">Loading...</div>
         </div>
     </div>
 

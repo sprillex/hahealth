@@ -48,6 +48,11 @@ def migrate_nutrition_table():
                 print(f"Migrating nutrition_cache: Adding column is_staple")
                 conn.execute(text("ALTER TABLE nutrition_cache ADD COLUMN is_staple BOOLEAN DEFAULT 0"))
 
+            # Shopping List migration
+            if "on_shopping_list" not in columns:
+                print(f"Migrating nutrition_cache: Adding column on_shopping_list")
+                conn.execute(text("ALTER TABLE nutrition_cache ADD COLUMN on_shopping_list BOOLEAN DEFAULT 0"))
+
             conn.commit()
     except Exception as e:
         print(f"Migration failed: {e}")

@@ -2767,6 +2767,7 @@ function showNutritionView(view, preserveMode = false) {
     document.getElementById('nutrition-view-recipes').classList.add('hidden');
     document.getElementById('nutrition-view-planner').classList.add('hidden');
     document.getElementById('nutrition-view-staples').classList.add('hidden');
+    document.getElementById('nutrition-view-shopping-list').classList.add('hidden');
 
     if (view === 'log') {
         if (!preserveMode) isPlanningMode = false;
@@ -2781,6 +2782,9 @@ function showNutritionView(view, preserveMode = false) {
     } else if (view === 'staples') {
         document.getElementById('nutrition-view-staples').classList.remove('hidden');
         loadStaples();
+    } else if (view === 'shopping-list') {
+        document.getElementById('nutrition-view-shopping-list').classList.remove('hidden');
+        loadShoppingList();
     }
 }
 
@@ -3498,12 +3502,16 @@ async function loadStaples() {
         foods.forEach(food => {
              const safeFood = JSON.stringify(food).replace(/"/g, '&quot;');
              const safeName = escapeHtml(food.food_name);
+             const checked = food.on_shopping_list ? 'checked' : '';
 
              html += `
              <li class="card" style="margin-bottom: 10px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <strong>${safeName}</strong> <br>
-                    <small>${Math.round(food.calories)} kcal | ${food.serving_size_unit || '1 serving'}</small>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" ${checked} onchange="toggleShoppingList(${food.food_id}, this.checked)" title="Add to Shopping List">
+                    <div>
+                        <strong>${safeName}</strong> <br>
+                        <small>${Math.round(food.calories)} kcal | ${food.serving_size_unit || '1 serving'}</small>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 5px;">
                     <button class="btn-primary" onclick='openLogStaple(${safeFood})' style="padding: 5px 10px; font-size: 0.9em;">Log</button>
@@ -3681,4 +3689,111 @@ function openDailyNutritionModal() {
 
     tbody.innerHTML = html;
     modal.classList.remove('hidden');
+}
+
+async function toggleShoppingList(foodId, checked) {
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/${foodId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ on_shopping_list: checked })
+        });
+        if(!res.ok) {
+            alert("Failed to update shopping list status");
+            // Revert checkbox?
+            loadStaples();
+        }
+    } catch(e) {
+        alert("Failed to update shopping list status");
+    }
+}
+
+async function loadShoppingList() {
+    const div = document.getElementById('shopping-list-content');
+    div.innerHTML = 'Loading...';
+    // We don't have a direct "list shopping items" endpoint, but we can use list_foods filtering?
+    // Need to update backend list_foods to filter by on_shopping_list too?
+    // Actually, I missed that in the plan. I only added 'is_staple'.
+    // Let's check backend code. 'list_foods' in routers/nutrition.py only filters by is_staple if provided.
+    // I should add 'on_shopping_list' filter to list_foods backend.
+    // Wait, I can't change backend in this step (Frontend: Shopping List UI).
+    // I should have done that in step 1.
+    // Let me check 'app/routers/nutrition.py' again.
+    // I didn't update list_foods to accept on_shopping_list.
+    // I will assume for now I can filter client side if list is small, OR I should fix backend.
+    // Fixing backend is safer. I'll do a quick check if I can sneak a backend fix or if I should assume client side filter on full list?
+    // Full list might be huge.
+    // I MUST fix backend list_foods.
+
+    // BUT, I'm in Frontend Step. I'll implement the fetch call assuming the backend supports it,
+    // and then I'll fix the backend in a separate tool call or append to this step if possible.
+    // Actually, I can edit backend now.
+
+    // Fetch all for now? No, let's use search with high limit?
+    // Or maybe I can filter staples? Are shopping list items ALWAYS staples?
+    // "Now that we have a list of staples I want to add a checkbox... to add them to a shopping list"
+    // This implies only staples are on the list.
+    // So I can fetch staples and filter in JS?
+    // fetch staples=true, then filter.
+
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/list?is_staple=true&limit=1000`);
+        const foods = await res.json();
+
+        const shopItems = foods.filter(f => f.on_shopping_list);
+
+        if(shopItems.length === 0) {
+            div.innerHTML = '<em>Shopping list is empty. Add items from Staples list.</em>';
+            return;
+        }
+
+        let html = '<ul style="list-style: disc; padding-left: 20px;">';
+        shopItems.forEach(f => {
+            html += `<li>${escapeHtml(f.food_name)}</li>`;
+        });
+        html += '</ul>';
+        div.innerHTML = html;
+
+    } catch(e) {
+        div.innerHTML = 'Error loading list.';
+    }
+}
+
+function copyShoppingList() {
+    const div = document.getElementById('shopping-list-content');
+    const text = div.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        alert("Copied to clipboard!");
+    }, () => {
+        alert("Failed to copy.");
+    });
+}
+
+function printShoppingList() {
+    const div = document.getElementById('shopping-list-content');
+    const content = div.innerHTML;
+
+    const win = window.open('', '_blank', 'width=600,height=800');
+    win.document.write(`
+        <html>
+        <head>
+            <title>Shopping List</title>
+            <style>
+                body { font-family: sans-serif; padding: 40px; }
+                h1 { border-bottom: 2px solid #ccc; }
+                ul { font-size: 1.2em; line-height: 1.6; }
+                li { margin-bottom: 5px; }
+                @media print {
+                    .no-print { display: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <button class="no-print" onclick="window.print()" style="margin-bottom: 20px; padding: 10px;">Print</button>
+            <h1>Shopping List</h1>
+            ${content}
+        </body>
+        </html>
+    `);
+    win.document.close();
 }
