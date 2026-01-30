@@ -3611,3 +3611,74 @@ function openLogStaple(food) {
     // Let's scroll to form?
     document.getElementById('food-log-form').scrollIntoView();
 }
+
+// --- Daily Nutrition Modal ---
+
+function openDailyNutritionModal() {
+    if (!summaryData || !summaryData.macros) {
+        alert("No data available.");
+        return;
+    }
+
+    const modal = document.getElementById('daily-nutrition-modal');
+    const tbody = document.getElementById('daily-nutrition-body');
+    const m = summaryData.macros;
+    const t = calculateTargets() || {};
+
+    // Helper to format rows
+    const row = (label, val, unit, goalMin=null, goalMax=null) => {
+        let goalText = '--';
+        if (goalMin !== null) {
+            if (goalMax !== null) goalText = `${goalMin}-${goalMax} ${unit}`;
+            else goalText = `> ${goalMin} ${unit}`;
+
+            // Sodium max check
+            if (label === 'Sodium' && goalMax !== null) goalText = `< ${goalMax} ${unit}`;
+        }
+
+        // Color coding
+        let color = 'inherit';
+        if (goalMin !== null) {
+             if (val < goalMin) color = '#f1c40f'; // Low (Yellow)
+             else if (goalMax && val > goalMax) color = '#e74c3c'; // High (Red)
+             else color = '#2ecc71'; // Good (Green)
+        } else if (label === 'Sodium' && goalMax) {
+             if (val > goalMax) color = '#e74c3c';
+             else color = '#2ecc71';
+        }
+
+        return `
+        <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 8px;">${label}</td>
+            <td style="padding: 8px; text-align: right; color: ${color}; font-weight: bold;">${Math.round(val)} ${unit}</td>
+            <td style="padding: 8px; text-align: right; font-size: 0.9em; color: #666;">${goalText}</td>
+        </tr>`;
+    };
+
+    let html = '';
+
+    // Macros
+    html += `<tr style="background: rgba(0,0,0,0.05);"><td colspan="3" style="padding: 5px; font-weight: bold; font-size: 0.9em;">Macros</td></tr>`;
+    html += row('Calories', summaryData.calories_consumed, 'kcal', t.calories ? Math.round(t.calories*0.9) : null, t.calories ? Math.round(t.calories*1.1) : null);
+    html += row('Protein', m.protein, 'g', t.protein?.min, t.protein?.max);
+    html += row('Fat', m.fat, 'g', t.fat?.min, t.fat?.max);
+    html += row('Carbs', m.carbs, 'g', t.carbs?.min, t.carbs?.max);
+    html += row('Fiber', m.fiber, 'g', t.fiber?.min);
+    html += row('Sodium', m.sodium, 'mg', null, t.sodium?.max);
+
+    // Extended
+    html += `<tr style="background: rgba(0,0,0,0.05);"><td colspan="3" style="padding: 5px; font-weight: bold; font-size: 0.9em;">Extended</td></tr>`;
+    html += row('Cholesterol', m.cholesterol || 0, 'mg', null, 300);
+    html += row('Total Sugars', m.total_sugars || 0, 'g');
+    html += row('Added Sugars', m.added_sugars || 0, 'g', null, 36); // Rough guideline (men)
+
+    // Micros
+    html += `<tr style="background: rgba(0,0,0,0.05);"><td colspan="3" style="padding: 5px; font-weight: bold; font-size: 0.9em;">Micronutrients</td></tr>`;
+    html += row('Vitamin D', m.vitamin_d || 0, 'mcg', 15); // RDA
+    html += row('Calcium', m.calcium || 0, 'mg', 1000);
+    html += row('Iron', m.iron || 0, 'mg', 8); // Men (18 for women)
+    html += row('Potassium', m.potassium || 0, 'mg', 3400);
+
+    tbody.innerHTML = html;
+    modal.classList.remove('hidden');
+}
