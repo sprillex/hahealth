@@ -2485,6 +2485,94 @@
         }
       }
     },
+    "/api/v1/shopping-list/items": {
+      "post": {
+        "tags": [
+          "shopping-list"
+        ],
+        "summary": "Add Shopping Item",
+        "description": "Adds an existing food item to the shopping list by name.\nIf multiple items match the name, it adds the first one found.\nCase-insensitive search.",
+        "operationId": "add_shopping_item_api_v1_shopping_list_items_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShoppingListItem"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "shopping-list"
+        ],
+        "summary": "Remove Shopping Item",
+        "description": "Removes a food item from the shopping list by name.\nCase-insensitive search.",
+        "operationId": "remove_shopping_item_api_v1_shopping_list_items_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShoppingListItem"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/": {
       "get": {
         "summary": "Read Index",
@@ -4658,6 +4746,19 @@
           "refresh_token"
         ],
         "title": "RefreshTokenRequest"
+      },
+      "ShoppingListItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ShoppingListItem"
       },
       "Token": {
         "properties": {
