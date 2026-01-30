@@ -1849,6 +1849,35 @@
         }
       }
     },
+    "/api/v2/nutrition/generate_upc": {
+      "get": {
+        "tags": [
+          "nutrition_v2"
+        ],
+        "summary": "Generate Upc",
+        "description": "Generates a unique 12-digit UPC starting with '4' for internal use.\nEnsures collision avoidance with existing database entries.",
+        "operationId": "generate_upc_api_v2_nutrition_generate_upc_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Generate Upc Api V2 Nutrition Generate Upc Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/api/v2/nutrition/lookup/{barcode}": {
       "get": {
         "tags": [
