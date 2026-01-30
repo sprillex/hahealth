@@ -3,8 +3,11 @@ const AUTH_URL = '/auth/token';
 
 // State
 let token = localStorage.getItem('access_token');
+let refreshToken = localStorage.getItem('refresh_token');
 let user = null;
 let summaryData = null;
+let isRefreshing = false;
+let refreshQueue = [];
 let currentDashboardDate = new Date(); // Defaults to today
 let selectedFoodItem = null; // Store selected food for preview
 // Globals for Recipes
@@ -164,10 +167,55 @@ async function fetchWithAuth(url, options = {}) {
     const res = await fetch(url, options);
 
     if (res.status === 401) {
-        // Token expired or invalid
+        // Token expired or invalid. Try to refresh if we have a refresh token.
+        if (refreshToken) {
+            if (isRefreshing) {
+                // Queue this request
+                return new Promise((resolve, reject) => {
+                    refreshQueue.push({ resolve, reject, url, options });
+                });
+            }
+
+            isRefreshing = true;
+            try {
+                console.log("Access token expired. Attempting refresh...");
+                const refreshRes = await fetch('/auth/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: refreshToken })
+                });
+
+                if (refreshRes.ok) {
+                    const data = await refreshRes.json();
+                    token = data.access_token;
+                    localStorage.setItem('access_token', token);
+                    console.log("Token refreshed successfully.");
+
+                    // Process Queue
+                    refreshQueue.forEach(prom => {
+                        prom.options.headers['Authorization'] = `Bearer ${token}`;
+                        fetch(prom.url, prom.options)
+                            .then(prom.resolve)
+                            .catch(prom.reject);
+                    });
+                    refreshQueue = [];
+                    isRefreshing = false;
+
+                    // Retry original request
+                    options.headers['Authorization'] = `Bearer ${token}`;
+                    return fetch(url, options);
+                } else {
+                    throw new Error("Refresh failed");
+                }
+            } catch (e) {
+                console.warn("Refresh failed or error", e);
+                isRefreshing = false;
+                refreshQueue = []; // Clear queue
+                // Fallthrough to logout
+            }
+        }
+
         console.warn("401 Unauthorized - Logging out");
-        // Only alert if we haven't already just logged out (debounce?)
-        // Simple approach: Alert and logout
         if (token) {
             alert("Session expired. Please log in again.");
             logout();
@@ -230,7 +278,9 @@ async function handleLogin(e) {
         if (res.ok) {
             const data = await res.json();
             token = data.access_token;
+            refreshToken = data.refresh_token;
             localStorage.setItem('access_token', token);
+            localStorage.setItem('refresh_token', refreshToken);
             checkAuth();
         } else {
             document.getElementById('login-error').innerText = 'Invalid credentials';
@@ -288,8 +338,10 @@ async function checkAuth() {
 
 function logout() {
     token = null;
+    refreshToken = null;
     user = null;
     localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     showLogin();
 }
 
