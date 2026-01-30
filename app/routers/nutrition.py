@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app import database, models, schemas, auth, services
 from datetime import datetime, timezone
+import random
+import string
 
 router = APIRouter(
     prefix="/api/v1/nutrition",
@@ -228,6 +230,27 @@ def _convert_to_v2_schema(food: models.NutritionCache) -> schemas.V2FoodItem:
             pairing_tip=food.pairing_tip
         )
     )
+
+@router_v2.get("/generate_upc", response_model=dict)
+def generate_upc(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Generates a unique 12-digit UPC starting with '4' for internal use.
+    Ensures collision avoidance with existing database entries.
+    """
+    for _ in range(10): # Try 10 times to find a unique one
+        # Generate 11 random digits
+        suffix = ''.join(random.choices(string.digits, k=11))
+        candidate = f"4{suffix}"
+
+        # Check existence
+        existing = db.query(models.NutritionCache).filter(models.NutritionCache.barcode == candidate).first()
+        if not existing:
+            return {"upc": candidate}
+
+    raise HTTPException(status_code=500, detail="Failed to generate unique UPC after multiple attempts")
 
 @router_v2.get("/lookup/{barcode}", response_model=schemas.V2FoodItem)
 def lookup_food_v2(

@@ -134,7 +134,12 @@
                             <div>
                                 <h4>Planned Meals <small>(Today)</small></h4>
                                 <div id="planned-today-list"></div>
-                                <h4 style="margin-top: 10px;">Food Log Today <small><a href="#" onclick="openManageFoodModal()">[Manage]</a></small></h4>
+                                <h4 style="margin-top: 10px;">Food Log Today
+                                    <small>
+                                        <a href="#" onclick="openManageFoodModal()">[Manage]</a>
+                                        <a href="#" onclick="openDailyNutritionModal()" style="margin-left: 5px;">[More Info]</a>
+                                    </small>
+                                </h4>
                                 <div id="food-today-list">Loading...</div>
                             </div>
                         </div>
@@ -1088,6 +1093,30 @@
                      <button type="submit" class="btn-primary">Update</button>
                      <button type="button" onclick="document.getElementById('edit-food-form-container').classList.add('hidden')">Cancel</button>
                  </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="daily-nutrition-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('daily-nutrition-modal').classList.add('hidden')">&times;</span>
+            <h2>Daily Nutrition Breakdown</h2>
+            <div class="table-responsive">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--text-color);">
+                            <th style="text-align: left; padding: 5px;">Nutrient</th>
+                            <th style="text-align: right; padding: 5px;">Total</th>
+                            <th style="text-align: right; padding: 5px;">Goal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="daily-nutrition-body">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 15px; text-align: right;">
+                <button type="button" onclick="document.getElementById('daily-nutrition-modal').classList.add('hidden')" class="btn-secondary">Close</button>
             </div>
         </div>
     </div>
