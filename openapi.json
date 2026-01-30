@@ -3636,6 +3636,18 @@
             ],
             "title": "Is Staple",
             "default": false
+          },
+          "on_shopping_list": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On Shopping List",
+            "default": false
           }
         },
         "type": "object",
@@ -3853,16 +3865,12 @@
             "title": "Pairing Tip"
           },
           "is_staple": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Staple",
-            "default": false
+            "type": "boolean",
+            "title": "Is Staple"
+          },
+          "on_shopping_list": {
+            "type": "boolean",
+            "title": "On Shopping List"
           },
           "food_id": {
             "type": "integer",
@@ -3881,6 +3889,8 @@
         "required": [
           "food_name",
           "calories",
+          "is_staple",
+          "on_shopping_list",
           "food_id",
           "source",
           "is_user_visible"
@@ -4152,6 +4162,17 @@
               }
             ],
             "title": "Is Staple"
+          },
+          "on_shopping_list": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On Shopping List"
           }
         },
         "type": "object",
