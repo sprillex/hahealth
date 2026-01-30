@@ -268,7 +268,8 @@ class MQTTClient:
                 # Add attributes to shopping_list sensor
                 if key == "shopping_list":
                     payload["json_attributes_topic"] = state_topic
-                    payload["json_attributes_template"] = "{{ value_json.shopping_list_items | tojson }}"
+                    # Ensure items are attributes
+                    payload["json_attributes_template"] = "{{ {'items': value_json.shopping_list_items} | tojson }}"
 
                 self.client.publish(discovery_topic, json.dumps(payload), retain=True)
 
