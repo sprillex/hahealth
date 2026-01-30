@@ -77,6 +77,20 @@ class TokenData(BaseModel):
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
+# API Keys
+class APIKeyCreate(BaseModel):
+    name: str
+
+class APIKeyResponse(BaseModel):
+    key_id: int
+    name: str
+    created_at: datetime
+    is_active: bool
+    model_config = ConfigDict(from_attributes=True)
+
+class APIKeyCreatedResponse(APIKeyResponse):
+    api_key: str
+
 # Prescriber
 class PrescriberBase(BaseModel):
     name: str

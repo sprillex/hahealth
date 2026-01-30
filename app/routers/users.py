@@ -101,3 +101,55 @@ def change_password(
     current_user.password_hash = auth.get_password_hash(password_update.new_password)
     db.commit()
     return {"message": "Password updated successfully"}
+
+@router.get("/me/keys", response_model=List[schemas.APIKeyResponse])
+def get_api_keys(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    return db.query(models.APIKey).filter(models.APIKey.user_id == current_user.user_id, models.APIKey.is_active == True).all()
+
+@router.post("/me/keys", response_model=schemas.APIKeyCreatedResponse)
+def create_api_key(
+    key_data: schemas.APIKeyCreate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    raw_key = auth.generate_api_key()
+    hashed = auth.hash_api_key(raw_key)
+
+    new_key = models.APIKey(
+        user_id=current_user.user_id,
+        name=key_data.name,
+        hashed_key=hashed,
+        is_active=True
+    )
+    db.add(new_key)
+    db.commit()
+    db.refresh(new_key)
+
+    return schemas.APIKeyCreatedResponse(
+        key_id=new_key.key_id,
+        name=new_key.name,
+        created_at=new_key.created_at,
+        is_active=new_key.is_active,
+        api_key=raw_key
+    )
+
+@router.delete("/me/keys/{key_id}")
+def revoke_api_key(
+    key_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    key = db.query(models.APIKey).filter(
+        models.APIKey.key_id == key_id,
+        models.APIKey.user_id == current_user.user_id
+    ).first()
+
+    if not key:
+        raise HTTPException(status_code=404, detail="API Key not found")
+
+    key.is_active = False
+    db.commit()
+    return {"message": "Key revoked"}
