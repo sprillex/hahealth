@@ -134,7 +134,12 @@
                             <div>
                                 <h4>Planned Meals <small>(Today)</small></h4>
                                 <div id="planned-today-list"></div>
-                                <h4 style="margin-top: 10px;">Food Log Today <small><a href="#" onclick="openManageFoodModal()">[Manage]</a></small></h4>
+                                <h4 style="margin-top: 10px;">Food Log Today
+                                    <small>
+                                        <a href="#" onclick="openManageFoodModal()">[Manage]</a>
+                                        <a href="#" onclick="openDailyNutritionModal()" style="margin-left: 5px;">[More Info]</a>
+                                    </small>
+                                </h4>
                                 <div id="food-today-list">Loading...</div>
                             </div>
                         </div>
@@ -160,6 +165,7 @@
                             <button class="btn-secondary" onclick="showNutritionView('log')">Log Food</button>
                             <button class="btn-secondary" onclick="showNutritionView('planner')">Meal Planner</button>
                             <button class="btn-secondary" onclick="showNutritionView('recipes')">Recipes</button>
+                            <button class="btn-secondary" onclick="showNutritionView('staples')">Staples</button>
                             <span style="border-left: 1px solid #ccc; margin: 0 5px;"></span>
                             <button class="btn-secondary hidden" id="btn-import-json" onclick="openImportJsonModal()">Import JSON</button>
                             <button class="btn-secondary" onclick="openManageLibrary()">Manage Library</button>
@@ -751,6 +757,27 @@
         </div>
     </div>
 
+    <!-- View: Staples -->
+    <div id="nutrition-view-staples" class="hidden">
+        <div class="header-actions">
+            <h3>My Staples</h3>
+        </div>
+
+        <!-- Add Staple Search -->
+        <div class="card" style="margin-bottom: 20px;">
+            <h4>Add New Staple</h4>
+            <div class="form-group" style="position: relative;">
+                <input type="text" id="staple-search-input" placeholder="Search library to add as staple..." autocomplete="off">
+                <div id="staple-search-results" class="search-results hidden"></div>
+            </div>
+        </div>
+
+        <div id="staples-list" class="grid-list">
+            <!-- Staples List -->
+            Loading...
+        </div>
+    </div>
+
     <!-- Recipe Modal -->
     <div id="recipe-modal" class="modal hidden">
         <div class="modal-content wide">
@@ -958,6 +985,10 @@
                          <label>Visible in Search</label>
                          <input type="checkbox" id="edit_lib_visible">
                      </div>
+                     <div class="form-group">
+                         <label>Is Staple</label>
+                         <input type="checkbox" id="edit_lib_is_staple">
+                     </div>
                      <button type="submit" class="btn-primary">Update Food</button>
                      <button type="button" onclick="deleteLibraryFoodCurrent()" class="btn-warning">Delete</button>
                      <button type="button" onclick="document.getElementById('edit-library-form-container').classList.add('hidden')">Cancel</button>
@@ -1088,6 +1119,30 @@
                      <button type="submit" class="btn-primary">Update</button>
                      <button type="button" onclick="document.getElementById('edit-food-form-container').classList.add('hidden')">Cancel</button>
                  </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="daily-nutrition-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('daily-nutrition-modal').classList.add('hidden')">&times;</span>
+            <h2>Daily Nutrition Breakdown</h2>
+            <div class="table-responsive">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--text-color);">
+                            <th style="text-align: left; padding: 5px;">Nutrient</th>
+                            <th style="text-align: right; padding: 5px;">Total</th>
+                            <th style="text-align: right; padding: 5px;">Goal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="daily-nutrition-body">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 15px; text-align: right;">
+                <button type="button" onclick="document.getElementById('daily-nutrition-modal').classList.add('hidden')" class="btn-secondary">Close</button>
             </div>
         </div>
     </div>
@@ -1236,6 +1291,9 @@
                 <div class="form-group">
                     <label>Sodium (mg)</label>
                     <input type="number" step="0.1" name="sodium" value="0">
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" name="is_staple"> Is Staple Food</label>
                 </div>
                 <div class="form-actions">
                     <button type="button" onclick="closeFoodModal()">Cancel</button>

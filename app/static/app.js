@@ -75,6 +75,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Staple Search Listener
+    const stapleSearchInput = document.getElementById('staple-search-input');
+    if(stapleSearchInput) {
+        let debounceStaple;
+        stapleSearchInput.addEventListener('input', (e) => {
+             clearTimeout(debounceStaple);
+             debounceStaple = setTimeout(() => handleSearchStapleToAdd(e.target.value), 300);
+        });
+    }
+
     // Profile Listeners
     document.getElementById('profile-units').addEventListener('change', updateProfileUnitLabels);
 
@@ -790,6 +800,9 @@ async function handleCreateFood(e) {
         const v = parseFloat(data[k]);
         data[k] = isNaN(v) ? null : v;
     });
+
+    // Checkbox
+    data.is_staple = !!data.is_staple;
 
     data.source = 'MANUAL';
     if (!data.barcode) delete data.barcode; // Send null or undefined if empty
@@ -2306,10 +2319,24 @@ function handlePreviewJson() {
         const macros = item.macros;
         const srv = item.serving_info || {};
 
+        // Check for missing/invalid UPC
+        let upcDisplay = escapeHtml(meta.upc);
+        let showGenerateBtn = false;
+        // Check for null, undefined, empty string, or explicit "null"/"na"/"n/a" strings
+        if (!meta.upc || ['null', 'na', 'n/a', 'none'].includes(String(meta.upc).toLowerCase())) {
+             upcDisplay = '<span style="color: red; font-style: italic;">Missing</span>';
+             showGenerateBtn = true;
+        }
+
+        let generateBtnHtml = '';
+        if (showGenerateBtn) {
+            generateBtnHtml = `<button onclick="handleGenerateUPC()" class="btn-secondary" style="margin-left: 10px; font-size: 0.8em; padding: 2px 8px; width: auto;">Generate Internal UPC</button>`;
+        }
+
         contentDiv.innerHTML = `
             <p><strong>Name:</strong> ${escapeHtml(meta.name)}</p>
             <p><strong>Brand:</strong> ${escapeHtml(meta.brand)}</p>
-            <p><strong>UPC:</strong> ${escapeHtml(meta.upc)}</p>
+            <p><strong>UPC:</strong> <span id="import-preview-upc">${upcDisplay}</span> ${generateBtnHtml}</p>
             <p><strong>Macros:</strong> ${macros.calories} kcal | P: ${macros.protein_g}g | F: ${macros.fat_g}g | C: ${macros.carbs_g}g</p>
             <p><strong>Serving:</strong> ${escapeHtml(srv.size || 'N/A')}</p>
             <p><strong>Density:</strong> ${srv.weight_g || '-'}g / ${srv.volume_ml || '-'}ml</p>
@@ -2320,6 +2347,45 @@ function handlePreviewJson() {
         previewDiv.classList.add('hidden');
         submitBtn.classList.add('hidden');
         importedJsonPayload = null;
+    }
+}
+
+async function handleGenerateUPC() {
+    try {
+        const res = await fetchWithAuth(`/api/v2/nutrition/generate_upc`);
+        if (res.ok) {
+            const data = await res.json();
+            const newUpc = data.upc;
+
+            // Update Payload
+            if (importedJsonPayload && importedJsonPayload.variables) {
+                const keys = Object.keys(importedJsonPayload.variables);
+                if (keys.length > 0) {
+                     importedJsonPayload.variables[keys[0]].metadata.upc = newUpc;
+                }
+            }
+
+            // Update UI
+            const upcSpan = document.getElementById('import-preview-upc');
+            if(upcSpan) {
+                upcSpan.innerHTML = newUpc;
+                upcSpan.style.color = "var(--text-color)";
+                upcSpan.style.fontStyle = "normal";
+            }
+
+            const btn = document.querySelector('#import-preview-content button');
+            if(btn) {
+                btn.innerText = "Generated";
+                btn.disabled = true;
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-primary'); // Highlight success
+            }
+
+        } else {
+            alert("Failed to generate UPC");
+        }
+    } catch(e) {
+        alert("Error generating UPC: " + e.message);
     }
 }
 
@@ -2473,6 +2539,7 @@ function editLibraryFood(food) {
     document.getElementById('edit_lib_tip').value = food.pairing_tip || '';
 
     document.getElementById('edit_lib_visible').checked = food.is_user_visible;
+    document.getElementById('edit_lib_is_staple').checked = food.is_staple;
 }
 
 document.getElementById('edit-library-form').addEventListener('submit', async (e) => {
@@ -2504,7 +2571,8 @@ document.getElementById('edit-library-form').addEventListener('submit', async (e
         health_insight: document.getElementById('edit_lib_insight').value || null,
         pairing_tip: document.getElementById('edit_lib_tip').value || null,
 
-        is_user_visible: document.getElementById('edit_lib_visible').checked
+        is_user_visible: document.getElementById('edit_lib_visible').checked,
+        is_staple: document.getElementById('edit_lib_is_staple').checked
     };
 
     try {
@@ -2698,6 +2766,7 @@ function showNutritionView(view, preserveMode = false) {
     document.getElementById('nutrition-view-log').classList.add('hidden');
     document.getElementById('nutrition-view-recipes').classList.add('hidden');
     document.getElementById('nutrition-view-planner').classList.add('hidden');
+    document.getElementById('nutrition-view-staples').classList.add('hidden');
 
     if (view === 'log') {
         if (!preserveMode) isPlanningMode = false;
@@ -2709,6 +2778,9 @@ function showNutritionView(view, preserveMode = false) {
     } else if (view === 'planner') {
         document.getElementById('nutrition-view-planner').classList.remove('hidden');
         loadPlanner();
+    } else if (view === 'staples') {
+        document.getElementById('nutrition-view-staples').classList.remove('hidden');
+        loadStaples();
     }
 }
 
@@ -3406,4 +3478,136 @@ function updatePlannerGauges() {
     };
 
     renderGauges(gaugeData, calculateTargets(), 'planner-gauges-container');
+}
+
+// --- Staples Logic ---
+
+async function loadStaples() {
+    const listDiv = document.getElementById('staples-list');
+    listDiv.innerHTML = 'Loading...';
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/list?is_staple=true&limit=100`);
+        const foods = await res.json();
+
+        if (foods.length === 0) {
+            listDiv.innerHTML = '<em>No staples found. Use the search above to add some.</em>';
+            return;
+        }
+
+        let html = '<ul style="list-style: none; padding: 0;">';
+        foods.forEach(food => {
+             const safeFood = JSON.stringify(food).replace(/"/g, '&quot;');
+             const safeName = escapeHtml(food.food_name);
+
+             html += `
+             <li class="card" style="margin-bottom: 10px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>${safeName}</strong> <br>
+                    <small>${Math.round(food.calories)} kcal | ${food.serving_size_unit || '1 serving'}</small>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <button class="btn-primary" onclick='openLogStaple(${safeFood})' style="padding: 5px 10px; font-size: 0.9em;">Log</button>
+                    <button class="btn-secondary" onclick='editLibraryFood(${safeFood})' style="padding: 5px 10px; font-size: 0.9em;">Edit</button>
+                    <button class="btn-warning" onclick="removeStaple(${food.food_id})" style="padding: 5px 10px; font-size: 0.9em; background-color: #e67e22;">Unmark</button>
+                </div>
+             </li>
+             `;
+        });
+        html += '</ul>';
+        listDiv.innerHTML = html;
+
+    } catch (err) {
+        listDiv.innerHTML = 'Error loading staples.';
+        console.error(err);
+    }
+}
+
+async function handleSearchStapleToAdd(query) {
+    const resultsDiv = document.getElementById('staple-search-results');
+    if (!query || query.length < 2) {
+        resultsDiv.classList.add('hidden');
+        return;
+    }
+
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/search?query=${encodeURIComponent(query)}&scope=food`);
+        const foods = await res.json();
+
+        resultsDiv.innerHTML = '';
+        if (foods.length > 0) {
+            resultsDiv.classList.remove('hidden');
+            resultsDiv.style.maxHeight = '200px';
+            resultsDiv.style.overflowY = 'auto';
+
+            foods.forEach(food => {
+                const div = document.createElement('div');
+                div.className = 'search-item';
+                div.innerText = `${food.food_name} (${Math.round(food.calories)} kcal)`;
+                div.onclick = () => addStaple(food);
+                resultsDiv.appendChild(div);
+            });
+        } else {
+            resultsDiv.classList.add('hidden');
+        }
+
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+async function addStaple(food) {
+    // Call PUT to set is_staple = true
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/${food.food_id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_staple: true })
+        });
+
+        if (res.ok) {
+            document.getElementById('staple-search-input').value = '';
+            document.getElementById('staple-search-results').classList.add('hidden');
+            loadStaples();
+        } else {
+            alert("Failed to add staple");
+        }
+    } catch(e) {
+        alert("Failed to add staple");
+    }
+}
+
+async function removeStaple(foodId) {
+    if(!confirm("Remove from Staples list?")) return;
+    try {
+        const res = await fetchWithAuth(`${API_URL}/nutrition/${foodId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_staple: false })
+        });
+        if(res.ok) {
+            loadStaples();
+        } else {
+            alert("Failed to remove staple");
+        }
+    } catch(e) {
+        alert("Failed to remove staple");
+    }
+}
+
+function openLogStaple(food) {
+    // Switch to Log view
+    showNutritionView('log');
+
+    // Pre-select food (mimic search selection)
+    selectedFoodItem = food;
+    document.getElementById('food-search-input').value = food.food_name;
+    document.getElementById('selected-food-name').value = food.food_name;
+    document.getElementById('selected-food-barcode').value = food.barcode || '';
+    document.getElementById('log-unit-display').innerText = food.serving_size_unit || '1';
+
+    // Automatically open preview modal if we have details?
+    // User probably wants to just enter quantity.
+    // The current flow requires user to click "Log Food" or enter data.
+    // Let's scroll to form?
+    document.getElementById('food-log-form').scrollIntoView();
 }
