@@ -459,7 +459,7 @@ async function loadSummary() {
         }
 
         const targets = calculateTargets();
-        updateRecommendations(targets);
+        // updateRecommendations(targets); // Removed as redundant
         renderGauges(summaryData, targets);
 
         // Render Today Lists
@@ -595,22 +595,6 @@ function calculateTargets() {
         fiber: { min: Math.round((targetCals / 1000) * 14) }, // Just min
         sodium: { max: 2300 } // Recommended max
     };
-}
-
-function updateRecommendations(targets) {
-    if (!targets) {
-        document.getElementById('recommendation-text').innerText = "Please complete your profile (Birth Year, Gender, Weight, Goal) in Settings to see recommendations.";
-        return;
-    }
-
-    let html = `<strong>Daily Target:</strong> ${targets.calories} kcal<br>`;
-    html += `<strong>Protein:</strong> ${targets.protein.min}-${targets.protein.max}g<br>`;
-    html += `<strong>Fat:</strong> ${targets.fat.min}-${targets.fat.max}g<br>`;
-    html += `<strong>Carbs:</strong> ${targets.carbs.min}-${targets.carbs.max}g<br>`;
-    html += `<strong>Fiber:</strong> > ${targets.fiber.min}g<br>`;
-    html += `<strong>Sodium:</strong> < ${targets.sodium.max}mg`;
-
-    document.getElementById('recommendation-text').innerHTML = html;
 }
 
 function renderGauges(data, targets, containerId = 'gauges-container') {
@@ -1912,7 +1896,10 @@ async function handleUpdateProfile(e) {
             alert('Profile updated');
             loadProfileData();
             // Also refresh recommendations if on dashboard
-            updateRecommendations();
+            // updateRecommendations(); // Removed
+            if (document.getElementById('tab-dashboard') && !document.getElementById('tab-dashboard').classList.contains('hidden')) {
+                loadSummary(); // Reload summary to update gauges with new targets
+            }
         } else {
             alert('Error updating profile');
         }
