@@ -550,12 +550,30 @@ async function openEditLog(logId) {
 const openConfirmLogForPlan = openEditLog;
 
 function calculateTargets() {
-    if (!user || !user.birth_year || !user.gender) return null;
+    if (!user || !user.gender) return null; // Relaxed check, handle age calc internally
 
-    // Simple BMR/TDEE logic (Mifflin-St Jeor)
-    const age = new Date().getFullYear() - user.birth_year;
-    const w = user.weight_kg;
-    const h = user.height_cm;
+    // Calculate Age
+    let age = 30; // Fallback
+    const currentYear = new Date().getFullYear();
+
+    if (user.date_of_birth) {
+        // Parse YYYY-MM-DD
+        const parts = user.date_of_birth.split('-');
+        if (parts.length === 3) {
+            const birthDate = new Date(parts[0], parts[1] - 1, parts[2]);
+            const today = new Date();
+            age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+        }
+    } else if (user.birth_year) {
+        age = currentYear - user.birth_year;
+    }
+
+    const w = user.weight_kg || 70; // Fallback weight
+    const h = user.height_cm || 170; // Fallback height
     let bmr = 0;
 
     if (user.gender === 'M') {
@@ -600,37 +618,76 @@ function renderGauges(data, targets, containerId = 'gauges-container') {
     if (!container) return;
     container.innerHTML = '';
 
+    // Remove grid-list class to allow full width custom layout
+    container.classList.remove('grid-list');
+    container.classList.add('gauge-hybrid-container');
+
     if (!targets) return;
 
-    // 1. Calories (Goal)
+    // 1. Calories (Hero Gauge)
     const calVal = Math.round(data.calories_consumed);
     const calMax = targets.calories;
     let calColor = 'color-yellow';
-    if (calVal > calMax) calColor = 'color-red';
+    if (calVal > calMax * 1.1) calColor = 'color-red';
     else if (calVal >= calMax * 0.75) calColor = 'color-green';
 
-    container.innerHTML += createGaugeHTML('Calories', calVal, calMax, calColor, 'kcal');
+    const gaugeHTML = createGaugeHTML('Calories', calVal, calMax, calColor, 'kcal');
 
-    // 2. Macros
+    // 2. Macros (Progress Bars)
     const macros = [
-        { key: 'protein', label: 'Protein', val: Math.round(data.macros.protein), unit: 'g' },
-        { key: 'fat', label: 'Fat', val: Math.round(data.macros.fat), unit: 'g' },
-        { key: 'carbs', label: 'Carbs', val: Math.round(data.macros.carbs), unit: 'g' },
-        { key: 'fiber', label: 'Fiber', val: Math.round(data.macros.fiber), unit: 'g' },
-        { key: 'sodium', label: 'Sodium', val: Math.round(data.macros.sodium || 0), unit: 'mg' }
+        { key: 'protein', label: 'Protein', val: Math.round(data.macros.protein), unit: 'g', color: '#e74c3c' },
+        { key: 'fat', label: 'Fat', val: Math.round(data.macros.fat), unit: 'g', color: '#f1c40f' },
+        { key: 'carbs', label: 'Carbs', val: Math.round(data.macros.carbs), unit: 'g', color: '#2ecc71' },
+        { key: 'fiber', label: 'Fiber', val: Math.round(data.macros.fiber), unit: 'g', color: '#95a5a6' },
+        { key: 'sodium', label: 'Sodium', val: Math.round(data.macros.sodium || 0), unit: 'mg', color: '#9b59b6' }
     ];
 
+    let barsHTML = '<div class="macro-bars-wrapper">';
     macros.forEach(m => {
         const t = targets[m.key];
-        let color = 'color-yellow';
-        let maxDisplay = t.max || (t.min * 2); // Fallback for fiber which only has min
+        // Calculate dynamic max for bar scaling
+        let max = t.max || (t.min ? t.min * 2 : 100);
+        if (t.min && !t.max) max = Math.max(m.val * 1.2, t.min * 1.5);
+        if (t.max) max = t.max;
 
-        if (m.val < t.min) color = 'color-yellow';
-        else if (t.max && m.val > t.max) color = 'color-red';
-        else color = 'color-green'; // Between min/max or > min for fiber
-
-        container.innerHTML += createGaugeHTML(m.label, m.val, maxDisplay, color, m.unit);
+        barsHTML += createProgressBarHTML(m.label, m.val, max, m.color, m.unit, t);
     });
+    barsHTML += '</div>';
+
+    container.innerHTML = `
+        <div class="hybrid-layout">
+            <div class="hybrid-hero">
+                ${gaugeHTML}
+            </div>
+            <div class="hybrid-details">
+                ${barsHTML}
+            </div>
+        </div>
+    `;
+}
+
+function createProgressBarHTML(label, value, max, color, unit, target) {
+    let pct = (value / max) * 100;
+    if (pct > 100) pct = 100;
+
+    let targetText = '';
+    if (target) {
+        if(target.min && target.max) targetText = `${target.min}-${target.max}`;
+        else if(target.min) targetText = `> ${target.min}`;
+        else if(target.max) targetText = `< ${target.max}`;
+    }
+
+    return `
+    <div class="macro-bar-container">
+        <div class="macro-bar-header">
+            <span class="macro-label">${label}</span>
+            <span class="macro-val">${value} / ${targetText} ${unit}</span>
+        </div>
+        <div class="macro-track">
+            <div class="macro-fill" style="width: ${pct}%; background-color: ${color};"></div>
+        </div>
+    </div>
+    `;
 }
 
 function createGaugeHTML(label, value, max, colorClass, unit) {
