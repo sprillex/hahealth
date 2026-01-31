@@ -986,10 +986,10 @@ async function submitLog(data, formElement) {
 
         if (res.ok) {
             if (isPlanningMode) {
-                alert('Added to Meal Plan');
+                showToast('Added to Meal Plan', 'success');
                 loadPlanner(); // Refresh planner
             } else {
-                alert('Food logged successfully');
+                showToast('Food logged successfully', 'success');
             }
 
             if(formElement) formElement.reset();
@@ -1277,13 +1277,15 @@ async function handleLogVaccination(e) {
             body: JSON.stringify(data)
         });
         if (res.ok) {
-            alert('Vaccination logged');
+            showToast('Vaccination logged', 'success');
             e.target.reset();
+            closeLogVacModal();
+            if(typeof loadVaccinationReport === 'function') loadVaccinationReport();
         } else {
-            alert('Error logging vaccination');
+            showToast('Error logging vaccination', 'error');
         }
     } catch(err) {
-        alert('Error logging vaccination');
+        showToast('Error logging vaccination', 'error');
     }
 }
 
@@ -1377,9 +1379,9 @@ async function loadAllergyReport() {
 async function handleLogBP(e) {
     e.preventDefault();
     const data = {
-        systolic: parseInt(document.querySelector('[name="systolic"]').value),
-        diastolic: parseInt(document.querySelector('[name="diastolic"]').value),
-        pulse: parseInt(document.querySelector('[name="pulse"]').value),
+        systolic: parseInt(document.querySelector('#bp-form [name="systolic"]').value),
+        diastolic: parseInt(document.querySelector('#bp-form [name="diastolic"]').value),
+        pulse: parseInt(document.querySelector('#bp-form [name="pulse"]').value),
         location: "Manual",
         stress_level: 0,
         meds_taken_before: "N/A"
@@ -1394,13 +1396,16 @@ async function handleLogBP(e) {
             body: JSON.stringify(data)
         });
         if (res.ok) {
-            alert('BP Logged');
+            showToast('BP Logged', 'success');
             e.target.reset();
+            closeLogBPModal();
+            if(typeof loadBPHistory === 'function') loadBPHistory();
+            if(typeof loadSummary === 'function') loadSummary();
         } else {
-            alert('Error logging BP');
+            showToast('Error logging BP', 'error');
         }
     } catch (err) {
-        alert('Error logging BP');
+        showToast('Error logging BP', 'error');
     }
 }
 
@@ -1408,10 +1413,10 @@ async function handleLogExercise(e) {
     e.preventDefault();
     const data = {
         activity_type: document.getElementById('activity_type').value,
-        duration_minutes: parseFloat(document.querySelector('[name="duration"]').value),
+        duration_minutes: parseFloat(document.querySelector('#exercise-form [name="duration"]').value),
     };
 
-    const cals = document.querySelector('[name="calories"]').value;
+    const cals = document.querySelector('#exercise-form [name="calories"]').value;
     if (cals) data.calories_burned = parseFloat(cals);
 
     try {
@@ -1424,14 +1429,16 @@ async function handleLogExercise(e) {
         });
         if (res.ok) {
             const resp = await res.json();
-            alert(`Exercise Logged. Calories: ${resp.calories_burned.toFixed(1)}`);
+            showToast(`Exercise Logged. Calories: ${resp.calories_burned.toFixed(1)}`, 'success');
             e.target.reset();
-            loadExerciseHistory(); // Refresh history
+            closeLogExerciseModal();
+            loadExerciseHistory();
+            if(typeof loadSummary === 'function') loadSummary();
         } else {
-            alert('Error logging exercise');
+            showToast('Error logging exercise', 'error');
         }
     } catch (err) {
-        alert('Error logging exercise');
+        showToast('Error logging exercise', 'error');
     }
 }
 
@@ -1557,13 +1564,16 @@ async function handleLogWeight(e) {
         });
         if (res.ok) {
             user = await res.json(); // Update local user state
-            alert('Weight updated successfully');
+            showToast('Weight updated successfully', 'success');
             e.target.reset();
+            closeLogWeightModal();
+            if(typeof loadProfileData === 'function') loadProfileData();
+            if(typeof loadSummary === 'function') loadSummary();
         } else {
-            alert('Error updating weight');
+            showToast('Error updating weight', 'error');
         }
     } catch (err) {
-        alert('Error updating weight');
+        showToast('Error updating weight', 'error');
     }
 }
 
@@ -2918,7 +2928,16 @@ function showNutritionView(view, preserveMode = false) {
     document.getElementById('nutrition-view-staples').classList.add('hidden');
     document.getElementById('nutrition-view-shopping-list').classList.add('hidden');
 
+    // Update Nav State
+    const navLog = document.getElementById('nav-btn-nut-log');
+    const navPlan = document.getElementById('nav-btn-nut-planner');
+    const navShop = document.getElementById('nav-btn-nut-shopping');
+    if(navLog) navLog.classList.remove('active');
+    if(navPlan) navPlan.classList.remove('active');
+    if(navShop) navShop.classList.remove('active');
+
     if (view === 'log') {
+        if(navLog) navLog.classList.add('active');
         if (!preserveMode) isPlanningMode = false;
         document.getElementById('nutrition-view-log').classList.remove('hidden');
         updateLogViewUI();
@@ -2926,12 +2945,14 @@ function showNutritionView(view, preserveMode = false) {
         document.getElementById('nutrition-view-recipes').classList.remove('hidden');
         loadRecipes();
     } else if (view === 'planner') {
+        if(navPlan) navPlan.classList.add('active');
         document.getElementById('nutrition-view-planner').classList.remove('hidden');
         loadPlanner();
     } else if (view === 'staples') {
         document.getElementById('nutrition-view-staples').classList.remove('hidden');
         loadStaples();
     } else if (view === 'shopping-list') {
+        if(navShop) navShop.classList.add('active');
         document.getElementById('nutrition-view-shopping-list').classList.remove('hidden');
         loadShoppingList();
     }
@@ -4017,3 +4038,49 @@ function printShoppingList() {
     `);
     win.document.close();
 }
+
+// --- Toast Notifications ---
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    // Add icon based on type (optional, but nice)
+    let icon = '';
+    if (type === 'success') icon = '<span class="material-symbols-outlined" style="color:#28a745; margin-right:10px;">check_circle</span>';
+    if (type === 'error') icon = '<span class="material-symbols-outlined" style="color:#dc3545; margin-right:10px;">error</span>';
+    if (type === 'info') icon = '<span class="material-symbols-outlined" style="color:var(--primary-color); margin-right:10px;">info</span>';
+
+    toast.innerHTML = `
+        <div style="display:flex; align-items:center;">
+            ${icon}
+            <span>${message}</span>
+        </div>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto dismiss
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.5s';
+        setTimeout(() => toast.remove(), 500);
+    }, 3000);
+}
+
+// --- Health Log Modals ---
+
+function openLogBPModal() { document.getElementById('log-bp-modal').classList.remove('hidden'); }
+function closeLogBPModal() { document.getElementById('log-bp-modal').classList.add('hidden'); }
+
+function openLogWeightModal() { document.getElementById('log-weight-modal').classList.remove('hidden'); }
+function closeLogWeightModal() { document.getElementById('log-weight-modal').classList.add('hidden'); }
+
+function openLogVacModal() { document.getElementById('log-vac-modal').classList.remove('hidden'); }
+function closeLogVacModal() { document.getElementById('log-vac-modal').classList.add('hidden'); }
+
+function openLogExerciseModal() { document.getElementById('log-exercise-modal').classList.remove('hidden'); }
+function closeLogExerciseModal() { document.getElementById('log-exercise-modal').classList.add('hidden'); }

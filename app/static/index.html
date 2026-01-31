@@ -84,26 +84,32 @@
                     <div class="summary-card">
                         <div class="summary-grid">
                             <div class="summary-item">
+                                <span class="material-symbols-outlined" style="font-size: 2em; opacity:0.8;">monitor_heart</span>
                                 <h4>Blood Pressure</h4>
                                 <div class="value" id="summary-bp">--/--</div>
                             </div>
                             <div class="summary-item">
+                                <span class="material-symbols-outlined" style="font-size: 2em; opacity:0.8;">restaurant</span>
                                 <h4>Calories In</h4>
                                 <div class="value" id="summary-cals-in">0</div>
                             </div>
                             <div class="summary-item">
+                                <span class="material-symbols-outlined" style="font-size: 2em; opacity:0.8;">local_fire_department</span>
                                 <h4>Calories Out</h4>
                                 <div class="value" id="summary-cals-out">0</div>
                             </div>
                             <div class="summary-item">
+                                <span class="material-symbols-outlined" style="font-size: 2em; opacity:0.8;">balance</span>
                                 <h4>Net</h4>
                                 <div class="value" id="summary-net">0</div>
                             </div>
                             <div class="summary-item">
+                                <span class="material-symbols-outlined" style="font-size: 2em; opacity:0.8;">bolt</span>
                                 <h4>Exercise Streak</h4>
                                 <div class="value" id="summary-streak">0 days</div>
                             </div>
                             <div class="summary-item">
+                                <span class="material-symbols-outlined" style="font-size: 2em; opacity:0.8;">trending_up</span>
                                 <h4>Weight (30d)</h4>
                                 <div class="value" id="summary-weight-change">--</div>
                             </div>
@@ -159,18 +165,21 @@
 
                 <!-- Nutrition Tab -->
                 <div id="tab-nutrition" class="tab-content hidden">
-                    <div class="header-actions">
-                        <h2>Nutrition</h2>
-                        <div>
-                            <button class="btn-secondary" onclick="showNutritionView('log')">Log Food</button>
-                            <button class="btn-secondary" onclick="showNutritionView('planner')">Meal Planner</button>
-                            <button class="btn-secondary" onclick="showNutritionView('recipes')">Recipes</button>
-                            <button class="btn-secondary" onclick="showNutritionView('staples')">Staples</button>
-                            <button class="btn-secondary" onclick="showNutritionView('shopping-list')">Shopping List</button>
-                            <span style="border-left: 1px solid #ccc; margin: 0 5px;"></span>
-                            <button class="btn-secondary hidden" id="btn-import-json" onclick="openImportJsonModal()">Import JSON</button>
-                            <button class="btn-secondary" onclick="openManageLibrary()">Manage Library</button>
-                            <button class="btn-primary" onclick="openFoodModal()">+ Custom Food</button>
+
+                    <div class="nutrition-nav-container">
+                        <div class="nutrition-nav-primary">
+                            <button class="btn-nav active" id="nav-btn-nut-log" onclick="showNutritionView('log')">Log Food</button>
+                            <button class="btn-nav" id="nav-btn-nut-planner" onclick="showNutritionView('planner')">Planner</button>
+                            <button class="btn-nav" id="nav-btn-nut-shopping" onclick="showNutritionView('shopping-list')">Shopping</button>
+                        </div>
+                        <div class="nutrition-nav-secondary">
+                            <button class="btn-chip" onclick="showNutritionView('recipes')">Recipes</button>
+                            <button class="btn-chip" onclick="showNutritionView('staples')">Staples</button>
+                            <button class="btn-chip" onclick="openManageLibrary()">Food Library</button>
+                            <button class="btn-chip hidden" id="btn-import-json" onclick="openImportJsonModal()">Import JSON</button>
+                        </div>
+                        <div class="nutrition-actions">
+                            <button class="btn-primary" onclick="openFoodModal()">+ New Custom Food</button>
                         </div>
                     </div>
 
@@ -297,89 +306,25 @@
                     <h2>Log Health Data</h2>
 
                     <div class="grid-list">
-                        <!-- BP Form -->
-                        <div class="card">
-                            <h3>Blood Pressure</h3>
-                            <form id="bp-form">
-                                <div class="form-group">
-                                    <label>Systolic (Top)</label>
-                                    <input type="number" name="systolic" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Diastolic (Bottom)</label>
-                                    <input type="number" name="diastolic" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Pulse</label>
-                                    <input type="number" name="pulse" required>
-                                </div>
-                                <button type="submit" class="btn-primary">Log BP</button>
-                            </form>
+                        <!-- Action Cards -->
+                        <div class="card action-card" onclick="openLogBPModal()">
+                            <span class="material-symbols-outlined action-icon">monitor_heart</span>
+                            <h3>Log Blood Pressure</h3>
                         </div>
 
-                        <!-- Weight Form -->
-                        <div class="card">
+                        <div class="card action-card" onclick="openLogWeightModal()">
+                             <span class="material-symbols-outlined action-icon">monitor_weight</span>
                             <h3>Log Weight</h3>
-                            <form id="weight-form">
-                                <div class="form-group">
-                                    <label>Weight <span id="weight-unit-display">(kg)</span></label>
-                                    <input type="number" step="0.1" name="weight" id="weight-input" required>
-                                </div>
-                                <button type="submit" class="btn-primary">Update Weight</button>
-                            </form>
                         </div>
 
-                        <!-- Vaccination Form -->
-                        <div class="card">
+                         <div class="card action-card" onclick="openLogVacModal()">
+                             <span class="material-symbols-outlined action-icon">vaccines</span>
                             <h3>Log Vaccination</h3>
-                            <form id="vac-form">
-                                <div class="form-group">
-                                    <label>Vaccine Type</label>
-                                    <select name="vaccine_type">
-                                        <option value="Influenza">Influenza (Flu)</option>
-                                        <option value="Covid-19">Covid-19</option>
-                                        <option value="Tdap (Tetanus)">Tdap (Tetanus)</option>
-                                        <option value="Shingles Dose 1">Shingles Dose 1</option>
-                                        <option value="Shingles Dose 2">Shingles Dose 2</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Date Administered</label>
-                                    <input type="date" name="date_administered" required>
-                                </div>
-                                <button type="submit" class="btn-primary">Log Vaccination</button>
-                            </form>
                         </div>
 
-                        <!-- Exercise Form -->
-                        <div class="card">
+                         <div class="card action-card" onclick="openLogExerciseModal()">
+                             <span class="material-symbols-outlined action-icon">fitness_center</span>
                             <h3>Log Exercise</h3>
-                            <form id="exercise-form">
-                                <div class="form-group">
-                                    <label>Activity Type</label>
-                                    <select name="activity_type" id="activity_type">
-                                        <option value="running">Running</option>
-                                        <option value="walking">Walking</option>
-                                        <option value="cycling">Cycling</option>
-                                        <option value="swimming">Swimming</option>
-                                        <option value="yoga">Yoga</option>
-                                        <option value="snow shoveling">Snow Shoveling</option>
-                                        <option value="gardening">Gardening</option>
-                                        <option value="weight lifting">Weight Lifting</option>
-                                        <option value="rowing machine">Rowing Machine</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Duration (minutes)</label>
-                                    <input type="number" name="duration" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Calories (Optional)</label>
-                                    <input type="number" name="calories" placeholder="Auto-calculated if empty">
-                                </div>
-                                <button type="submit" class="btn-primary">Log Exercise</button>
-                            </form>
                         </div>
                     </div>
 
@@ -1443,6 +1388,114 @@
     <footer style="text-align: center; margin-top: 20px; color: #666; font-size: 0.8em; padding: 10px;">
         <span id="app-version">Loading version...</span>
     </footer>
+
+    <!-- Health Log Modals -->
+    <div id="log-bp-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeLogBPModal()">&times;</span>
+            <h2>Log Blood Pressure</h2>
+            <form id="bp-form">
+                <div class="form-group">
+                    <label>Systolic (Top)</label>
+                    <input type="number" name="systolic" required>
+                </div>
+                <div class="form-group">
+                    <label>Diastolic (Bottom)</label>
+                    <input type="number" name="diastolic" required>
+                </div>
+                <div class="form-group">
+                    <label>Pulse</label>
+                    <input type="number" name="pulse" required>
+                </div>
+                <div class="form-actions">
+                     <button type="button" onclick="closeLogBPModal()">Cancel</button>
+                     <button type="submit" class="btn-primary">Log BP</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="log-weight-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeLogWeightModal()">&times;</span>
+            <h2>Log Weight</h2>
+            <form id="weight-form">
+                <div class="form-group">
+                    <label>Weight <span id="weight-unit-display">(kg)</span></label>
+                    <input type="number" step="0.1" name="weight" id="weight-input" required>
+                </div>
+                <div class="form-actions">
+                     <button type="button" onclick="closeLogWeightModal()">Cancel</button>
+                     <button type="submit" class="btn-primary">Update Weight</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="log-vac-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeLogVacModal()">&times;</span>
+            <h2>Log Vaccination</h2>
+            <form id="vac-form">
+                <div class="form-group">
+                    <label>Vaccine Type</label>
+                    <select name="vaccine_type">
+                        <option value="Influenza">Influenza (Flu)</option>
+                        <option value="Covid-19">Covid-19</option>
+                        <option value="Tdap (Tetanus)">Tdap (Tetanus)</option>
+                        <option value="Shingles Dose 1">Shingles Dose 1</option>
+                        <option value="Shingles Dose 2">Shingles Dose 2</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Date Administered</label>
+                    <input type="date" name="date_administered" required>
+                </div>
+                <div class="form-actions">
+                     <button type="button" onclick="closeLogVacModal()">Cancel</button>
+                     <button type="submit" class="btn-primary">Log Vaccination</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="log-exercise-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeLogExerciseModal()">&times;</span>
+            <h2>Log Exercise</h2>
+            <form id="exercise-form">
+                <div class="form-group">
+                    <label>Activity Type</label>
+                    <select name="activity_type" id="activity_type">
+                        <option value="running">Running</option>
+                        <option value="walking">Walking</option>
+                        <option value="cycling">Cycling</option>
+                        <option value="swimming">Swimming</option>
+                        <option value="yoga">Yoga</option>
+                        <option value="snow shoveling">Snow Shoveling</option>
+                        <option value="gardening">Gardening</option>
+                        <option value="weight lifting">Weight Lifting</option>
+                        <option value="rowing machine">Rowing Machine</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Duration (minutes)</label>
+                    <input type="number" name="duration" required>
+                </div>
+                <div class="form-group">
+                    <label>Calories (Optional)</label>
+                    <input type="number" name="calories" placeholder="Auto-calculated if empty">
+                </div>
+                <div class="form-actions">
+                     <button type="button" onclick="closeLogExerciseModal()">Cancel</button>
+                     <button type="submit" class="btn-primary">Log Exercise</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
 
     <script src="/static/app.js?v=1.6.0"></script>
 </body>
