@@ -459,7 +459,7 @@ async function loadSummary() {
         }
 
         const targets = calculateTargets();
-        updateRecommendations(targets);
+        // updateRecommendations(targets); // Removed as redundant
         renderGauges(summaryData, targets);
 
         // Render Today Lists
@@ -550,12 +550,30 @@ async function openEditLog(logId) {
 const openConfirmLogForPlan = openEditLog;
 
 function calculateTargets() {
-    if (!user || !user.birth_year || !user.gender) return null;
+    if (!user || !user.gender) return null; // Relaxed check, handle age calc internally
 
-    // Simple BMR/TDEE logic (Mifflin-St Jeor)
-    const age = new Date().getFullYear() - user.birth_year;
-    const w = user.weight_kg;
-    const h = user.height_cm;
+    // Calculate Age
+    let age = 30; // Fallback
+    const currentYear = new Date().getFullYear();
+
+    if (user.date_of_birth) {
+        // Parse YYYY-MM-DD
+        const parts = user.date_of_birth.split('-');
+        if (parts.length === 3) {
+            const birthDate = new Date(parts[0], parts[1] - 1, parts[2]);
+            const today = new Date();
+            age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+        }
+    } else if (user.birth_year) {
+        age = currentYear - user.birth_year;
+    }
+
+    const w = user.weight_kg || 70; // Fallback weight
+    const h = user.height_cm || 170; // Fallback height
     let bmr = 0;
 
     if (user.gender === 'M') {
@@ -579,58 +597,81 @@ function calculateTargets() {
     };
 }
 
-function updateRecommendations(targets) {
-    if (!targets) {
-        document.getElementById('recommendation-text').innerText = "Please complete your profile (Birth Year, Gender, Weight, Goal) in Settings to see recommendations.";
-        return;
-    }
-
-    let html = `<strong>Daily Target:</strong> ${targets.calories} kcal<br>`;
-    html += `<strong>Protein:</strong> ${targets.protein.min}-${targets.protein.max}g<br>`;
-    html += `<strong>Fat:</strong> ${targets.fat.min}-${targets.fat.max}g<br>`;
-    html += `<strong>Carbs:</strong> ${targets.carbs.min}-${targets.carbs.max}g<br>`;
-    html += `<strong>Fiber:</strong> > ${targets.fiber.min}g<br>`;
-    html += `<strong>Sodium:</strong> < ${targets.sodium.max}mg`;
-
-    document.getElementById('recommendation-text').innerHTML = html;
-}
-
 function renderGauges(data, targets, containerId = 'gauges-container') {
     const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
 
+    // Remove grid-list class to allow full width custom layout
+    container.classList.remove('grid-list');
+    container.classList.add('gauge-hybrid-container');
+
     if (!targets) return;
 
-    // 1. Calories (Goal)
+    // 1. Calories (Hero Gauge)
     const calVal = Math.round(data.calories_consumed);
     const calMax = targets.calories;
     let calColor = 'color-yellow';
-    if (calVal > calMax) calColor = 'color-red';
+    if (calVal > calMax * 1.1) calColor = 'color-red';
     else if (calVal >= calMax * 0.75) calColor = 'color-green';
 
-    container.innerHTML += createGaugeHTML('Calories', calVal, calMax, calColor, 'kcal');
+    const gaugeHTML = createGaugeHTML('Calories', calVal, calMax, calColor, 'kcal');
 
-    // 2. Macros
+    // 2. Macros (Progress Bars)
     const macros = [
-        { key: 'protein', label: 'Protein', val: Math.round(data.macros.protein), unit: 'g' },
-        { key: 'fat', label: 'Fat', val: Math.round(data.macros.fat), unit: 'g' },
-        { key: 'carbs', label: 'Carbs', val: Math.round(data.macros.carbs), unit: 'g' },
-        { key: 'fiber', label: 'Fiber', val: Math.round(data.macros.fiber), unit: 'g' },
-        { key: 'sodium', label: 'Sodium', val: Math.round(data.macros.sodium || 0), unit: 'mg' }
+        { key: 'protein', label: 'Protein', val: Math.round(data.macros.protein), unit: 'g', color: '#e74c3c' },
+        { key: 'fat', label: 'Fat', val: Math.round(data.macros.fat), unit: 'g', color: '#f1c40f' },
+        { key: 'carbs', label: 'Carbs', val: Math.round(data.macros.carbs), unit: 'g', color: '#2ecc71' },
+        { key: 'fiber', label: 'Fiber', val: Math.round(data.macros.fiber), unit: 'g', color: '#95a5a6' },
+        { key: 'sodium', label: 'Sodium', val: Math.round(data.macros.sodium || 0), unit: 'mg', color: '#9b59b6' }
     ];
 
+    let barsHTML = '<div class="macro-bars-wrapper">';
     macros.forEach(m => {
         const t = targets[m.key];
-        let color = 'color-yellow';
-        let maxDisplay = t.max || (t.min * 2); // Fallback for fiber which only has min
+        // Calculate dynamic max for bar scaling
+        let max = t.max || (t.min ? t.min * 2 : 100);
+        if (t.min && !t.max) max = Math.max(m.val * 1.2, t.min * 1.5);
+        if (t.max) max = t.max;
 
-        if (m.val < t.min) color = 'color-yellow';
-        else if (t.max && m.val > t.max) color = 'color-red';
-        else color = 'color-green'; // Between min/max or > min for fiber
-
-        container.innerHTML += createGaugeHTML(m.label, m.val, maxDisplay, color, m.unit);
+        barsHTML += createProgressBarHTML(m.label, m.val, max, m.color, m.unit, t);
     });
+    barsHTML += '</div>';
+
+    container.innerHTML = `
+        <div class="hybrid-layout">
+            <div class="hybrid-hero">
+                ${gaugeHTML}
+            </div>
+            <div class="hybrid-details">
+                ${barsHTML}
+            </div>
+        </div>
+    `;
+}
+
+function createProgressBarHTML(label, value, max, color, unit, target) {
+    let pct = (value / max) * 100;
+    if (pct > 100) pct = 100;
+
+    let targetText = '';
+    if (target) {
+        if(target.min && target.max) targetText = `${target.min}-${target.max}`;
+        else if(target.min) targetText = `> ${target.min}`;
+        else if(target.max) targetText = `< ${target.max}`;
+    }
+
+    return `
+    <div class="macro-bar-container">
+        <div class="macro-bar-header">
+            <span class="macro-label">${label}</span>
+            <span class="macro-val">${value} / ${targetText} ${unit}</span>
+        </div>
+        <div class="macro-track">
+            <div class="macro-fill" style="width: ${pct}%; background-color: ${color};"></div>
+        </div>
+    </div>
+    `;
 }
 
 function createGaugeHTML(label, value, max, colorClass, unit) {
@@ -986,10 +1027,10 @@ async function submitLog(data, formElement) {
 
         if (res.ok) {
             if (isPlanningMode) {
-                alert('Added to Meal Plan');
+                showToast('Added to Meal Plan', 'success');
                 loadPlanner(); // Refresh planner
             } else {
-                alert('Food logged successfully');
+                showToast('Food logged successfully', 'success');
             }
 
             if(formElement) formElement.reset();
@@ -1277,13 +1318,15 @@ async function handleLogVaccination(e) {
             body: JSON.stringify(data)
         });
         if (res.ok) {
-            alert('Vaccination logged');
+            showToast('Vaccination logged', 'success');
             e.target.reset();
+            closeLogVacModal();
+            if(typeof loadVaccinationReport === 'function') loadVaccinationReport();
         } else {
-            alert('Error logging vaccination');
+            showToast('Error logging vaccination', 'error');
         }
     } catch(err) {
-        alert('Error logging vaccination');
+        showToast('Error logging vaccination', 'error');
     }
 }
 
@@ -1377,9 +1420,9 @@ async function loadAllergyReport() {
 async function handleLogBP(e) {
     e.preventDefault();
     const data = {
-        systolic: parseInt(document.querySelector('[name="systolic"]').value),
-        diastolic: parseInt(document.querySelector('[name="diastolic"]').value),
-        pulse: parseInt(document.querySelector('[name="pulse"]').value),
+        systolic: parseInt(document.querySelector('#bp-form [name="systolic"]').value),
+        diastolic: parseInt(document.querySelector('#bp-form [name="diastolic"]').value),
+        pulse: parseInt(document.querySelector('#bp-form [name="pulse"]').value),
         location: "Manual",
         stress_level: 0,
         meds_taken_before: "N/A"
@@ -1394,13 +1437,16 @@ async function handleLogBP(e) {
             body: JSON.stringify(data)
         });
         if (res.ok) {
-            alert('BP Logged');
+            showToast('BP Logged', 'success');
             e.target.reset();
+            closeLogBPModal();
+            if(typeof loadBPHistory === 'function') loadBPHistory();
+            if(typeof loadSummary === 'function') loadSummary();
         } else {
-            alert('Error logging BP');
+            showToast('Error logging BP', 'error');
         }
     } catch (err) {
-        alert('Error logging BP');
+        showToast('Error logging BP', 'error');
     }
 }
 
@@ -1408,10 +1454,10 @@ async function handleLogExercise(e) {
     e.preventDefault();
     const data = {
         activity_type: document.getElementById('activity_type').value,
-        duration_minutes: parseFloat(document.querySelector('[name="duration"]').value),
+        duration_minutes: parseFloat(document.querySelector('#exercise-form [name="duration"]').value),
     };
 
-    const cals = document.querySelector('[name="calories"]').value;
+    const cals = document.querySelector('#exercise-form [name="calories"]').value;
     if (cals) data.calories_burned = parseFloat(cals);
 
     try {
@@ -1424,14 +1470,16 @@ async function handleLogExercise(e) {
         });
         if (res.ok) {
             const resp = await res.json();
-            alert(`Exercise Logged. Calories: ${resp.calories_burned.toFixed(1)}`);
+            showToast(`Exercise Logged. Calories: ${resp.calories_burned.toFixed(1)}`, 'success');
             e.target.reset();
-            loadExerciseHistory(); // Refresh history
+            closeLogExerciseModal();
+            loadExerciseHistory();
+            if(typeof loadSummary === 'function') loadSummary();
         } else {
-            alert('Error logging exercise');
+            showToast('Error logging exercise', 'error');
         }
     } catch (err) {
-        alert('Error logging exercise');
+        showToast('Error logging exercise', 'error');
     }
 }
 
@@ -1557,13 +1605,16 @@ async function handleLogWeight(e) {
         });
         if (res.ok) {
             user = await res.json(); // Update local user state
-            alert('Weight updated successfully');
+            showToast('Weight updated successfully', 'success');
             e.target.reset();
+            closeLogWeightModal();
+            if(typeof loadProfileData === 'function') loadProfileData();
+            if(typeof loadSummary === 'function') loadSummary();
         } else {
-            alert('Error updating weight');
+            showToast('Error updating weight', 'error');
         }
     } catch (err) {
-        alert('Error updating weight');
+        showToast('Error updating weight', 'error');
     }
 }
 
@@ -1845,7 +1896,10 @@ async function handleUpdateProfile(e) {
             alert('Profile updated');
             loadProfileData();
             // Also refresh recommendations if on dashboard
-            updateRecommendations();
+            // updateRecommendations(); // Removed
+            if (document.getElementById('tab-dashboard') && !document.getElementById('tab-dashboard').classList.contains('hidden')) {
+                loadSummary(); // Reload summary to update gauges with new targets
+            }
         } else {
             alert('Error updating profile');
         }
@@ -2918,7 +2972,16 @@ function showNutritionView(view, preserveMode = false) {
     document.getElementById('nutrition-view-staples').classList.add('hidden');
     document.getElementById('nutrition-view-shopping-list').classList.add('hidden');
 
+    // Update Nav State
+    const navLog = document.getElementById('nav-btn-nut-log');
+    const navPlan = document.getElementById('nav-btn-nut-planner');
+    const navShop = document.getElementById('nav-btn-nut-shopping');
+    if(navLog) navLog.classList.remove('active');
+    if(navPlan) navPlan.classList.remove('active');
+    if(navShop) navShop.classList.remove('active');
+
     if (view === 'log') {
+        if(navLog) navLog.classList.add('active');
         if (!preserveMode) isPlanningMode = false;
         document.getElementById('nutrition-view-log').classList.remove('hidden');
         updateLogViewUI();
@@ -2926,12 +2989,14 @@ function showNutritionView(view, preserveMode = false) {
         document.getElementById('nutrition-view-recipes').classList.remove('hidden');
         loadRecipes();
     } else if (view === 'planner') {
+        if(navPlan) navPlan.classList.add('active');
         document.getElementById('nutrition-view-planner').classList.remove('hidden');
         loadPlanner();
     } else if (view === 'staples') {
         document.getElementById('nutrition-view-staples').classList.remove('hidden');
         loadStaples();
     } else if (view === 'shopping-list') {
+        if(navShop) navShop.classList.add('active');
         document.getElementById('nutrition-view-shopping-list').classList.remove('hidden');
         loadShoppingList();
     }
@@ -4017,3 +4082,49 @@ function printShoppingList() {
     `);
     win.document.close();
 }
+
+// --- Toast Notifications ---
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    // Add icon based on type (optional, but nice)
+    let icon = '';
+    if (type === 'success') icon = '<span class="material-symbols-outlined" style="color:#28a745; margin-right:10px;">check_circle</span>';
+    if (type === 'error') icon = '<span class="material-symbols-outlined" style="color:#dc3545; margin-right:10px;">error</span>';
+    if (type === 'info') icon = '<span class="material-symbols-outlined" style="color:var(--primary-color); margin-right:10px;">info</span>';
+
+    toast.innerHTML = `
+        <div style="display:flex; align-items:center;">
+            ${icon}
+            <span>${message}</span>
+        </div>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto dismiss
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.5s';
+        setTimeout(() => toast.remove(), 500);
+    }, 3000);
+}
+
+// --- Health Log Modals ---
+
+function openLogBPModal() { document.getElementById('log-bp-modal').classList.remove('hidden'); }
+function closeLogBPModal() { document.getElementById('log-bp-modal').classList.add('hidden'); }
+
+function openLogWeightModal() { document.getElementById('log-weight-modal').classList.remove('hidden'); }
+function closeLogWeightModal() { document.getElementById('log-weight-modal').classList.add('hidden'); }
+
+function openLogVacModal() { document.getElementById('log-vac-modal').classList.remove('hidden'); }
+function closeLogVacModal() { document.getElementById('log-vac-modal').classList.add('hidden'); }
+
+function openLogExerciseModal() { document.getElementById('log-exercise-modal').classList.remove('hidden'); }
+function closeLogExerciseModal() { document.getElementById('log-exercise-modal').classList.add('hidden'); }
