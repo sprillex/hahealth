@@ -139,6 +139,7 @@
                                     <small>
                                         <a href="#" onclick="openManageFoodModal()">[Manage]</a>
                                         <a href="#" onclick="openDailyNutritionModal()" style="margin-left: 5px;">[More Info]</a>
+                                        <a href="#" onclick="openLogFoodForDashboardDate()" style="margin-left: 5px;">[Log Food]</a>
                                     </small>
                                 </h4>
                                 <div id="food-today-list">Loading...</div>
@@ -185,6 +186,7 @@
                             <div class="card">
                                 <h3>Log Food</h3>
                                 <form id="food-log-form">
+                                    <div id="log-target-date-display" class="status-warning hidden" style="margin-bottom: 10px; text-align: center; font-weight: bold;"></div>
                                     <!-- Search Scope Toggle -->
                                     <div class="form-group" style="display: flex; gap: 20px; align-items: center; margin-bottom: 10px;">
                                         <label>Search Scope:</label>

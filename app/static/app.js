@@ -9,6 +9,7 @@ let summaryData = null;
 let isRefreshing = false;
 let refreshQueue = [];
 let currentDashboardDate = new Date(); // Defaults to today
+let targetLogDate = null; // For logging to past dates
 let selectedFoodItem = null; // Store selected food for preview
 // Globals for Recipes
 let currentScope = 'food';
@@ -80,6 +81,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('create-food-form').addEventListener('submit', handleCreateFood);
     document.getElementById('food-log-form').addEventListener('submit', handleLogFood);
     document.getElementById('recipe-form').addEventListener('submit', handleSaveRecipe);
+
+    // Navigation Button Interceptors
+    const nutLogBtn = document.getElementById('nav-btn-nut-log');
+    if(nutLogBtn) {
+        const orig = nutLogBtn.onclick;
+        nutLogBtn.onclick = (e) => {
+            targetLogDate = null;
+            if(orig) orig.call(nutLogBtn, e);
+        };
+    }
 
     const recipeIngInput = document.getElementById('recipe-ing-search');
     if(recipeIngInput) {
@@ -993,6 +1004,12 @@ async function handleLogFood(e) {
     if (isPlanningMode) {
         data.planned_quantity = data.quantity;
         data.quantity = 0;
+    } else if (targetLogDate) {
+        // Use Noon UTC to ensure the log falls on the correct date in the database
+        const y = targetLogDate.getFullYear();
+        const m = String(targetLogDate.getMonth() + 1).padStart(2, '0');
+        const d = String(targetLogDate.getDate()).padStart(2, '0');
+        data.timestamp = `${y}-${m}-${d}T12:00:00Z`;
     }
 
     if (!data.food_name && document.getElementById('food-search-input').value) {
@@ -1216,6 +1233,11 @@ async function confirmLogFood() {
     if (isPlanningMode) {
         data.planned_quantity = data.quantity;
         data.quantity = 0;
+    } else if (targetLogDate) {
+        const now = new Date();
+        const ts = new Date(targetLogDate);
+        ts.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+        data.timestamp = ts.toISOString();
     }
 
     // Use shared submit logic
@@ -2985,7 +3007,23 @@ function showNutritionView(view, preserveMode = false) {
         if (!preserveMode) isPlanningMode = false;
         document.getElementById('nutrition-view-log').classList.remove('hidden');
         updateLogViewUI();
-    } else if (view === 'recipes') {
+    } else {
+        // Leaving log view, clear target date?
+        // Actually, if we switch TABS (via showTab), showNutritionView isn't called for other tabs.
+        // But if we switch SUB-VIEWS (e.g. to Recipes), we might want to clear it.
+        // If I click [Log Food] -> shows Log View.
+        // If I click [Recipes] -> shows Recipes.
+        // If I click [Log Food] nav button -> shows Log View.
+        // If I switch to recipes and back, should date persist?
+        // Usually UI state persists.
+        // But if I clicked "Log Food for Yesterday", then switched to Recipes, then back to Log Food via Nav Button...
+        // The Nav Button interceptor clears it. Good.
+        // If I switch to Recipes and back to Log via... what?
+        // Only Nav Button calls showNutritionView('log').
+        // So I don't need to clear it here necessarily.
+    }
+
+    if (view === 'recipes') {
         document.getElementById('nutrition-view-recipes').classList.remove('hidden');
         loadRecipes();
     } else if (view === 'planner') {
@@ -3005,16 +3043,39 @@ function showNutritionView(view, preserveMode = false) {
 function updateLogViewUI() {
     const btn = document.querySelector('#food-log-form button[type="submit"]');
     const title = document.querySelector('#nutrition-view-log h3');
+    const dateDisplay = document.getElementById('log-target-date-display');
 
     if (isPlanningMode) {
         if(btn) btn.innerText = "Add to Plan";
         if(title) title.innerText = "Add to Meal Plan";
-        // Maybe highlight the Meal dropdown or lock it?
-        // document.getElementById('food-meal').style.border = "2px solid var(--primary-color)";
+        if(dateDisplay) dateDisplay.classList.add('hidden');
     } else {
         if(btn) btn.innerText = "Log Food";
         if(title) title.innerText = "Log Food";
+
+        if (targetLogDate && !isSameDay(targetLogDate, new Date())) {
+            if(dateDisplay) {
+                dateDisplay.innerText = `Logging for: ${targetLogDate.toLocaleDateString()}`;
+                dateDisplay.classList.remove('hidden');
+            }
+        } else {
+            if(dateDisplay) dateDisplay.classList.add('hidden');
+        }
     }
+}
+
+function isSameDay(d1, d2) {
+    return d1.getFullYear() === d2.getFullYear() &&
+           d1.getMonth() === d2.getMonth() &&
+           d1.getDate() === d2.getDate();
+}
+
+function openLogFoodForDashboardDate() {
+    targetLogDate = new Date(currentDashboardDate);
+    showTab('nutrition');
+    showNutritionView('log');
+    isPlanningMode = false; // Ensure planning mode is off
+    updateLogViewUI();
 }
 
 async function loadRecipes() {
