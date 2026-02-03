@@ -4,6 +4,7 @@
     --text-color: #333333;
     --primary-color: #007bff;
     --border-color: #ddd;
+    --link-color: var(--primary-color);
 }
 
 body.dark-theme {
@@ -12,6 +13,7 @@ body.dark-theme {
     --text-color: #ffffff;
     --primary-color: #bb86fc;
     --border-color: #333;
+    --link-color: #e6ce1c;
 }
 
 body {
@@ -37,6 +39,10 @@ body {
     max-width: 400px;
     margin-top: 100px;
     text-align: center;
+}
+
+a, a:visited {
+    color: var(--link-color);
 }
 
 input, select, button, textarea {
