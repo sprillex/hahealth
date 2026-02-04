@@ -891,7 +891,7 @@ class GeminiService:
 
         try:
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-pro')
 
             # Prepare Staples String
             staples_str = ", ".join([f"{s.food_name}" for s in staples_list])
