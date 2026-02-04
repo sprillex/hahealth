@@ -1735,6 +1735,52 @@
         ]
       }
     },
+    "/api/v1/nutrition/ask-gemini": {
+      "post": {
+        "tags": [
+          "nutrition"
+        ],
+        "summary": "Ask Gemini",
+        "operationId": "ask_gemini_api_v1_nutrition_ask_gemini_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GeminiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeminiResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/nutrition/list": {
       "get": {
         "tags": [
@@ -3297,6 +3343,36 @@
           "planned_quantity"
         ],
         "title": "FoodLogResponse"
+      },
+      "GeminiRequest": {
+        "properties": {
+          "date_str": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Str"
+          }
+        },
+        "type": "object",
+        "title": "GeminiRequest"
+      },
+      "GeminiResponse": {
+        "properties": {
+          "response": {
+            "type": "string",
+            "title": "Response"
+          }
+        },
+        "type": "object",
+        "required": [
+          "response"
+        ],
+        "title": "GeminiResponse"
       },
       "HTTPValidationError": {
         "properties": {
