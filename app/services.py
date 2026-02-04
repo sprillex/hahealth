@@ -1,7 +1,7 @@
 import requests
 import os
 import shutil
-import google.generativeai as genai
+from google import genai
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from app import models, schemas, database
@@ -890,8 +890,7 @@ class GeminiService:
             return "Gemini API Key not configured. Please set GEMINI_API_KEY environment variable."
 
         try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            client = genai.Client(api_key=api_key)
 
             # Prepare Staples String
             staples_str = ", ".join([f"{s.food_name}" for s in staples_list])
@@ -921,14 +920,10 @@ class GeminiService:
             Keep the response concise, friendly, and actionable. Format nicely with markdown if possible.
             """
 
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt
+            )
             return response.text
         except Exception as e:
-            error_msg = f"Error communicating with Gemini: {str(e)}"
-            try:
-                # Attempt to list models to help debugging
-                models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                error_msg += f"\n\nAvailable models: {', '.join(models)}"
-            except Exception as list_e:
-                error_msg += f"\n\nCould not list models: {str(list_e)}"
-            return error_msg
+            return f"Error communicating with Gemini (SDK v1): {str(e)}"
