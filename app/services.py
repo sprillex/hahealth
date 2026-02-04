@@ -891,7 +891,7 @@ class GeminiService:
 
         try:
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-pro')
+            model = genai.GenerativeModel('gemini-1.5-flash')
 
             # Prepare Staples String
             staples_str = ", ".join([f"{s.food_name}" for s in staples_list])
@@ -924,4 +924,11 @@ class GeminiService:
             response = model.generate_content(prompt)
             return response.text
         except Exception as e:
-            return f"Error communicating with Gemini: {str(e)}"
+            error_msg = f"Error communicating with Gemini: {str(e)}"
+            try:
+                # Attempt to list models to help debugging
+                models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                error_msg += f"\n\nAvailable models: {', '.join(models)}"
+            except Exception as list_e:
+                error_msg += f"\n\nCould not list models: {str(list_e)}"
+            return error_msg
