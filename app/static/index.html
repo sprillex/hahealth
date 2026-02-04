@@ -1105,7 +1105,19 @@
                 </table>
             </div>
             <div style="margin-top: 15px; text-align: right;">
+                <button type="button" onclick="askGemini()" class="btn-primary" style="margin-right: 10px;">Ask Gemini</button>
                 <button type="button" onclick="document.getElementById('daily-nutrition-modal').classList.add('hidden')" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="gemini-response-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('gemini-response-modal').classList.add('hidden')">&times;</span>
+            <h2>Gemini Nutrition Advice</h2>
+            <div id="gemini-response-content" style="white-space: pre-wrap; line-height: 1.5; color: var(--text-color);"></div>
+            <div style="margin-top: 15px; text-align: right;">
+                <button type="button" onclick="document.getElementById('gemini-response-modal').classList.add('hidden')" class="btn-secondary">Close</button>
             </div>
         </div>
     </div>

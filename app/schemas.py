@@ -302,6 +302,12 @@ class NutritionCacheUpdate(BaseModel):
     is_staple: Optional[bool] = None
     on_shopping_list: Optional[bool] = None
 
+class GeminiRequest(BaseModel):
+    date_str: Optional[str] = None
+
+class GeminiResponse(BaseModel):
+    response: str
+
 class NutritionCacheResponse(NutritionCacheBase):
     food_id: int
     source: str
