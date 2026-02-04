@@ -55,6 +55,9 @@ You can configure the application using environment variables or a `.env` file (
     MQTT_BROKER=192.168.1.50
     MQTT_USERNAME=homeassistant
     MQTT_PASSWORD=your_password
+
+    # Gemini API Key (Optional, for Nutrition Advice)
+    GEMINI_API_KEY=your_gemini_api_key
     ```
 
 ### Environment Variables
@@ -67,6 +70,7 @@ You can configure the application using environment variables or a `.env` file (
 | `MQTT_PASSWORD` | Password for authentication (optional) | `None` |
 | `MQTT_TOPIC_PREFIX` | Prefix for subscription (subscribes to `prefix/#`) | `hahealth/log` |
 | `HASS_DISCOVERY_PREFIX` | Prefix for Home Assistant discovery topics | `homeassistant` |
+| `GEMINI_API_KEY` | API Key for Google Gemini (AI Nutrition Advice) | `None` |
 
 ## Running the Application
 

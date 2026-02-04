@@ -1,6 +1,7 @@
 import requests
 import os
 import shutil
+from google import genai
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from app import models, schemas, database
@@ -580,6 +581,128 @@ class HealthLogService:
 
         return streak
 
+    def get_daily_summary_data(self, db: Session, current_user: models.User, target_date: date):
+        # 1. Daily Log (Calories In/Out)
+        daily = db.query(models.DailyLog).filter(
+            models.DailyLog.user_id == current_user.user_id,
+            models.DailyLog.date == target_date
+        ).first()
+
+        calories_consumed = daily.total_calories_consumed if daily else 0
+        calories_burned = daily.total_calories_burned if daily else 0
+
+        # Determine UTC range for the User's Local Day
+        try:
+            user_tz = zoneinfo.ZoneInfo(current_user.timezone) if current_user.timezone else timezone.utc
+        except Exception:
+            user_tz = timezone.utc
+
+        # Local day start/end
+        local_start = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=user_tz)
+        local_end = datetime.combine(target_date, datetime.max.time()).replace(tzinfo=user_tz)
+
+        # Convert to UTC for DB Query
+        utc_start = local_start.astimezone(timezone.utc)
+        utc_end = local_end.astimezone(timezone.utc)
+
+        # 2. Latest BP
+        bp = db.query(models.BloodPressure).filter(
+            models.BloodPressure.user_id == current_user.user_id,
+            models.BloodPressure.timestamp >= utc_start,
+            models.BloodPressure.timestamp <= utc_end
+        ).order_by(models.BloodPressure.timestamp.desc()).first()
+
+        bp_str = f"{bp.systolic}/{bp.diastolic}" if bp else "Not Logged"
+
+        # 3. Macro Calculation
+        food_logs = db.query(models.FoodItemLog).join(models.NutritionCache).filter(
+            models.FoodItemLog.user_id == current_user.user_id,
+            models.FoodItemLog.timestamp >= utc_start,
+            models.FoodItemLog.timestamp <= utc_end
+        ).all()
+
+        macros = {
+            "protein": 0, "fat": 0, "carbs": 0, "fiber": 0, "sodium": 0,
+            "cholesterol": 0, "total_sugars": 0, "added_sugars": 0,
+            "vitamin_d": 0, "calcium": 0, "iron": 0, "potassium": 0
+        }
+        food_list = []
+        for log in food_logs:
+            multiplier = log.serving_size * log.quantity
+            macros["protein"] += (log.nutrition_info.protein or 0) * multiplier
+            macros["fat"] += (log.nutrition_info.fat or 0) * multiplier
+            macros["carbs"] += (log.nutrition_info.carbs or 0) * multiplier
+            macros["fiber"] += (log.nutrition_info.fiber or 0) * multiplier
+            macros["sodium"] += (log.nutrition_info.sodium or 0) * multiplier
+
+            # Extended & Micros
+            macros["cholesterol"] += (log.nutrition_info.cholesterol or 0) * multiplier
+            macros["total_sugars"] += (log.nutrition_info.total_sugars or 0) * multiplier
+            macros["added_sugars"] += (log.nutrition_info.added_sugars or 0) * multiplier
+            macros["vitamin_d"] += (log.nutrition_info.vitamin_d or 0) * multiplier
+            macros["calcium"] += (log.nutrition_info.calcium or 0) * multiplier
+            macros["iron"] += (log.nutrition_info.iron or 0) * multiplier
+            macros["potassium"] += (log.nutrition_info.potassium or 0) * multiplier
+
+            ts = log.timestamp
+            if ts and ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            # Use planned quantity for display calculation if not eaten yet
+            display_mult = log.quantity if log.quantity > 0 else log.planned_quantity
+
+            food_list.append({
+                "log_id": log.item_log_id,
+                "food_id": log.food_id,
+                "name": log.nutrition_info.food_name,
+                "calories": (log.nutrition_info.calories or 0) * display_mult * log.serving_size,
+                "protein": (log.nutrition_info.protein or 0) * display_mult * log.serving_size,
+                "fat": (log.nutrition_info.fat or 0) * display_mult * log.serving_size,
+                "carbs": (log.nutrition_info.carbs or 0) * display_mult * log.serving_size,
+                "fiber": (log.nutrition_info.fiber or 0) * display_mult * log.serving_size,
+                "sodium": (log.nutrition_info.sodium or 0) * display_mult * log.serving_size,
+                "meal": log.meal_id,
+                "serving_size": log.serving_size,
+                "quantity": log.quantity,
+                "planned_quantity": log.planned_quantity,
+                "unit": log.nutrition_info.serving_size_unit,
+                "timestamp": ts
+            })
+
+        # Fetch Exercises
+        exercises_list = []
+        daily_exercises = db.query(models.ExerciseLog).filter(
+            models.ExerciseLog.user_id == current_user.user_id,
+            models.ExerciseLog.timestamp >= utc_start,
+            models.ExerciseLog.timestamp <= utc_end
+        ).order_by(models.ExerciseLog.timestamp.desc()).all()
+
+        for ex in daily_exercises:
+            ts = ex.timestamp
+            if ts and ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            exercises_list.append({
+                "log_id": ex.exercise_id,
+                "activity": ex.activity_type,
+                "duration": ex.duration_minutes,
+                "calories": ex.calories_burned,
+                "timestamp": ts
+            })
+
+        # Weight Change & Streak
+        weight_change = self.get_weight_change(db, current_user, days=30)
+        exercise_streak = self.get_exercise_streak(db, current_user)
+
+        return {
+            "blood_pressure": bp_str,
+            "calories_consumed": calories_consumed,
+            "calories_burned": calories_burned,
+            "macros": macros,
+            "food_logs": food_list,
+            "exercises": exercises_list,
+            "weight_change_30d": weight_change,
+            "exercise_streak": exercise_streak
+        }
+
     def calculate_compliance_report(self, db: Session, user: models.User):
         try:
             user_tz = zoneinfo.ZoneInfo(user.timezone) if user.timezone else timezone.utc
@@ -759,3 +882,48 @@ class BackupService:
         files = [os.path.join(self.BACKUP_DIR, f) for f in os.listdir(self.BACKUP_DIR) if f.endswith(".enc")]
         if not files: return None
         return max(files, key=os.path.getctime)
+
+class GeminiService:
+    def ask_nutrition_advice(self, summary_data: dict, staples_list: List[models.NutritionCache]) -> str:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            return "Gemini API Key not configured. Please set GEMINI_API_KEY environment variable."
+
+        try:
+            client = genai.Client(api_key=api_key)
+
+            # Prepare Staples String
+            staples_str = ", ".join([f"{s.food_name}" for s in staples_list])
+            if not staples_str:
+                staples_str = "No specific staples listed."
+
+            # Prepare Summary String
+            # We filter food_logs to only relevant fields for prompt to save tokens/clutter
+            eaten_list = [f"{f['name']} ({f['calories']} kcal, {f['meal']})" for f in summary_data.get('food_logs', []) if f['quantity'] > 0]
+            eaten_str = "\n".join(eaten_list) if eaten_list else "Nothing eaten yet."
+
+            prompt = f"""
+            You are a helpful nutrition assistant.
+
+            Here is my daily nutrition summary so far:
+            Calories Consumed: {summary_data.get('calories_consumed')}
+            Macros Consumed: {summary_data.get('macros')}
+
+            Foods eaten today:
+            {eaten_str}
+
+            Here is a list of staple foods I have available at home:
+            {staples_str}
+
+            Based on what I have eaten and what I have available, what do you recommend I eat for my next meal or snack to balance my nutrition for the day?
+            Please give specific suggestions from my staples list if possible, or general advice if staples aren't sufficient.
+            Keep the response concise, friendly, and actionable. Format nicely with markdown if possible.
+            """
+
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt
+            )
+            return response.text
+        except Exception as e:
+            return f"Error communicating with Gemini (SDK v1): {str(e)}"

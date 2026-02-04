@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app import database, models, schemas, auth, services
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 import random
 import string
 
@@ -120,6 +120,35 @@ def log_food_entry(
 
     # Construct response
     return entry
+
+@router.post("/ask-gemini", response_model=schemas.GeminiResponse)
+def ask_gemini(
+    request: schemas.GeminiRequest,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    target_date = date.today()
+    if request.date_str:
+        try:
+            target_date = datetime.strptime(request.date_str, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    # 1. Get Daily Summary Data
+    health_service = services.HealthLogService()
+    summary_data = health_service.get_daily_summary_data(db, current_user, target_date)
+
+    # 2. Get Staples
+    staples = db.query(models.NutritionCache).filter(
+        models.NutritionCache.is_staple == True,
+        models.NutritionCache.is_user_visible == True
+    ).all()
+
+    # 3. Call Gemini
+    gemini_service = services.GeminiService()
+    response_text = gemini_service.ask_nutrition_advice(summary_data, staples)
+
+    return {"response": response_text}
 
 @router.get("/list", response_model=List[schemas.NutritionCacheResponse])
 def list_foods(

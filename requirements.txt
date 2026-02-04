@@ -12,3 +12,4 @@ playwright
 cryptography
 paho-mqtt
 python-dotenv
+google-genai

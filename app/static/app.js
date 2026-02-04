@@ -4128,3 +4128,38 @@ function closeLogVacModal() { document.getElementById('log-vac-modal').classList
 
 function openLogExerciseModal() { document.getElementById('log-exercise-modal').classList.remove('hidden'); }
 function closeLogExerciseModal() { document.getElementById('log-exercise-modal').classList.add('hidden'); }
+
+async function askGemini() {
+    showToast("Asking Gemini...", "info");
+    const btn = document.querySelector('#daily-nutrition-modal .btn-primary');
+    if(btn) {
+        btn.disabled = true;
+        btn.innerText = "Thinking...";
+    }
+
+    try {
+        const dateStr = getFormattedDate(currentDashboardDate);
+        const res = await fetchWithAuth(`${API_URL}/nutrition/ask-gemini`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date_str: dateStr })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            const content = document.getElementById('gemini-response-content');
+            if (content) content.innerText = data.response;
+            document.getElementById('gemini-response-modal').classList.remove('hidden');
+        } else {
+            const err = await res.json();
+            alert("Error: " + (err.detail || "Failed to get advice"));
+        }
+    } catch (e) {
+        alert("Error: " + e.message);
+    } finally {
+        if(btn) {
+            btn.disabled = false;
+            btn.innerText = "Ask Gemini";
+        }
+    }
+}
