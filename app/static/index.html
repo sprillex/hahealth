@@ -81,7 +81,7 @@
                         </div>
                     </div>
 
-                    <div class="summary-card">
+                    <div class="summary-card" id="dashboard-summary-card">
                         <div class="summary-grid">
                             <div class="summary-item">
                                 <span class="material-symbols-outlined" style="font-size: 2em; opacity:0.8;">monitor_heart</span>
@@ -121,7 +121,7 @@
                         <!-- Gauges will be injected here -->
                     </div>
 
-                    <div class="card" style="margin-top: 20px;">
+                    <div class="card" id="dashboard-activity-log-card" style="margin-top: 20px;">
                         <h3>Activity Log</h3>
                         <div class="summary-grid" style="text-align: left;">
                             <div>
@@ -182,7 +182,7 @@
                     <div id="nutrition-view-log">
                         <div class="grid-list">
                             <!-- Search & Log -->
-                            <div class="card">
+                            <div class="card" id="log-food-card">
                                 <h3>Log Food</h3>
                                 <form id="food-log-form">
                                     <!-- Search Scope Toggle -->
@@ -245,7 +245,7 @@
                                 <button onclick="changePlannerDate(1)">Next &gt;</button>
                             </div>
                          </div>
-                         <div class="card" style="margin-bottom: 20px;">
+                         <div class="card" id="planner-mode-card" style="margin-bottom: 20px;">
                             <div class="form-group" style="display: flex; gap: 20px; align-items: center; margin-bottom: 0;">
                                 <label style="font-weight: bold;">Mode:</label>
                                 <label><input type="radio" name="planner_mode" value="today" checked onchange="updatePlannerGauges()"> Include Today's Log</label>
@@ -261,7 +261,7 @@
                          <!-- Meal Lists -->
                          <div id="planner-meals-container">
                              <!-- Breakfast -->
-                             <div class="card" style="margin-bottom: 15px;">
+                             <div class="card" id="planner-breakfast-card" style="margin-bottom: 15px;">
                                  <div class="header-actions">
                                      <h4 style="margin:0;">Breakfast</h4>
                                      <button class="btn-secondary" style="font-size: 0.8em; padding: 5px 10px;" onclick="openPlannerAdd('Breakfast')">+ Add</button>
@@ -269,7 +269,7 @@
                                  <div id="planner-list-Breakfast">Loading...</div>
                              </div>
                              <!-- Lunch -->
-                             <div class="card" style="margin-bottom: 15px;">
+                             <div class="card" id="planner-lunch-card" style="margin-bottom: 15px;">
                                  <div class="header-actions">
                                      <h4 style="margin:0;">Lunch</h4>
                                      <button class="btn-secondary" style="font-size: 0.8em; padding: 5px 10px;" onclick="openPlannerAdd('Lunch')">+ Add</button>
@@ -277,7 +277,7 @@
                                  <div id="planner-list-Lunch">Loading...</div>
                              </div>
                              <!-- Dinner -->
-                             <div class="card" style="margin-bottom: 15px;">
+                             <div class="card" id="planner-dinner-card" style="margin-bottom: 15px;">
                                  <div class="header-actions">
                                      <h4 style="margin:0;">Dinner</h4>
                                      <button class="btn-secondary" style="font-size: 0.8em; padding: 5px 10px;" onclick="openPlannerAdd('Dinner')">+ Add</button>
@@ -285,7 +285,7 @@
                                  <div id="planner-list-Dinner">Loading...</div>
                              </div>
                              <!-- Snack -->
-                             <div class="card" style="margin-bottom: 15px;">
+                             <div class="card" id="planner-snack-card" style="margin-bottom: 15px;">
                                  <div class="header-actions">
                                      <h4 style="margin:0;">Snack</h4>
                                      <button class="btn-secondary" style="font-size: 0.8em; padding: 5px 10px;" onclick="openPlannerAdd('Snack')">+ Add</button>
@@ -302,29 +302,29 @@
 
                     <div class="grid-list">
                         <!-- Action Cards -->
-                        <div class="card action-card" onclick="openLogBPModal()">
+                        <div class="card action-card" id="log-bp-card" onclick="openLogBPModal()">
                             <span class="material-symbols-outlined action-icon">monitor_heart</span>
                             <h3>Log Blood Pressure</h3>
                         </div>
 
-                        <div class="card action-card" onclick="openLogWeightModal()">
+                        <div class="card action-card" id="log-weight-card" onclick="openLogWeightModal()">
                              <span class="material-symbols-outlined action-icon">monitor_weight</span>
                             <h3>Log Weight</h3>
                         </div>
 
-                         <div class="card action-card" onclick="openLogVacModal()">
+                         <div class="card action-card" id="log-vac-card" onclick="openLogVacModal()">
                              <span class="material-symbols-outlined action-icon">vaccines</span>
                             <h3>Log Vaccination</h3>
                         </div>
 
-                         <div class="card action-card" onclick="openLogExerciseModal()">
+                         <div class="card action-card" id="log-exercise-card" onclick="openLogExerciseModal()">
                              <span class="material-symbols-outlined action-icon">fitness_center</span>
                             <h3>Log Exercise</h3>
                         </div>
                     </div>
 
                     <!-- Recent Exercises Section -->
-                    <div class="card" style="margin-top: 20px;">
+                    <div class="card" id="recent-exercises-card" style="margin-top: 20px;">
                         <h3>Recent Exercises</h3>
                         <div class="table-responsive">
                             <table id="exercise-history-table" style="width: 100%; text-align: left;">
@@ -343,12 +343,12 @@
                         </div>
                     </div>
 
-                    <div class="card" style="margin-top: 20px;">
+                    <div class="card" id="vaccinations-list-card" style="margin-top: 20px;">
                         <h3>Vaccinations</h3>
                         <div id="vaccination-report">Loading...</div>
                     </div>
 
-                    <div class="card" style="margin-top: 20px;">
+                    <div class="card" id="allergies-list-card" style="margin-top: 20px;">
                         <h3>Allergies</h3>
                         <div id="allergy-report">Loading...</div>
                     </div>
@@ -380,7 +380,7 @@
                         </div>
                     </div>
 
-                    <div class="card">
+                    <div class="card" id="report-compliance-card">
                         <h3>Medication Compliance (Last 30 Days)</h3>
                         <div class="summary-grid">
                              <div class="stat-card">
@@ -398,7 +398,7 @@
                         </div>
                     </div>
 
-                    <div class="card" style="margin-top: 20px;">
+                    <div class="card" id="report-breakdown-card" style="margin-top: 20px;">
                         <h3>Medication Breakdown</h3>
                         <div class="table-responsive">
                             <table id="med-breakdown-table" style="width: 100%; text-align: left; margin-top: 10px;">
@@ -417,7 +417,7 @@
                         </div>
                     </div>
 
-                    <div class="card" style="margin-top: 20px;">
+                    <div class="card" id="report-bp-card" style="margin-top: 20px;">
                         <div class="header-actions">
                             <h3>Blood Pressure History</h3>
                             <div>
@@ -448,8 +448,18 @@
                     <h2>System Administration</h2>
 
                     <div class="grid-list">
+                        <!-- UI Debugging -->
+                        <div class="card" id="admin-ui-debug-card">
+                            <h3>UI Debugging</h3>
+                            <p>Enable visual indicators for element IDs to assist development.</p>
+                            <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="debug-mode-toggle" style="width: auto; margin: 0;">
+                                <label for="debug-mode-toggle" style="font-weight: bold; cursor: pointer;">Enable Debug Mode</label>
+                            </div>
+                        </div>
+
                         <!-- Backup Key -->
-                        <div class="card">
+                        <div class="card" id="admin-key-card">
                             <h3>Encryption Key</h3>
                             <p>Set the master encryption key used for backups.</p>
                             <form id="admin-key-form">
@@ -462,7 +472,7 @@
                         </div>
 
                         <!-- Backup Actions -->
-                        <div class="card">
+                        <div class="card" id="admin-backup-card">
                             <h3>Database Backup</h3>
                             <p>Create an encrypted backup of the current database.</p>
                             <button onclick="createBackup()" class="btn-primary">Create Backup</button>
@@ -471,7 +481,7 @@
                         </div>
 
                         <!-- Restore -->
-                        <div class="card">
+                        <div class="card" id="admin-restore-card">
                             <h3>Restore Database</h3>
                             <p style="color: red;">Warning: This will overwrite the current database!</p>
                             <form id="restore-form">
@@ -491,7 +501,7 @@
 
                     <div class="grid-list">
                         <!-- Profile Settings -->
-                        <div class="card">
+                        <div class="card" id="settings-profile-card">
                             <h3>User Profile</h3>
                             <form id="profile-form">
                                 <div class="form-group">
@@ -546,7 +556,7 @@
                         </div>
 
                         <!-- Time Windows -->
-                        <div class="card">
+                        <div class="card" id="settings-windows-card">
                             <h3>Medication Schedule Windows</h3>
                             <form id="windows-form">
                                 <div class="form-group">
@@ -571,7 +581,7 @@
                         </div>
 
                         <!-- Meal Windows -->
-                        <div class="card">
+                        <div class="card" id="settings-meal-windows-card">
                             <h3>Meal Schedule Defaults</h3>
                             <p style="color: #666; font-size: 0.9em;">These settings determine the default meal selected when logging food.</p>
                             <form id="meal-windows-form">
@@ -598,7 +608,7 @@
                         </div>
 
                         <!-- Password Change -->
-                        <div class="card">
+                        <div class="card" id="settings-password-card">
                             <h3>Change Password</h3>
                             <form id="password-form">
                                 <div class="form-group">
@@ -618,7 +628,7 @@
                         </div>
 
                         <!-- Medical Profile (Allergies) -->
-                        <div class="card">
+                        <div class="card" id="settings-allergies-card">
                             <div class="header-actions">
                                 <h3>Allergies</h3>
                                 <button onclick="openAllergyModal()">+ Add</button>
@@ -627,7 +637,7 @@
                         </div>
 
                         <!-- App Settings -->
-                        <div class="card">
+                        <div class="card" id="settings-appearance-card">
                             <h3>Appearance</h3>
                             <div class="form-group">
                                 <label>Theme Preference</label>
@@ -640,7 +650,7 @@
                         </div>
 
                         <!-- API Keys -->
-                        <div class="card">
+                        <div class="card" id="settings-apikeys-card">
                             <h3>API Keys</h3>
                             <p style="color: #666; font-size: 0.9em;">Generate keys for third-party integration (e.g., Home Assistant auto-login).</p>
                             <div id="api-key-list" style="margin-bottom: 10px;">Loading...</div>
@@ -713,7 +723,7 @@
         </div>
 
         <!-- Add Staple Search -->
-        <div class="card" style="margin-bottom: 20px;">
+        <div class="card" id="staples-search-card" style="margin-bottom: 20px;">
             <h4>Add New Staple</h4>
             <div class="form-group" style="position: relative;">
                 <input type="text" id="staple-search-input" placeholder="Search library to add as staple..." autocomplete="off">
@@ -736,7 +746,7 @@
                 <button class="btn-secondary" onclick="printShoppingList()">Print List</button>
             </div>
         </div>
-        <div class="card">
+        <div class="card" id="shopping-list-card">
             <div id="shopping-list-content">Loading...</div>
         </div>
     </div>

@@ -34,6 +34,7 @@ const UNIT_CONVERSIONS = {
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
+    initDebugMode();
 
     // Check for API Key in URL (Auto Login)
     const urlParams = new URLSearchParams(window.location.search);
@@ -2065,6 +2066,27 @@ function initTheme() {
             applyTheme();
         }
     });
+}
+
+function initDebugMode() {
+    const isDebug = localStorage.getItem('debug_mode') === 'true';
+    if (isDebug) {
+        document.body.classList.add('debug-mode');
+    }
+
+    const toggle = document.getElementById('debug-mode-toggle');
+    if (toggle) {
+        toggle.checked = isDebug;
+        toggle.addEventListener('change', (e) => {
+            const enabled = e.target.checked;
+            localStorage.setItem('debug_mode', enabled);
+            if (enabled) {
+                document.body.classList.add('debug-mode');
+            } else {
+                document.body.classList.remove('debug-mode');
+            }
+        });
+    }
 }
 
 function applyTheme() {
