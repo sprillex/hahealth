@@ -137,6 +137,7 @@
                                 <div id="planned-today-list"></div>
                                 <h4 style="margin-top: 10px;">Food Log Today
                                     <small>
+                                        <a href="#" onclick="openLogFoodModal()" style="font-weight: bold; color: var(--primary-color);">[+ Log]</a>
                                         <a href="#" onclick="openManageFoodModal()">[Manage]</a>
                                         <a href="#" onclick="openDailyNutritionModal()" style="margin-left: 5px;">[More Info]</a>
                                     </small>
@@ -713,6 +714,42 @@
                     <button class="btn-secondary" onclick="toggleMobileMenu()" style="margin-top: 20px;">Close</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Quick Log Food Modal -->
+    <div id="log-food-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeLogFoodModal()">&times;</span>
+            <h2>Log Food</h2>
+            <form id="modal-food-log-form">
+                <div class="form-group">
+                    <label>Search Food</label>
+                    <input type="text" id="modal-food-search-input" placeholder="Type to search foods..." autocomplete="off">
+                    <div id="modal-food-search-results" class="search-results hidden"></div>
+                    <input type="hidden" name="food_name" id="modal-selected-food-name">
+                    <input type="hidden" name="barcode" id="modal-selected-food-barcode">
+                </div>
+                <div class="form-group">
+                    <label>Meal</label>
+                    <select name="meal_id" id="modal-food-meal">
+                        <option value="Breakfast">Breakfast</option>
+                        <option value="Lunch">Lunch</option>
+                        <option value="Dinner">Dinner</option>
+                        <option value="Snack">Snack</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Serving Unit</label>
+                    <div id="modal-log-unit-display" style="padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-color);">1</div>
+                    <input type="hidden" name="serving_size" value="1">
+                </div>
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" step="0.1" name="quantity" value="1" required>
+                </div>
+                <button type="submit" class="btn-primary">Log Food</button>
+            </form>
         </div>
     </div>
 
