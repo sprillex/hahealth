@@ -3278,6 +3278,18 @@
             ],
             "title": "Save Food",
             "default": 0
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
           }
         },
         "type": "object",
