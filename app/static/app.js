@@ -104,14 +104,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // Profile Listeners
     document.getElementById('profile-units').addEventListener('change', updateProfileUnitLabels);
 
+    // Main Search Input
     const searchInput = document.getElementById('food-search-input');
     if (searchInput) {
         let debounceTimer;
         searchInput.addEventListener('input', (e) => {
             clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => handleSearchFood(e.target.value), 300);
+            debounceTimer = setTimeout(() => handleSearchFood(e.target.value, 'food-search-results'), 300);
         });
     }
+
+    // Modal Search Input
+    const modalSearchInput = document.getElementById('modal-food-search-input');
+    if (modalSearchInput) {
+        let debounceTimer;
+        modalSearchInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => handleSearchFood(e.target.value, 'modal-food-search-results'), 300);
+        });
+    }
+
+    // Modal Form Listener
+    document.getElementById('modal-food-log-form').addEventListener('submit', handleLogFood);
 });
 
 function populateTimezones() {
@@ -935,12 +949,11 @@ async function handleCreateFood(e) {
     }
 }
 
-async function handleSearchFood(query) {
-    const resultsDiv = document.getElementById('food-search-results');
+async function handleSearchFood(query, resultsId = 'food-search-results') {
+    const resultsDiv = document.getElementById(resultsId);
     if (!query || query.length < 2) {
         resultsDiv.classList.add('hidden');
         selectedFoodItem = null;
-        document.getElementById('log-unit-display').innerText = '1';
         return;
     }
 
@@ -951,7 +964,6 @@ async function handleSearchFood(query) {
         resultsDiv.innerHTML = '';
         if (foods.length > 0) {
             resultsDiv.classList.remove('hidden');
-            // Force styles as belt-and-suspenders against caching
             resultsDiv.style.backgroundColor = 'var(--card-bg)';
             resultsDiv.style.color = 'var(--text-color)';
 
@@ -959,7 +971,9 @@ async function handleSearchFood(query) {
                 const div = document.createElement('div');
                 div.className = 'search-item';
                 div.innerText = `${food.food_name} (${food.calories} kcal)`;
-                div.onclick = () => selectFood(food);
+                // Determine which form we are in based on resultsId
+                const isModal = resultsId === 'modal-food-search-results';
+                div.onclick = () => selectFood(food, isModal);
                 resultsDiv.appendChild(div);
             });
         } else {
@@ -971,13 +985,22 @@ async function handleSearchFood(query) {
     }
 }
 
-function selectFood(food) {
+function selectFood(food, isModal = false) {
     selectedFoodItem = food;
-    document.getElementById('food-search-input').value = food.food_name;
-    document.getElementById('selected-food-name').value = food.food_name;
-    document.getElementById('selected-food-barcode').value = food.barcode || '';
-    document.getElementById('log-unit-display').innerText = food.serving_size_unit || '1';
-    document.getElementById('food-search-results').classList.add('hidden');
+
+    if (isModal) {
+        document.getElementById('modal-food-search-input').value = food.food_name;
+        document.getElementById('modal-selected-food-name').value = food.food_name;
+        document.getElementById('modal-selected-food-barcode').value = food.barcode || '';
+        document.getElementById('modal-log-unit-display').innerText = food.serving_size_unit || '1';
+        document.getElementById('modal-food-search-results').classList.add('hidden');
+    } else {
+        document.getElementById('food-search-input').value = food.food_name;
+        document.getElementById('selected-food-name').value = food.food_name;
+        document.getElementById('selected-food-barcode').value = food.barcode || '';
+        document.getElementById('log-unit-display').innerText = food.serving_size_unit || '1';
+        document.getElementById('food-search-results').classList.add('hidden');
+    }
 }
 
 async function handleLogFood(e) {
@@ -996,8 +1019,14 @@ async function handleLogFood(e) {
         data.quantity = 0;
     }
 
-    if (!data.food_name && document.getElementById('food-search-input').value) {
-        data.food_name = document.getElementById('food-search-input').value;
+    // Handle fallback name if selectedFoodItem is missing but text is entered
+    // We need to check which input to pull from based on the form
+    const isModal = e.target.id === 'modal-food-log-form';
+    const inputId = isModal ? 'modal-food-search-input' : 'food-search-input';
+    const inputVal = document.getElementById(inputId).value;
+
+    if (!data.food_name && inputVal) {
+        data.food_name = inputVal;
     }
 
     if (!data.food_name) {
@@ -1017,6 +1046,29 @@ async function handleLogFood(e) {
 }
 
 async function submitLog(data, formElement) {
+    // If logging from the modal, check if we need to backdate
+    if (formElement && formElement.id === 'modal-food-log-form') {
+        const today = new Date();
+        // Compare YYYY-MM-DD
+        const isPast = currentDashboardDate.toDateString() !== today.toDateString();
+
+        if (isPast) {
+            // Set to Noon on the dashboard date
+            const targetDate = new Date(currentDashboardDate);
+            targetDate.setHours(12, 0, 0, 0);
+
+            // Adjust for timezone offset to ensure ISO string represents local 12:00
+            // or simply construct ISO string manually to avoid UTC conversion shifts if backend expects UTC.
+            // The backend usually parses ISO. `toISOString()` converts to UTC.
+            // If I want "Local Noon", I should send a naive ISO string or UTC equivalent.
+            // Let's rely on constructing a local-time ISO-like string: "YYYY-MM-DDTHH:mm:ss"
+            const y = targetDate.getFullYear();
+            const m = String(targetDate.getMonth() + 1).padStart(2, '0');
+            const d = String(targetDate.getDate()).padStart(2, '0');
+            data.timestamp = `${y}-${m}-${d}T12:00:00`;
+        }
+    }
+
     try {
         const res = await fetchWithAuth(`${API_URL}/nutrition/log`, {
             method: 'POST',
@@ -1032,11 +1084,21 @@ async function submitLog(data, formElement) {
                 loadPlanner(); // Refresh planner
             } else {
                 showToast('Food logged successfully', 'success');
+                // Refresh dashboard if visible
+                if (!document.getElementById('tab-dashboard').classList.contains('hidden')) {
+                    loadSummary();
+                }
             }
 
             if(formElement) formElement.reset();
             document.getElementById('food-search-results').classList.add('hidden');
+            if (document.getElementById('modal-food-search-results')) {
+                document.getElementById('modal-food-search-results').classList.add('hidden');
+            }
             selectedFoodItem = null;
+
+            // Close modal if open
+            closeLogFoodModal();
 
             // Reset mode
             isPlanningMode = false;
@@ -1220,8 +1282,19 @@ async function confirmLogFood() {
     }
 
     // Use shared submit logic
-    // Pass form element if we want it reset. We can find it.
-    const form = document.getElementById('food-log-form');
+    // Determine which form triggered this. If we are in modal flow, passed via dataset?
+    // Actually, confirmLogFood is called from the Preview Modal.
+    // The Preview Modal was opened by `openPreviewModal`, which is called by `handleLogFood`.
+    // We need to know if the ORIGINAL attempt was from the modal or main form to set the timestamp correctly.
+    // We can infer this: if the modal-food-search-input has a value matching the food, it's likely the modal.
+    // Or better, check which form is visible? Or simply check if the Modal Form was the initiator.
+    // `openPreviewModal` doesn't store the source form.
+    // Let's check visibility of the Quick Log Modal. If `#log-food-modal` is not hidden, we came from there.
+    let form = document.getElementById('food-log-form');
+    if (!document.getElementById('log-food-modal').classList.contains('hidden')) {
+        form = document.getElementById('modal-food-log-form');
+    }
+
     submitLog(data, form);
 }
 
@@ -4150,6 +4223,23 @@ function closeLogVacModal() { document.getElementById('log-vac-modal').classList
 
 function openLogExerciseModal() { document.getElementById('log-exercise-modal').classList.remove('hidden'); }
 function closeLogExerciseModal() { document.getElementById('log-exercise-modal').classList.add('hidden'); }
+
+// Quick Log Food Modal
+function openLogFoodModal() {
+    isPlanningMode = false;
+    document.getElementById('log-food-modal').classList.remove('hidden');
+    // Set default meal
+    const meal = determineDefaultMeal();
+    document.getElementById('modal-food-meal').value = meal;
+    // Focus input
+    setTimeout(() => document.getElementById('modal-food-search-input').focus(), 100);
+}
+
+function closeLogFoodModal() {
+    document.getElementById('log-food-modal').classList.add('hidden');
+    document.getElementById('modal-food-log-form').reset();
+    document.getElementById('modal-food-search-results').classList.add('hidden');
+}
 
 async function askGemini() {
     showToast("Asking Gemini...", "info");

@@ -212,6 +212,7 @@ class FoodLogPayload(BaseModel):
     fiber: Optional[float] = None
     sodium: Optional[float] = None
     save_food: Optional[int] = 0
+    timestamp: Optional[datetime] = None
 
 class FoodLogResponse(BaseModel):
     log_id: Optional[int] = None

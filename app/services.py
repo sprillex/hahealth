@@ -307,13 +307,21 @@ class HealthLogService:
                 db.refresh(food_item)
             else:
                 return None, "Food not found"
+
+        ts = data.timestamp
+        if not ts:
+            ts = datetime.now(timezone.utc)
+        elif ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+
         item_log = models.FoodItemLog(
             user_id=user.user_id, meal_id=data.meal_id, food_id=food_item.food_id,
             serving_size=data.serving_size, quantity=data.quantity,
-            planned_quantity=data.planned_quantity
+            planned_quantity=data.planned_quantity,
+            timestamp=ts
         )
         db.add(item_log)
-        local_date = get_user_local_date(user, datetime.now(timezone.utc))
+        local_date = get_user_local_date(user, ts)
         daily_log = db.query(models.DailyLog).filter(models.DailyLog.user_id == user.user_id, models.DailyLog.date == local_date).first()
         if not daily_log:
             daily_log = models.DailyLog(user_id=user.user_id, date=local_date, total_calories_burned=0, total_calories_consumed=0)

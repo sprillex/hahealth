@@ -31,7 +31,9 @@ def test_search_by_barcode_feature(client, session):
         fiber=2.0,
         sodium=10.0,
         source="MANUAL",
-        is_user_visible=True
+        is_user_visible=True,
+        is_staple=False,
+        on_shopping_list=False
     )
 
     with patch("app.services.CustomNutritionService.get_product", return_value=fake_product) as mock_get:
