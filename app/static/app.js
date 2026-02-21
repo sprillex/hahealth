@@ -1046,6 +1046,29 @@ async function handleLogFood(e) {
 }
 
 async function submitLog(data, formElement) {
+    // If logging from the modal, check if we need to backdate
+    if (formElement && formElement.id === 'modal-food-log-form') {
+        const today = new Date();
+        // Compare YYYY-MM-DD
+        const isPast = currentDashboardDate.toDateString() !== today.toDateString();
+
+        if (isPast) {
+            // Set to Noon on the dashboard date
+            const targetDate = new Date(currentDashboardDate);
+            targetDate.setHours(12, 0, 0, 0);
+
+            // Adjust for timezone offset to ensure ISO string represents local 12:00
+            // or simply construct ISO string manually to avoid UTC conversion shifts if backend expects UTC.
+            // The backend usually parses ISO. `toISOString()` converts to UTC.
+            // If I want "Local Noon", I should send a naive ISO string or UTC equivalent.
+            // Let's rely on constructing a local-time ISO-like string: "YYYY-MM-DDTHH:mm:ss"
+            const y = targetDate.getFullYear();
+            const m = String(targetDate.getMonth() + 1).padStart(2, '0');
+            const d = String(targetDate.getDate()).padStart(2, '0');
+            data.timestamp = `${y}-${m}-${d}T12:00:00`;
+        }
+    }
+
     try {
         const res = await fetchWithAuth(`${API_URL}/nutrition/log`, {
             method: 'POST',
@@ -1259,8 +1282,19 @@ async function confirmLogFood() {
     }
 
     // Use shared submit logic
-    // Pass form element if we want it reset. We can find it.
-    const form = document.getElementById('food-log-form');
+    // Determine which form triggered this. If we are in modal flow, passed via dataset?
+    // Actually, confirmLogFood is called from the Preview Modal.
+    // The Preview Modal was opened by `openPreviewModal`, which is called by `handleLogFood`.
+    // We need to know if the ORIGINAL attempt was from the modal or main form to set the timestamp correctly.
+    // We can infer this: if the modal-food-search-input has a value matching the food, it's likely the modal.
+    // Or better, check which form is visible? Or simply check if the Modal Form was the initiator.
+    // `openPreviewModal` doesn't store the source form.
+    // Let's check visibility of the Quick Log Modal. If `#log-food-modal` is not hidden, we came from there.
+    let form = document.getElementById('food-log-form');
+    if (!document.getElementById('log-food-modal').classList.contains('hidden')) {
+        form = document.getElementById('modal-food-log-form');
+    }
+
     submitLog(data, form);
 }
 
