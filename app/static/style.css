@@ -22,6 +22,24 @@ body {
     transition: background-color 0.3s, color 0.3s;
 }
 
+/* Links */
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+a:visited {
+    color: var(--primary-color);
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* Dark Mode Links */
+body.dark-theme a,
+body.dark-theme a:visited {
+    color: #f1c40f; /* Yellow for visibility on dark */
+}
+
 .container {
     max-width: 1200px;
     margin: 0 auto;
