@@ -708,3 +708,40 @@ body.dark-theme .status-warning { color: #ef4444; } /* Lighter Red */
     margin-top: 5px;
     font-size: 0.9em;
 }
+
+/* Debug Mode Styles */
+body.debug-mode .tab-content[id],
+body.debug-mode .card[id],
+body.debug-mode .modal[id],
+body.debug-mode form[id],
+body.debug-mode nav[id],
+body.debug-mode button[id] {
+    position: relative;
+    border: 2px dashed #ff00ff !important;
+}
+
+body.debug-mode .tab-content[id]::after,
+body.debug-mode .card[id]::after,
+body.debug-mode .modal[id]::after,
+body.debug-mode form[id]::after,
+body.debug-mode nav[id]::after,
+body.debug-mode button[id]::after {
+    content: "#" attr(id);
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: #ff00ff;
+    color: white;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 2px 5px;
+    z-index: 10000;
+    pointer-events: none;
+    line-height: 1;
+}
+
+/* Adjustments for buttons to prevent layout issues */
+body.debug-mode button[id]::after {
+    top: -10px;
+    font-size: 10px;
+}
