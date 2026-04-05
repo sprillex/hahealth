@@ -9,7 +9,6 @@ backups/
 
 # Ignore local utility scripts
 testbrach.sh
-update.sh
 
 # Ignore environment variables (contains secrets)
 .env
