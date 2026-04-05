@@ -226,47 +226,6 @@ body.dark-theme .status-warning { color: #ef4444; } /* Lighter Red */
     color: white;
 }
 
-/* Print Styles */
-@media print {
-    .navbar, .header-actions button, .form-actions, .modal {
-        display: none !important;
-    }
-    body, .container, .card, .tab-content {
-        background-color: white !important;
-        color: black !important;
-        box-shadow: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 100% !important;
-        max-width: 100% !important;
-    }
-    /* Only show the visible tab content, usually reports */
-    .tab-content.hidden {
-        display: none !important;
-    }
-    /* Expand tables */
-    table {
-        width: 100% !important;
-        border-collapse: collapse;
-    }
-    th, td {
-        border: 1px solid #ccc;
-        padding: 5px;
-    }
-    .summary-grid {
-        grid-template-columns: repeat(4, 1fr) !important; /* Force grid for print */
-    }
-    .stat-card {
-        border: 1px solid #ccc;
-        box-shadow: none;
-    }
-    h2, h3 {
-        page-break-after: avoid;
-    }
-    tr {
-        page-break-inside: avoid;
-    }
-}
 
 /* --- Nutrition Preview Modal --- */
 
@@ -744,4 +703,46 @@ body.debug-mode button[id]::after {
 body.debug-mode button[id]::after {
     top: -10px;
     font-size: 10px;
+}
+
+/* Print Styles - Moved to end to override mobile styles */
+@media print {
+    .navbar, .bottom-nav, .header-actions button, .form-actions, .modal, #mobile-menu-overlay {
+        display: none !important;
+    }
+    body, .container, .card, .tab-content {
+        background-color: white !important;
+        color: black !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    /* Only show the visible tab content, usually reports */
+    .tab-content.hidden {
+        display: none !important;
+    }
+    /* Expand tables */
+    table {
+        width: 100% !important;
+        border-collapse: collapse;
+    }
+    th, td {
+        border: 1px solid #ccc;
+        padding: 5px;
+    }
+    .summary-grid {
+        grid-template-columns: repeat(4, 1fr) !important; /* Force grid for print */
+    }
+    .stat-card {
+        border: 1px solid #ccc;
+        box-shadow: none;
+    }
+    h2, h3 {
+        page-break-after: avoid;
+    }
+    tr {
+        page-break-inside: avoid;
+    }
 }
