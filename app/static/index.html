@@ -157,6 +157,13 @@
                     <div id="med-list" class="grid-list">
                         <!-- Med cards go here -->
                     </div>
+
+                    <div id="untracked-med-section" class="hidden" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+                        <h3>Not Tracked</h3>
+                        <div id="untracked-med-list" class="grid-list">
+                            <!-- Untracked med cards go here -->
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Nutrition Tab -->
@@ -1376,6 +1383,9 @@
                 <div class="form-group">
                     <label>End Date (Optional)</label>
                     <input type="date" name="end_date" id="med_end_date">
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="med_do_not_track"> Do not track</label>
                 </div>
                 <div class="form-actions">
                     <button type="button" onclick="closeMedModal()">Cancel</button>

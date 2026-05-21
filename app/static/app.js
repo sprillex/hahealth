@@ -747,16 +747,28 @@ async function loadDailyMeds() {
 
 async function loadMedications() {
     const listEl = document.getElementById('med-list');
+    const untrackedListEl = document.getElementById('untracked-med-list');
+    const untrackedSection = document.getElementById('untracked-med-section');
+
     listEl.innerHTML = 'Loading...';
+    untrackedListEl.innerHTML = '';
 
     try {
         const res = await fetchWithAuth(`${API_URL}/medications/`);
         const meds = await res.json();
 
         listEl.innerHTML = '';
+        let hasUntracked = false;
+
         meds.forEach(med => {
             const card = document.createElement('div');
             card.className = 'med-card';
+
+            if (!med.is_tracked) {
+                card.style.opacity = '0.6';
+                card.style.filter = 'grayscale(100%)';
+            }
+
             // Show Schedule
             let sched = [];
             if(med.schedule_morning) sched.push('M');
@@ -776,8 +788,21 @@ async function loadMedications() {
                     <button class="btn-primary" onclick="refillMed(${med.med_id}, ${med.refill_quantity || 30})">Refill Received</button>
                 </div>
             `;
-            listEl.appendChild(card);
+
+            if (med.is_tracked) {
+                listEl.appendChild(card);
+            } else {
+                hasUntracked = true;
+                untrackedListEl.appendChild(card);
+            }
         });
+
+        if (hasUntracked) {
+            untrackedSection.classList.remove('hidden');
+        } else {
+            untrackedSection.classList.add('hidden');
+        }
+
     } catch (err) {
         listEl.innerHTML = 'Error loading medications';
     }
@@ -803,12 +828,15 @@ function openMedModal(med = null) {
         document.getElementById('sched_afternoon').checked = med.schedule_afternoon;
         document.getElementById('sched_evening').checked = med.schedule_evening;
         document.getElementById('sched_bedtime').checked = med.schedule_bedtime;
+        // Checkbox means "Do not track". So checked if is_tracked is false.
+        document.getElementById('med_do_not_track').checked = !med.is_tracked;
     } else {
         document.getElementById('med-modal-title').innerText = 'Add Medication';
         document.getElementById('med-form').reset();
         document.getElementById('med_id').value = '';
         // Set defaults
         document.getElementById('med_refill_quantity').value = 30;
+        document.getElementById('med_do_not_track').checked = false; // By default track is true, so do not track is false
     }
 }
 
@@ -832,7 +860,8 @@ async function handleSaveMed(e) {
         schedule_morning: document.getElementById('sched_morning').checked,
         schedule_afternoon: document.getElementById('sched_afternoon').checked,
         schedule_evening: document.getElementById('sched_evening').checked,
-        schedule_bedtime: document.getElementById('sched_bedtime').checked
+        schedule_bedtime: document.getElementById('sched_bedtime').checked,
+        is_tracked: !document.getElementById('med_do_not_track').checked
     };
 
     if (!id) {
