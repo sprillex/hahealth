@@ -168,6 +168,7 @@ class MedicationService:
             models.Medication.user_id == user_id, models.Medication.name == med_name
         ).first()
         if not med: return None, "Medication not found"
+        if not med.is_tracked: return None, "Cannot log doses for untracked medications"
         if med.current_inventory > 0: med.current_inventory -= 1
 
         dose_window = None
@@ -722,7 +723,10 @@ class HealthLogService:
         start_date = end_date - timedelta(days=29)
 
         # Get active medications
-        meds = db.query(models.Medication).filter(models.Medication.user_id == user.user_id).all()
+        meds = db.query(models.Medication).filter(
+            models.Medication.user_id == user.user_id,
+            models.Medication.is_tracked == True
+        ).all()
         if not meds:
             return {"compliance_percentage": 0, "missed_doses": 0, "taken_doses": 0, "total_scheduled": 0, "medications": []}
             

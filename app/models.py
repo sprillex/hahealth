@@ -133,6 +133,8 @@ class Medication(Base):
     end_date = Column(Date, nullable=True)
     refill_quantity = Column(Integer, default=30)
 
+    is_tracked = Column(Boolean, default=True)
+
     user = relationship("User", back_populates="medications")
     prescriber = relationship("Prescriber", back_populates="medications")
     dose_logs = relationship("MedDoseLog", back_populates="medication")

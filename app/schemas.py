@@ -123,6 +123,7 @@ class MedicationBase(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     refill_quantity: Optional[int] = 30
+    is_tracked: bool = True
 
 class MedicationCreate(MedicationBase):
     pass

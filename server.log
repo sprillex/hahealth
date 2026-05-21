@@ -1,0 +1,24 @@
+INFO:     Started server process [179032]
+INFO:     Waiting for application startup.
+INFO:app.mqtt:Connecting to MQTT Broker at localhost:1883
+ERROR:app.mqtt:Failed to connect to MQTT broker: [Errno 111] Connection refused
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:3000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:38444 - "GET /api/v1/health/ HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47946 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47946 - "GET /static/style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47952 - "GET /static/gauge.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47960 - "GET /static/app.js?v=1.6.0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47960 - "GET /api/v1/version HTTP/1.1" 200 OK
+INFO:app.routers.auth:Login attempt for user: testuser
+INFO:app.routers.auth:Login successful for user: testuser
+INFO:     127.0.0.1:47960 - "POST /auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47960 - "GET /api/v1/users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47952 - "GET /api/v1/medications/log?date_str=2026-05-21 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47960 - "GET /api/v1/log/summary?date_str=2026-05-21 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47952 - "GET /api/v1/log/summary?date_str=2026-05-21 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47952 - "GET /api/v1/medications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47952 - "POST /api/v1/medications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47952 - "GET /api/v1/medications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47952 - "POST /api/v1/medications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47952 - "GET /api/v1/medications/ HTTP/1.1" 200 OK

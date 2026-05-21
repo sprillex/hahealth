@@ -197,6 +197,13 @@ def migrate_all():
     except sqlite3.OperationalError:
         pass
 
+    # 14. Track Med
+    try:
+        cursor.execute("ALTER TABLE medications ADD COLUMN is_tracked BOOLEAN DEFAULT 1")
+        print(" - Added is_tracked to medications.")
+    except sqlite3.OperationalError:
+        pass
+
     conn.commit()
     conn.close()
     print("All migrations complete.")
