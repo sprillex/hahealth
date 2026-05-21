@@ -3609,6 +3609,11 @@
             ],
             "title": "Refill Quantity",
             "default": 30
+          },
+          "is_tracked": {
+            "type": "boolean",
+            "title": "Is Tracked",
+            "default": true
           }
         },
         "type": "object",
@@ -3767,6 +3772,11 @@
             ],
             "title": "Refill Quantity",
             "default": 30
+          },
+          "is_tracked": {
+            "type": "boolean",
+            "title": "Is Tracked",
+            "default": true
           },
           "med_id": {
             "type": "integer",
