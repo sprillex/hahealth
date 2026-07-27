@@ -162,8 +162,21 @@ def get_user_local_date(user: models.User, utc_dt: datetime) -> date:
     return utc_dt.astimezone(user_tz).date()
 
 class MedicationService:
-    def log_dose(self, db: Session, user_id: int, med_name: str, timestamp_taken: datetime = None, med_window: str = None):
-        if not timestamp_taken: timestamp_taken = datetime.now(timezone.utc)
+    def log_dose(self, db: Session, user_id: int, med_name: str, timestamp_taken: datetime = None, med_window: str = None, user: models.User = None):
+        if not timestamp_taken:
+            timestamp_taken = datetime.now(timezone.utc)
+        elif timestamp_taken.tzinfo is None:
+            # Handle naive timestamp based on user's timezone if user is provided
+            if user:
+                import zoneinfo
+                try:
+                    user_tz = zoneinfo.ZoneInfo(user.timezone) if user.timezone else timezone.utc
+                except Exception:
+                    user_tz = timezone.utc
+                timestamp_taken = timestamp_taken.replace(tzinfo=user_tz).astimezone(timezone.utc)
+            else:
+                timestamp_taken = timestamp_taken.replace(tzinfo=timezone.utc)
+
         med = db.query(models.Medication).filter(
             models.Medication.user_id == user_id, models.Medication.name == med_name
         ).first()
@@ -192,6 +205,14 @@ class MedicationService:
         """Logs a dose for all active, tracked medications scheduled for the given window."""
         if not timestamp:
             timestamp = datetime.now(timezone.utc)
+        elif timestamp.tzinfo is None:
+            # Handle naive timestamp based on user's timezone
+            import zoneinfo
+            try:
+                user_tz = zoneinfo.ZoneInfo(user.timezone) if user.timezone else timezone.utc
+            except Exception:
+                user_tz = timezone.utc
+            timestamp = timestamp.replace(tzinfo=user_tz).astimezone(timezone.utc)
 
         med_window = med_window.lower()
         if med_window not in ["morning", "afternoon", "evening", "bedtime"]:

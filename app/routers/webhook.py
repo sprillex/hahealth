@@ -24,7 +24,7 @@ def webhook_ingestion(
     elif payload.data_type == schemas.WebhookDataType.MEDICATION_TAKEN:
         data = schemas.MedicationTakenPayload(**payload.payload)
         log, alert = service_med.log_dose(
-            db, user.user_id, data.med_name, data.timestamp, med_window=data.med_window
+            db, user.user_id, data.med_name, data.timestamp, med_window=data.med_window, user=user
         )
         if not log:
             # Return 400 Bad Request instead of 404 so user knows endpoint exists but data is invalid

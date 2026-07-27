@@ -145,7 +145,7 @@ class MQTTClient:
             elif data_type == schemas.WebhookDataType.MEDICATION_TAKEN:
                 med_data = schemas.MedicationTakenPayload(**inner_payload)
                 log, alert = service_med.log_dose(
-                    db, user.user_id, med_data.med_name, med_data.timestamp, med_window=med_data.med_window
+                    db, user.user_id, med_data.med_name, med_data.timestamp, med_window=med_data.med_window, user=user
                 )
                 if alert:
                     logger.warning(f"Medication alert: {alert}")
