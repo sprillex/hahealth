@@ -151,6 +151,15 @@ class MQTTClient:
                     logger.warning(f"Medication alert: {alert}")
                 logger.info(f"Logged Medication for user {user.name}")
 
+            elif data_type == schemas.WebhookDataType.MEDICATION_WINDOW_TAKEN:
+                med_window_data = schemas.MedicationWindowTakenPayload(**inner_payload)
+                logged_count, alerts = service_med.log_window_doses(
+                    db, user, med_window_data.med_window, med_window_data.timestamp
+                )
+                if alerts:
+                    logger.warning(f"Medication window alert: {alerts}")
+                logger.info(f"Logged {logged_count} medications for {med_window_data.med_window} for user {user.name}")
+
             elif data_type == schemas.WebhookDataType.EXERCISE_SESSION:
                 ex_data = schemas.ExercisePayload(**inner_payload)
                 service_health.log_exercise(db, user, ex_data)
