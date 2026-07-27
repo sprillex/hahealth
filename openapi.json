@@ -6022,6 +6022,7 @@
         "enum": [
           "BLOOD_PRESSURE",
           "MEDICATION_TAKEN",
+          "MEDICATION_WINDOW_TAKEN",
           "EXERCISE_SESSION",
           "FOOD_LOG",
           "WEIGHT"
