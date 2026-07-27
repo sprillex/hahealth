@@ -360,7 +360,7 @@ The following structures should be passed in the `metric_data` field of the scri
     }
     ```
 
-#### 2. Medication Taken
+#### 2. Medication Log (Single Pill)
 *   **data_type:** `MEDICATION_TAKEN`
 *   **metric_data:**
     ```json
@@ -371,7 +371,18 @@ The following structures should be passed in the `metric_data` field of the scri
     }
     ```
 
-#### 3. Exercise Session
+#### 3. Medication Log (By Schedule Window)
+*   **data_type:** `MEDICATION_WINDOW_TAKEN`
+*   **metric_data:**
+    ```json
+    {
+      "med_window": "morning",
+      "timestamp": "2023-10-27T08:00:00Z"
+    }
+    ```
+    *Note: `med_window` must be one of: `morning`, `afternoon`, `evening`, or `bedtime`. This will log a dose for all active, tracked medications that have this specific schedule flag checked in the app.*
+
+#### 4. Exercise Session
 *   **data_type:** `EXERCISE_SESSION`
 *   **metric_data:**
     ```json

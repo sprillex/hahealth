@@ -31,6 +31,16 @@ def webhook_ingestion(
             raise HTTPException(status_code=400, detail=alert)
         return {"status": "success", "message": "Medication logged", "alert": alert}
 
+    elif payload.data_type == schemas.WebhookDataType.MEDICATION_WINDOW_TAKEN:
+        data = schemas.MedicationWindowTakenPayload(**payload.payload)
+        logged_count, alerts = service_med.log_window_doses(
+            db, user, data.med_window, data.timestamp
+        )
+        if logged_count == 0 and alerts and "Invalid" in alerts:
+            raise HTTPException(status_code=400, detail=alerts)
+        msg = f"Logged {logged_count} medications for {data.med_window}"
+        return {"status": "success", "message": msg, "alert": alerts}
+
     elif payload.data_type == schemas.WebhookDataType.EXERCISE_SESSION:
         data = schemas.ExercisePayload(**payload.payload)
         service_health.log_exercise(db, user, data)

@@ -158,6 +158,7 @@ class BloodPressureResponse(BloodPressureBase):
 class WebhookDataType(str, Enum):
     BLOOD_PRESSURE = "BLOOD_PRESSURE"
     MEDICATION_TAKEN = "MEDICATION_TAKEN"
+    MEDICATION_WINDOW_TAKEN = "MEDICATION_WINDOW_TAKEN"
     EXERCISE_SESSION = "EXERCISE_SESSION"
     FOOD_LOG = "FOOD_LOG"
     WEIGHT = "WEIGHT"
@@ -179,6 +180,10 @@ class MedicationTakenPayload(BaseModel):
     med_name: str # Using name to lookup
     timestamp: Optional[datetime] = None
     med_window: Optional[str] = None
+
+class MedicationWindowTakenPayload(BaseModel):
+    med_window: str # morning, afternoon, evening, bedtime
+    timestamp: Optional[datetime] = None
 
 class MedicationLogResponse(BaseModel):
     log_id: int

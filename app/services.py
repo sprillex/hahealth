@@ -188,6 +188,96 @@ class MedicationService:
         db.commit()
         return dose_log, alert
 
+    def log_window_doses(self, db: Session, user: models.User, med_window: str, timestamp: datetime = None):
+        """Logs a dose for all active, tracked medications scheduled for the given window."""
+        if not timestamp:
+            timestamp = datetime.now(timezone.utc)
+
+        med_window = med_window.lower()
+        if med_window not in ["morning", "afternoon", "evening", "bedtime"]:
+            return 0, f"Invalid medication window: {med_window}"
+
+        # 1. Determine local date for deduplication
+        target_local_date = get_user_local_date(user, timestamp)
+
+        # Calculate local day start and end in UTC to check for existing logs
+        import zoneinfo
+        try:
+            user_tz = zoneinfo.ZoneInfo(user.timezone) if user.timezone else timezone.utc
+        except Exception:
+            user_tz = timezone.utc
+
+        local_start = datetime.combine(target_local_date, datetime.min.time()).replace(tzinfo=user_tz)
+        local_end = datetime.combine(target_local_date, datetime.max.time()).replace(tzinfo=user_tz)
+
+        utc_start = local_start.astimezone(timezone.utc)
+        utc_end = local_end.astimezone(timezone.utc)
+
+        # 2. Get all tracked medications with this schedule flag
+        query = db.query(models.Medication).filter(
+            models.Medication.user_id == user.user_id,
+            models.Medication.is_tracked == True
+        )
+
+        if med_window == "morning":
+            query = query.filter(models.Medication.schedule_morning == True)
+        elif med_window == "afternoon":
+            query = query.filter(models.Medication.schedule_afternoon == True)
+        elif med_window == "evening":
+            query = query.filter(models.Medication.schedule_evening == True)
+        elif med_window == "bedtime":
+            query = query.filter(models.Medication.schedule_bedtime == True)
+
+        scheduled_meds = query.all()
+        if not scheduled_meds:
+            return 0, f"No medications scheduled for {med_window}"
+
+        logged_count = 0
+        alerts = []
+
+        # 3. Log each, checking for duplicates on the same day for the same window
+        for med in scheduled_meds:
+            # Skip if med is outside its active dates
+            if med.start_date and target_local_date < med.start_date:
+                continue
+            if med.end_date and target_local_date > med.end_date:
+                continue
+
+            # Check for duplicate
+            existing_log = db.query(models.MedDoseLog).filter(
+                models.MedDoseLog.user_id == user.user_id,
+                models.MedDoseLog.med_id == med.med_id,
+                models.MedDoseLog.dose_window == med_window,
+                models.MedDoseLog.timestamp_taken >= utc_start,
+                models.MedDoseLog.timestamp_taken <= utc_end
+            ).first()
+
+            if existing_log:
+                continue # Already logged this window today
+
+            # Log dose (reusing logic from log_dose without committing)
+            if med.current_inventory > 0:
+                med.current_inventory -= 1
+
+            dose_log = models.MedDoseLog(
+                user_id=user.user_id,
+                med_id=med.med_id,
+                timestamp_taken=timestamp,
+                target_time_drift=0.0,
+                dose_window=med_window
+            )
+            db.add(dose_log)
+            logged_count += 1
+
+            days_remaining = med.current_inventory / med.daily_doses if med.daily_doses > 0 else 999
+            if days_remaining <= 7 or med.refills_remaining <= 1:
+                alerts.append(f"Refill needed for {med.name}. Days remaining: {days_remaining:.1f}, Refills: {med.refills_remaining}")
+
+        db.commit()
+
+        alert_msg = " | ".join(alerts) if alerts else None
+        return logged_count, alert_msg
+
     def delete_dose_log(self, db: Session, log_id: int, user_id: int):
         log = db.query(models.MedDoseLog).filter(models.MedDoseLog.dose_log_id == log_id, models.MedDoseLog.user_id == user_id).first()
         if not log: return False
